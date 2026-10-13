@@ -40,6 +40,14 @@ public struct R2Config: Equatable, Sendable {
     }
 }
 
+/// Top-level folders in the bucket, one per kind of capture, so videos and scrolling shots have their own place.
+public enum R2Folder: String, CaseIterable, Sendable {
+    case images, videos
+
+    /// "images/k3x9p2m7qa.png"
+    public func key(for name: String) -> String { "\(rawValue)/\(name)" }
+}
+
 /// Random file names for uploads, like "k3x9p2m7qa.png": short, hard to guess, safe in a URL.
 public enum R2Name {
     public static let length = 10

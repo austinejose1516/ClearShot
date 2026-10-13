@@ -20,25 +20,25 @@ struct R2Uploader {
         return R2Uploader(config: settings.cloud, secretAccessKey: KeychainStore.read(KeychainStore.r2Secret))
     }
 
-    /// Uploads the bytes under `name` and returns the link people can open.
-    func upload(_ data: Data, contentType: String, name: String) async throws -> URL {
-        guard let url = config.endpoint(key: name), let link = config.link(name: name) else { throw R2Failure.badSettings }
+    /// Uploads the bytes under `key` (folder and file name, e.g. "images/k3x9p2m7qa.png") and returns the link.
+    func upload(_ data: Data, contentType: String, key: String) async throws -> URL {
+        guard let url = config.endpoint(key: key), let link = config.link(name: key) else { throw R2Failure.badSettings }
         _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: data)
         return link
     }
 
-    func delete(name: String) async throws {
-        guard let url = config.endpoint(key: name) else { throw R2Failure.badSettings }
+    func delete(key: String) async throws {
+        guard let url = config.endpoint(key: key) else { throw R2Failure.badSettings }
         _ = try await send("DELETE", url)
     }
 
     /// Proves the setup end to end: upload a tiny text file, fetch it through the Public URL, delete it.
     func test() async throws {
-        let name = "clearshot-test-\(R2Name.stem()).txt"
+        let key = "clearshot-test-\(R2Name.stem()).txt"
         let body = Data("ClearShot can upload here.".utf8)
-        let link = try await upload(body, contentType: "text/plain", name: name)
+        let link = try await upload(body, contentType: "text/plain", key: key)
         let served = try? await fetchPublic(link)
-        try await delete(name: name)
+        try await delete(key: key)
         guard served == body else { throw R2Failure.publicURLNotServing }
     }
 

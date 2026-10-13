@@ -12,6 +12,15 @@ import Testing
         #expect(R2Config().endpoint(key: "a.png") == nil)
     }
 
+    @Test func uploadsSitInAFolderPerKind() {
+        let config = R2Config(accountID: "abc123", accessKeyID: "k", bucket: "shots", publicURL: "https://pub-abc.r2.dev")
+        let key = R2Folder.images.key(for: "k3x9p2m7qa.png")
+        #expect(key == "images/k3x9p2m7qa.png")
+        #expect(R2Folder.videos.key(for: "a.mp4") == "videos/a.mp4")
+        #expect(config.endpoint(key: key)?.absoluteString == "https://abc123.r2.cloudflarestorage.com/shots/images/k3x9p2m7qa.png")
+        #expect(config.link(name: key)?.absoluteString == "https://pub-abc.r2.dev/images/k3x9p2m7qa.png")
+    }
+
     @Test func completeMeansAllFourFieldsAreFilledIn() {
         #expect(R2Config().isComplete == false)
         #expect(R2Config(accountID: "a", accessKeyID: "k", bucket: "b", publicURL: " ").isComplete == false)

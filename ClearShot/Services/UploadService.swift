@@ -3,8 +3,10 @@ import ClearShotCore
 
 /// The shared tail of Upload (editor and card): send the bytes, put the link on the clipboard, say so.
 enum UploadService {
+    /// Images go to the bucket's "images/" folder; videos and scrolling shots get their own folders later.
     static func upload(_ data: Data, format: ImageFormat, with uploader: R2Uploader) async throws {
-        let link = try await uploader.upload(data, contentType: format.mimeType, name: R2Name.random(format: format))
+        let key = R2Folder.images.key(for: R2Name.random(format: format))
+        let link = try await uploader.upload(data, contentType: format.mimeType, key: key)
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(link.absoluteString, forType: .string)
