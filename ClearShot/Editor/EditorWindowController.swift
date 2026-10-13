@@ -91,9 +91,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         Task {
             defer { viewState.uploadProgress = nil }
             do {
-                let smaller = settings.smallerPNG
-                let data = try await Task.detached { try FileSaver.encode(image, format: format, smaller: smaller) }.value
-                try await UploadService.upload(data, format: format, with: uploader) { fraction in
+                let budget = settings.fileBudget
+                let encoded = try await Task.detached { try FileSaver.encode(image, preferring: format, budget: budget) }.value
+                try await UploadService.upload(encoded.data, format: encoded.format, with: uploader) { fraction in
                     Task { @MainActor in viewState.uploadProgress = fraction }
                 }
                 onFinished()
@@ -124,10 +124,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     /// The Share menu with the result as a temp PNG. The editor stays open: the menu may be cancelled.
     private func share(from anchor: NSView?) {
         guard let anchor = anchor ?? window?.contentView, let image = renderResult() else { return }
-        let smaller = settings.smallerPNG
+        let budget = settings.fileBudget
         Task {
             do {
-                ShareService.share([try await ShareService.temporaryPNG(image, smaller: smaller)], from: anchor)
+                ShareService.share([try await ShareService.temporaryFile(image, budget: budget)], from: anchor)
             } catch {
                 ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
             }
@@ -143,15 +143,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         write(to: url)
     }
 
-    /// Encodes off the main thread (the smaller PNG takes a moment), then closes like Copy.
+    /// Encodes off the main thread (the smaller PNG takes a moment), then closes like Copy. When the size
+    /// budget turns the result into a JPEG, the file changes its extension and the old one goes.
     private func write(to url: URL) {
         guard let image = renderResult() else { return }
-        let format = ImageFormat(url: url) ?? .png
-        let smaller = settings.smallerPNG
+        let preferred = ImageFormat(url: url) ?? .png
+        let budget = settings.fileBudget
         Task {
             do {
-                try await Task.detached { try FileSaver.overwrite(image, format: format, smaller: smaller, at: url) }.value
-                DiagnosticLog.write("editor saved \(image.width)x\(image.height) px to \(url.path(percentEncoded: false))")
+                let encoded = try await Task.detached { try FileSaver.encode(image, preferring: preferred, budget: budget) }.value
+                let target = encoded.format == preferred ? url : url.deletingPathExtension().appendingPathExtension(encoded.format.fileExtension)
+                try encoded.data.write(to: target, options: .atomic)
+                if target != url { try? FileManager.default.removeItem(at: url) }
+                DiagnosticLog.write("editor saved \(image.width)x\(image.height) px, \(encoded.data.count / 1024) KB, to \(target.path(percentEncoded: false))")
                 window?.isDocumentEdited = false
                 onFinished()
             } catch {

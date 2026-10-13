@@ -65,10 +65,8 @@ struct GeneralSettingsTab: View {
                     Text("JPEG").tag(ImageFormat.jpeg)
                 }
                 .pickerStyle(.segmented)
-                if settings.imageFormat == .png {
-                    Toggle("Smaller PNG files", isOn: $settings.smallerPNG)
-                        .help("Saves with 256 colours when that looks the same: usually a fraction of the size. Photos and the clipboard always get the full PNG.")
-                }
+                Toggle("Keep files under 1 MB", isOn: $settings.keepsFilesSmall)
+                    .help("A PNG is saved with 256 colours when that looks the same. If a file would still be bigger, for example with a photo in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.")
             }
 
             Section("After a capture") {

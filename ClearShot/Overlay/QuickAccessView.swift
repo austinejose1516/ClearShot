@@ -6,6 +6,8 @@ import SwiftUI
 @Observable
 final class CardPresentation {
     var isDismissing = false
+    /// The saved file, once it is written (a moment after the card appears).
+    var fileURL: URL?
     /// 0…1 while an upload runs; nil otherwise.
     var uploadProgress: Double?
     /// Set once an upload worked, so the card can copy the link again.
@@ -82,9 +84,9 @@ struct QuickAccessView: View {
             .frame(width: QuickAccessLayout.cardSize.width, height: QuickAccessLayout.cardSize.height)
             .contentShape(Rectangle())
             .onDrag {
-                capture.fileURL.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
+                presentation.fileURL.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
             }
-            .help(capture.fileURL?.lastPathComponent ?? "Not saved to disk")
+            .help(presentation.fileURL?.lastPathComponent ?? "Saving…")
     }
 
     private var actionBar: some View {
@@ -119,9 +121,9 @@ struct QuickAccessView: View {
             .animation(.snappy(duration: 0.25), value: presentation.uploadedLink)
             Spacer(minLength: 0)
             BarIcon(symbol: "folder", help: "Reveal in Finder", action: onReveal)
-                .disabled(capture.fileURL == nil)
+                .disabled(presentation.fileURL == nil)
             BarIcon(symbol: "trash", help: "Move to Trash", action: onDelete)
-                .disabled(capture.fileURL == nil)
+                .disabled(presentation.fileURL == nil)
         }
         .padding(3)
         .glassEffect(.regular, in: .capsule)

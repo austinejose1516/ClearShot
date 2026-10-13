@@ -65,36 +65,34 @@ final class CaptureCoordinator {
         }
     }
 
-    /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–150 ms,
-    /// so it runs off the main thread while the card animates in. Then the clipboard, then the file.
+    /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–400 ms, so it
+    /// runs off the main thread while the card animates in. Then the clipboard, then the file, whose type is
+    /// only known once it is encoded (a photo may become a JPEG to stay under the size budget).
     private func finish(_ capture: Capture) async {
-        var capture = capture
         let format = settings.imageFormat
         let copies = settings.copiesToClipboard
-        let smaller = settings.smallerPNG
-        let reserved = Result { try FileSaver.reserveURL(for: format, in: settings.saveFolder, date: capture.createdAt) }
-        capture.fileURL = try? reserved.get()
+        let budget = settings.fileBudget
+        let folder = settings.saveFolder
         CaptureFlash.flash(on: .underMouse)
         if settings.playsSound { SoundPlayer.playShutter() }
         quickAccess.show(capture, on: .underMouse)
 
         let image = capture.image
         let started = ContinuousClock.now
-        let encoded = await Task.detached { () -> (file: Result<Data, any Error>, png: Data?) in
-            // The clipboard always gets the full PNG; the file may be the 256-colour one (Settings → Smaller PNG files).
-            let standard = Result { try FileSaver.encode(image, format: format) }
-            let file = standard.map { data in
-                smaller && format == .png ? FileSaver.smallerPNG(image, standard: data) ?? data : data
-            }
+        let encoded = await Task.detached { () -> (file: Result<FileSaver.EncodedImage, any Error>, png: Data?) in
+            // The clipboard always gets the full PNG; the file follows the format and the size budget.
+            let file = Result { try FileSaver.encode(image, preferring: format, budget: budget) }
             guard copies else { return (file, nil) }
-            return (file, format == .png ? try? standard.get() : try? FileSaver.encode(image, format: .png))
+            let png = (try? file.get().standardPNG) ?? nil
+            return (file, png ?? (try? FileSaver.encode(image, format: .png)))
         }.value
         if let png = encoded.png { ClipboardService.copy(png: png, of: image) }
         do {
-            let url = try reserved.get()
             let file = try encoded.file.get()
-            try file.write(to: url)
-            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px, \(file.count / 1024) KB, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+            let url = try FileSaver.reserveURL(for: file.format, in: folder, date: capture.createdAt)
+            try file.data.write(to: url)
+            quickAccess.fileWritten(capture.id, at: url)
+            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px as \(file.format.rawValue), \(file.data.count / 1024) KB, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
         } catch {
             DiagnosticLog.write("save failed: \(error)")
             ErrorPresenter.show(title: "Could not save the screenshot",

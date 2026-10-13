@@ -98,7 +98,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 
 - **Appearance**: System, Light or Dark, and an accent colour: Ocean, Violet, Sunset, Forest or Graphite.
 - Save folder, file format, clipboard, shutter sound, mouse pointer in captures, card duration, launch at login.
-- **Smaller PNG files** (on by default): PNGs are saved with 256 colours when that looks the same, which makes a typical screenshot about a fifth of the size. Photos, and anything that would visibly change, keep the full PNG; so does the clipboard.
+- **Keep files under 1 MB** (on by default): a PNG is saved with 256 colours when that looks the same, which makes a typical screenshot about a fifth of the size. If a file would still be over 1 MB, for example with a photo or the wallpaper in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.
 - **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect.
 - Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 

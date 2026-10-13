@@ -46,12 +46,12 @@ private func tempFolder() -> URL {
         #expect(CGImageSourceGetType(source) as String? == (format == .png ? "public.png" : "public.jpeg"))
     }
 
-    @Test func overwriteReplacesTheFileInPlace() throws {
+    @Test func writingAgainReplacesTheFileInPlace() throws {
         let folder = tempFolder()
         defer { try? FileManager.default.removeItem(at: folder.deletingLastPathComponent()) }
         let url = try FileSaver.reserveURL(for: .png, in: folder)
         try FileSaver.encode(image(side: 2), format: .png).write(to: url)
-        try FileSaver.overwrite(image(side: 3), format: .png, at: url)
+        try FileSaver.encode(image(side: 3), preferring: .png, budget: nil).data.write(to: url, options: .atomic)
         let source = CGImageSourceCreateWithURL(url as CFURL, nil)!
         let reloaded = CGImageSourceCreateImageAtIndex(source, 0, nil)!
         #expect(reloaded.width == 3)

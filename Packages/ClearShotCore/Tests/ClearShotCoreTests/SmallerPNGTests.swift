@@ -4,7 +4,8 @@ import ImageIO
 import Testing
 @testable import ClearShotCore
 
-/// Smaller PNG files: 256 colours when that looks the same, the normal PNG otherwise.
+/// Keep files small: 256 colours when that looks the same, the normal PNG otherwise, and a JPEG when a photo
+/// pushes the file over the budget.
 @Suite struct SmallerPNGTests {
     private let p3 = CGColorSpace(name: CGColorSpace.displayP3)!
 
@@ -118,7 +119,8 @@ import Testing
         #expect(Double(palette.count) <= Double(standard.count) * 0.5, "palette \(palette.count) bytes vs standard \(standard.count)")
         let small = try #require(FileSaver.smallerPNG(original, standard: standard))
         #expect(small == palette)
-        #expect(try FileSaver.encode(original, format: .png, smaller: true) == small)
+        let encoded = try FileSaver.encode(original, preferring: .png, budget: 10_000_000)
+        #expect(encoded.data == small && encoded.format == .png && encoded.standardPNG == standard)
     }
 
     @Test func photosFallBackToTheNormalPNG() throws {
@@ -127,12 +129,56 @@ import Testing
         #expect(PaletteQuantizer.quantize(big) == nil)
         let standard = try FileSaver.encode(big, format: .png)
         #expect(FileSaver.smallerPNG(big, standard: standard) == nil)
-        #expect(try FileSaver.encode(big, format: .png, smaller: true) == standard)
+        #expect(try FileSaver.encode(big, preferring: .png, budget: nil).data == standard)
+        #expect(try FileSaver.encode(big, preferring: .png, budget: 100_000_000).data == standard)
         // Under the cap, but 256 colours cannot stand in for 40,000: the quality check says no.
         let medium = noise(200, 200)
         let quantized = try #require(PaletteQuantizer.quantize(medium))
         #expect(quantized.error > PaletteQuantizer.maxError, "error \(quantized.error)")
         #expect(FileSaver.smallerPNG(medium, standard: try FileSaver.encode(medium, format: .png)) == nil)
+    }
+
+    /// Photo-like: soft colour waves with fine grain, as a camera makes. Too many colours for a palette, but
+    /// JPEG smooths the grain away.
+    private var photoLike: CGImage {
+        let width = 400, height = 300
+        var state: UInt64 = 7
+        var bytes = [UInt8](repeating: 255, count: width * height * 4)
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                let waves = [sin(Double(x) / 37) * 60 + 150, cos(Double(y) / 29) * 60 + 120, sin(Double(x + y) / 53) * 60 + 130]
+                for c in 0..<3 {
+                    state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+                    let grain = Double(Int(state >> 33) % 21) - 10
+                    bytes[i + c] = UInt8(max(0, min(255, waves[c] + grain)))
+                }
+            }
+        }
+        let provider = CGDataProvider(data: Data(bytes) as CFData)!
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                       space: p3, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+    }
+
+    @Test func aPhotoOverTheBudgetBecomesAJPEGThatFits() throws {
+        let photo = photoLike
+        let standard = try FileSaver.encode(photo, format: .png)
+        let budget = standard.count / 2
+        let encoded = try FileSaver.encode(photo, preferring: .png, budget: budget)
+        #expect(encoded.format == .jpeg)
+        #expect(encoded.data.count <= budget, "jpeg \(encoded.data.count) bytes, budget \(budget)")
+        #expect(encoded.standardPNG == standard)
+        // JPEG stays JPEG and just steps its quality down.
+        let asJPEG = try FileSaver.encode(photo, preferring: .jpeg, budget: budget)
+        #expect(asJPEG.format == .jpeg && asJPEG.data.count <= budget && asJPEG.standardPNG == nil)
+    }
+
+    @Test func anImpossibleBudgetGetsTheSmallestJPEG() throws {
+        let photo = photoLike
+        let smallest = try FileSaver.encode(photo, format: .jpeg, quality: FileSaver.budgetQualities.last!)
+        #expect(try FileSaver.jpeg(photo, within: 1) == smallest)
+        #expect(try FileSaver.encode(photo, preferring: .png, budget: 1).data == smallest)
     }
 
     @Test func transparentCornersAndSoftShadowsSurvive() throws {
