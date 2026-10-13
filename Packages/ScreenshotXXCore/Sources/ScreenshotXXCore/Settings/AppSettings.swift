@@ -39,6 +39,10 @@ public final class AppSettings {
         static let accent = "accent"
         static let checksForUpdates = "checksForUpdates"
         static let lastUpdateCheck = "lastUpdateCheck"
+        static let cloudAccountID = "cloudAccountID"
+        static let cloudAccessKeyID = "cloudAccessKeyID"
+        static let cloudBucket = "cloudBucket"
+        static let cloudPublicURL = "cloudPublicURL"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -59,6 +63,15 @@ public final class AppSettings {
             if let lastUpdateCheck { defaults.set(lastUpdateCheck, forKey: Key.lastUpdateCheck) } else { defaults.removeObject(forKey: Key.lastUpdateCheck) }
         }
     }
+    /// Cloudflare R2 for Upload; empty until set up. The secret key lives in the Keychain, not here.
+    public var cloudAccountID: String { didSet { defaults.set(cloudAccountID, forKey: Key.cloudAccountID) } }
+    public var cloudAccessKeyID: String { didSet { defaults.set(cloudAccessKeyID, forKey: Key.cloudAccessKeyID) } }
+    public var cloudBucket: String { didSet { defaults.set(cloudBucket, forKey: Key.cloudBucket) } }
+    public var cloudPublicURL: String { didSet { defaults.set(cloudPublicURL, forKey: Key.cloudPublicURL) } }
+
+    public var cloud: R2Config {
+        R2Config(accountID: cloudAccountID, accessKeyID: cloudAccessKeyID, bucket: cloudBucket, publicURL: cloudPublicURL)
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -73,5 +86,9 @@ public final class AppSettings {
         accent = defaults.string(forKey: Key.accent).flatMap(AccentTheme.init(rawValue:)) ?? .ocean
         checksForUpdates = defaults.object(forKey: Key.checksForUpdates) as? Bool ?? true
         lastUpdateCheck = defaults.object(forKey: Key.lastUpdateCheck) as? Date
+        cloudAccountID = defaults.string(forKey: Key.cloudAccountID) ?? ""
+        cloudAccessKeyID = defaults.string(forKey: Key.cloudAccessKeyID) ?? ""
+        cloudBucket = defaults.string(forKey: Key.cloudBucket) ?? ""
+        cloudPublicURL = defaults.string(forKey: Key.cloudPublicURL) ?? ""
     }
 }
