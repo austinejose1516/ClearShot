@@ -50,7 +50,8 @@ public struct StyleValues: Equatable, Sendable {
     public var fills = false
     /// Shown for selected lines and curves; new ones take it from the tool (Line vs Arrow).
     public var arrow = true
-    public var fontSize: CGFloat = 48
+    /// Screenshots are usually 2× Retina, so 32 px reads as 16 pt.
+    public var fontSize: CGFloat = 32
     public var bold = true
     public var boxed = false
     public var blurMode: BlurMode = .pixelate

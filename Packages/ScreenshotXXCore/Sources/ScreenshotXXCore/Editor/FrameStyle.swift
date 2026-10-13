@@ -37,10 +37,12 @@ public struct FrameStyle: Equatable, Sendable, Codable {
     public init() {}
 
     private var shadowStrength: CGFloat { max(0, min(shadow, 100)) / 100 }
+    /// The slider's end, as a share of the shorter canvas side.
+    private static let maxShadowRadius: CGFloat = 0.1
 
-    /// Blur radius: the slider's end is 6 % of the shorter canvas side.
+    /// Blur radius: up to 10 % of the shorter canvas side.
     public func shadowRadius(canvasSize: CGSize) -> CGFloat {
-        shadowStrength * min(canvasSize.width, canvasSize.height) * 0.06
+        shadowStrength * min(canvasSize.width, canvasSize.height) * Self.maxShadowRadius
     }
 
     /// 0.2…0.6 while there is a shadow.
@@ -55,7 +57,7 @@ public struct FrameStyle: Equatable, Sendable, Codable {
         frame.padding = margin
         // Inverse of `shadowRadius`: a radius of a third of the margin keeps the blur inside the padding.
         let shortSide = min(imageSize.width, imageSize.height) + 2 * margin
-        frame.shadow = shortSide > 0 ? min(100, max(0, margin / 3 / (shortSide * 0.06) * 100)) : 0
+        frame.shadow = shortSide > 0 ? min(100, max(0, margin / 3 / (shortSide * maxShadowRadius) * 100)) : 0
         return frame
     }
 

@@ -39,7 +39,7 @@ import Testing
         #expect(frame.shadowRadius(canvasSize: CGSize(width: 1000, height: 500)) == 0)
         #expect(frame.shadowOpacity == 0)
         frame.shadow = 100
-        #expect(frame.shadowRadius(canvasSize: CGSize(width: 1000, height: 500)) == 30)   // 6 % of the short side
+        #expect(frame.shadowRadius(canvasSize: CGSize(width: 1000, height: 500)) == 50)   // 10 % of the short side
         #expect(abs(frame.shadowOpacity - 0.6) < 0.0001)
     }
 
