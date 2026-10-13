@@ -4,6 +4,9 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     # Needs Xcode 26+; check the runner image list if this job fails to find the SDK.
