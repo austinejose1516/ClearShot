@@ -32,9 +32,10 @@ public enum ImageFormat: String, CaseIterable, Sendable, Codable {
 /// User preferences, backed by UserDefaults. One instance per app, created by AppDelegate.
 @Observable
 public final class AppSettings {
+    /// The Desktop, like macOS's own screenshots.
     public static let defaultSaveFolder = FileManager.default
         .homeDirectoryForCurrentUser
-        .appending(path: "Pictures/ClearShot", directoryHint: .isDirectory)
+        .appending(path: "Desktop", directoryHint: .isDirectory)
 
     private enum Key {
         static let saveFolder = "saveFolderPath"

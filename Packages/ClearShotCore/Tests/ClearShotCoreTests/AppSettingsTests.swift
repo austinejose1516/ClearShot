@@ -16,7 +16,7 @@ import Testing
         let settings = AppSettings(defaults: defaults)
 
         #expect(settings.saveFolder == AppSettings.defaultSaveFolder)
-        #expect(settings.saveFolder.path().hasSuffix("/Pictures/ClearShot/"))
+        #expect(settings.saveFolder.path().hasSuffix("/Desktop/"))
         #expect(settings.imageFormat == .png)
         #expect(settings.copiesToClipboard == true)
         #expect(settings.showsCursor == false)
