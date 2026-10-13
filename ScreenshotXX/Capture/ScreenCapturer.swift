@@ -18,7 +18,7 @@ enum ScreenCapturer {
     static func display(under point: CGPoint) async throws -> SCDisplay {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
-        let wantedID = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        let wantedID = screen?.displayID
         if let match = content.displays.first(where: { $0.displayID == wantedID }) { return match }
         guard let first = content.displays.first else { throw Failure.noDisplay }
         return first
@@ -28,7 +28,7 @@ enum ScreenCapturer {
     static func screenDisplays() async throws -> [(screen: NSScreen, display: SCDisplay)] {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         return NSScreen.screens.compactMap { screen in
-            guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+            guard let id = screen.displayID,
                   let display = content.displays.first(where: { $0.displayID == id }) else { return nil }
             return (screen, display)
         }

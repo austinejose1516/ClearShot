@@ -5,12 +5,15 @@ import ScreenshotXXCore
 final class CaptureCoordinator {
     private let settings: AppSettings
     private let store: CaptureStore
+    private let quickAccess: QuickAccessController
     private let onPermissionMissing: () -> Void
     private var isCapturing = false
 
-    init(settings: AppSettings, store: CaptureStore, onPermissionMissing: @escaping () -> Void) {
+    init(settings: AppSettings, store: CaptureStore, quickAccess: QuickAccessController,
+         onPermissionMissing: @escaping () -> Void) {
         self.settings = settings
         self.store = store
+        self.quickAccess = quickAccess
         self.onPermissionMissing = onPermissionMissing
     }
 
@@ -83,5 +86,6 @@ final class CaptureCoordinator {
         }
         if settings.playsSound { SoundPlayer.playShutter() }
         store.add(capture)
+        quickAccess.show(capture, on: .underMouse)
     }
 }

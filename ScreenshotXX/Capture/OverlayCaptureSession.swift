@@ -74,7 +74,7 @@ final class OverlayCaptureSession {
                     }
                 },
                 onCancel: { [weak self] in self?.resolve(.cancelled) })
-            panel.contentView = SelectionHostingView(rootView: view)
+            panel.contentView = FirstMouseHostingView(rootView: view)
             panels.append(panel)
         }
 

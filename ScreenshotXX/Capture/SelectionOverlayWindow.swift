@@ -37,6 +37,6 @@ final class SelectionOverlayWindow: NSPanel {
 }
 
 /// Delivers the very first click as a real mouse-down (and so a drag), even when the app is not active.
-final class SelectionHostingView<Content: View>: NSHostingView<Content> {
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

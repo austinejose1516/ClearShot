@@ -1144,3 +1144,30 @@ Task test command: `make check`
 - [ ] **Step 8: Commit** — `feat: window capture with hover highlight`
 
 Task test command: `make check`
+
+---
+
+### Task 5: Quick Access card — floating card at the bottom-left after every capture
+
+**Files:**
+- Create (Core): `.../Overlay/QuickAccessLayout.swift`; Test: `QuickAccessLayoutTests.swift`
+- Create (App): `ScreenshotXX/Overlay/QuickAccessPanel.swift`, `QuickAccessController.swift`, `QuickAccessView.swift`
+- Modify (App): `SelectionOverlayWindow.swift` (rename `SelectionHostingView` → `FirstMouseHostingView`, reused by the card), `OverlayCaptureSession.swift` (rename use), `CaptureCoordinator.swift` (`finish` shows the card), `AppDelegate.swift` (owns the controller)
+
+**Interfaces:**
+- Consumes: `Capture`, `CaptureStore`, `AppSettings.cardAutoCloseSeconds`, `ClipboardService` (Task 2).
+- Produces (Core): `public enum QuickAccessLayout { static let cardSize = CGSize(width: 232, height: 212); static let margin: CGFloat = 16; static let gap: CGFloat = 8; static func maxVisible(in visibleFrame: CGRect) -> Int; static func frames(count: Int, in visibleFrame: CGRect) -> [CGRect] /* AppKit coords, index 0 = newest = left-most, y = visibleFrame.minY + margin */ }`
+- Produces (App): `@MainActor final class QuickAccessController { init(settings: AppSettings, store: CaptureStore); func show(_ capture: Capture, on screen: NSScreen?); func close(id: Capture.ID); var onEdit: ((Capture) -> Void)? }` — cards newest-left, animated in/out, auto-close per setting (paused while hovered), re-laid out on screen changes; a card whose screen is gone moves to the main screen.
+- Produces (App): `QuickAccessPanel: NSPanel` (borderless, non-activating, `.floating`, all Spaces, transparent, shadow on).
+- Produces (App): `QuickAccessView` — thumbnail (drag out = file URL), `W × H` caption, toolbar: Edit, Copy, Reveal in Finder, Close. Liquid Glass container (`.glassEffect`), fallback `.ultraThinMaterial`.
+- Edit is a stub until Task 6: it logs and opens the file with the default app.
+
+- [ ] **Step 1: Failing Core test** — three cards on a visible frame (0, 0, 1800, 1100) → x = 16, 256, 496; y = 16; `maxVisible` on a 500-wide frame = 2; `frames(count: 5, …)` on that frame returns 2.
+- [ ] **Step 2: Run → `cannot find 'QuickAccessLayout'`.**
+- [ ] **Step 3: Implement.** — [ ] **Step 4: Run → 24 tests pass.**
+- [ ] **Step 5: App** as in Interfaces. `finish` passes the screen under the mouse.
+- [ ] **Step 6: Build.**
+- [ ] **Step 7: Verify by hand** — Austin: capture twice; two cards bottom-left, newest left; Copy, Reveal, drag the thumbnail into a Finder window, Close. Set auto-close to 10 s in Settings and capture again: card leaves by itself.
+- [ ] **Step 8: Commit** — `feat: quick access card after capture`
+
+Task test command: `make check`
