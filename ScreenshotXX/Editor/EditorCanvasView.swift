@@ -7,9 +7,6 @@ struct EditorCanvasView: View {
     let session: EditorSession
     let viewState: EditorViewState
 
-    @State private var tip: String?
-    @State private var tipTask: Task<Void, Never>?
-
     /// How near counts as a hit: 6 screen points, in image pixels.
     private var tolerance: CGFloat { 6 / viewState.zoom }
 
@@ -28,7 +25,6 @@ struct EditorCanvasView: View {
             .overlay(alignment: .top) { tipBanner }
         }
         .background(Color(nsColor: .underPageBackgroundColor))
-        .onChange(of: session.tool) { _, tool in show(tip: tool.hint) }
     }
 
     private var canvas: some View {
@@ -73,7 +69,7 @@ struct EditorCanvasView: View {
         .highPriorityGesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in
-                    dismissTip()
+                    viewState.dismissTip()
                     session.dragChanged(to: transform.fromCanvas(value.location), tolerance: tolerance)
                     if session.isMovingSelection { NSCursor.closedHand.set() }
                 }
@@ -91,7 +87,7 @@ struct EditorCanvasView: View {
     // MARK: - Tip
 
     @ViewBuilder private var tipBanner: some View {
-        if let tip {
+        if let tip = viewState.tip {
             Text(tip)
                 .font(.callout)
                 .padding(.horizontal, 14)
@@ -101,22 +97,6 @@ struct EditorCanvasView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .allowsHitTesting(false)
         }
-    }
-
-    private func show(tip text: String) {
-        tipTask?.cancel()
-        withAnimation(.easeOut(duration: 0.2)) { tip = text }
-        tipTask = Task {
-            try? await Task.sleep(for: .seconds(3.5))
-            guard !Task.isCancelled else { return }
-            dismissTip()
-        }
-    }
-
-    private func dismissTip() {
-        tipTask?.cancel()
-        guard tip != nil else { return }
-        withAnimation(.easeIn(duration: 0.2)) { tip = nil }
     }
 }
 

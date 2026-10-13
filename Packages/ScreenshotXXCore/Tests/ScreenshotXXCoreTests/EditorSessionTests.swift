@@ -197,4 +197,47 @@ import Testing
         #expect(s.cursor(at: p(10, 30), tolerance: 4) == .move)
         #expect(s.cursor(at: p(200, 200), tolerance: 4) == .tool(.rect))
     }
+
+    @Test func finishingTextGoesBackToSelectSoTheNextClickAddsNothing() {
+        let s = session()
+        s.tool = .text
+        drag(s, p(10, 10))
+        s.editText("Hi")
+        s.finishTextEditing()
+        #expect(s.tool == .select)
+        drag(s, p(300, 200))
+        #expect(s.document.annotations.count == 1)
+    }
+
+    @Test func clickingAwayFromNewTextAlsoGoesBackToSelect() {
+        let s = session()
+        s.tool = .text
+        drag(s, p(10, 10))
+        s.editText("Hi")
+        drag(s, p(300, 200))
+        #expect(s.editingTextID == nil)
+        #expect(s.tool == .select)
+        #expect(s.document.annotations.count == 1)
+    }
+
+    @Test func finishingABubbleGoesBackToSelect() {
+        let s = session()
+        s.tool = .bubble
+        drag(s, p(10, 10), p(110, 60))
+        s.editText("Hi")
+        s.finishTextEditing()
+        #expect(s.tool == .select)
+    }
+
+    @Test func textCanSitInThePaddingOutsideTheImage() {
+        let s = session()
+        s.tool = .text
+        drag(s, p(20, -60))
+        s.editText("Header")
+        s.finishTextEditing()
+        #expect(s.document.annotations[0].textContent?.origin == p(20, -60))
+        s.tool = .select
+        drag(s, p(30, -50))
+        #expect(s.editingTextID == s.document.annotations[0].id)
+    }
 }

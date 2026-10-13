@@ -285,10 +285,14 @@ public final class EditorSession {
     }
 
     /// Ends inline editing. Empty text is removed (or never added, if it was new).
+    /// Text and Bubble tools hand back to Select, so the next click does not start another one.
     public func finishTextEditing() {
         guard let id = editingTextID else { return }
         editingTextID = nil
-        defer { editingTextIsNew = false }
+        defer {
+            editingTextIsNew = false
+            if tool == .text || tool == .bubble { tool = .select }
+        }
         guard let annotation = document.annotation(id: id) else { return }
         let emptyText = annotation.textContent.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
         if emptyText {

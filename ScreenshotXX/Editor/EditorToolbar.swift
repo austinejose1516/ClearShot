@@ -25,6 +25,7 @@ struct EditorToolbar: View {
                 ForEach(EditorTool.allCases) { tool in
                     Button {
                         session.tool = tool
+                        viewState.showTip(tool.hint)
                     } label: {
                         Image(systemName: tool.symbol)
                             .font(.system(size: 14, weight: .medium))
