@@ -1,4 +1,4 @@
-name: ScreenshotXX
+name: ClearShot
 options:
   bundleIdPrefix: com.austinejose
   deploymentTarget:
@@ -21,22 +21,22 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     exactVersion: 3.1.0
-  ScreenshotXXCore:
-    path: Packages/ScreenshotXXCore
+  ClearShotCore:
+    path: Packages/ClearShotCore
 targets:
-  ScreenshotXX:
+  ClearShot:
     type: application
     platform: macOS
     sources:
-      - path: ScreenshotXX
+      - path: ClearShot
         excludes: ["Info.plist"]
     dependencies:
       - package: KeyboardShortcuts
-      - package: ScreenshotXXCore
+      - package: ClearShotCore
     info:
-      path: ScreenshotXX/Info.plist
+      path: ClearShot/Info.plist
       properties:
-        CFBundleDisplayName: ScreenshotXX
+        CFBundleDisplayName: ClearShot
         CFBundleIconFile: AppIcon
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -45,8 +45,8 @@ targets:
         NSHumanReadableCopyright: "© 2026 Austine Jose"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.austinejose.screenshotxx
-        PRODUCT_NAME: ScreenshotXX
+        PRODUCT_BUNDLE_IDENTIFIER: com.austinejose.clearshot
+        PRODUCT_NAME: ClearShot
         MARKETING_VERSION: "0.4.0"
         CURRENT_PROJECT_VERSION: "4"
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
@@ -55,9 +55,9 @@ targets:
       Debug: Local.xcconfig
       Release: Local.xcconfig
 schemes:
-  ScreenshotXX:
+  ClearShot:
     build:
       targets:
-        ScreenshotXX: all
+        ClearShot: all
     run:
       config: Debug

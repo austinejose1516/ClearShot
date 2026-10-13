@@ -1,0 +1,98 @@
+import AppKit
+import ClearShotCore
+
+@Observable
+final class CaptureCoordinator {
+    private let settings: AppSettings
+    private let quickAccess: QuickAccessController
+    private let onPermissionMissing: () -> Void
+    private var isCapturing = false
+
+    init(settings: AppSettings, quickAccess: QuickAccessController, onPermissionMissing: @escaping () -> Void) {
+        self.settings = settings
+        self.quickAccess = quickAccess
+        self.onPermissionMissing = onPermissionMissing
+    }
+
+    func capture(_ kind: CaptureKind) {
+        guard PermissionService.hasScreenRecordingAccess else {
+            DiagnosticLog.write("capture(\(kind.rawValue)) blocked: no Screen Recording access")
+            onPermissionMissing()
+            return
+        }
+        // Set before the task starts, so a fast second hotkey press cannot start a second capture.
+        // It stays set until the file is written, so the next capture never picks the same file name.
+        guard !isCapturing else { return }
+        isCapturing = true
+        Task {
+            defer { isCapturing = false }
+            do {
+                guard let capture = try await makeCapture(kind) else {
+                    DiagnosticLog.write("capture(\(kind.rawValue)) cancelled")
+                    return
+                }
+                await finish(capture)
+            } catch {
+                DiagnosticLog.write("capture(\(kind.rawValue)) failed: \(error)")
+                ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
+            }
+        }
+    }
+
+    /// The image for one capture; nil when the user cancelled.
+    private func makeCapture(_ kind: CaptureKind) async throws -> Capture? {
+        switch kind {
+        case .fullScreen:
+            let content = try await ScreenCapturer.content()
+            let display = try ScreenCapturer.display(for: .underMouse, in: content)
+            return Capture(kind: .fullScreen, image: try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor))
+        case .area, .window:
+            switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, settings: settings) {
+            case .area(let image):
+                return Capture(kind: .area, image: image)
+            case .window(let window):
+                // Both at once: the shadowed one is saved, the plain one is what the editor starts from.
+                let showsCursor = settings.showsCursor
+                let started = ContinuousClock.now
+                let plain = Task { try? await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: false) }
+                let image = try await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: true)
+                let windowImage = await plain.value
+                DiagnosticLog.write("window captured twice in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+                return Capture(kind: .window, image: image, windowImage: windowImage)
+            case .cancelled:
+                return nil
+            }
+        }
+    }
+
+    /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–150 ms,
+    /// so it runs off the main thread while the card animates in. Then the clipboard, then the file.
+    private func finish(_ capture: Capture) async {
+        var capture = capture
+        let format = settings.imageFormat
+        let copies = settings.copiesToClipboard
+        let reserved = Result { try FileSaver.reserveURL(for: format, in: settings.saveFolder, date: capture.createdAt) }
+        capture.fileURL = try? reserved.get()
+        CaptureFlash.flash(on: .underMouse)
+        if settings.playsSound { SoundPlayer.playShutter() }
+        quickAccess.show(capture, on: .underMouse)
+
+        let image = capture.image
+        let started = ContinuousClock.now
+        let encoded = await Task.detached { () -> (file: Result<Data, any Error>, png: Data?) in
+            let file = Result { try FileSaver.encode(image, format: format) }
+            guard copies else { return (file, nil) }
+            return (file, format == .png ? try? file.get() : try? FileSaver.encode(image, format: .png))
+        }.value
+        if let png = encoded.png { ClipboardService.copy(png: png, of: image) }
+        do {
+            let url = try reserved.get()
+            try encoded.file.get().write(to: url)
+            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+        } catch {
+            DiagnosticLog.write("save failed: \(error)")
+            ErrorPresenter.show(title: "Could not save the screenshot",
+                                message: "\(error.localizedDescription)\n\nIt is still on your clipboard.")
+        }
+    }
+}

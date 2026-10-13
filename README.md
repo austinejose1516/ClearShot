@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="ScreenshotXX/Resources/AppIcon-source.png" width="128" alt="ScreenshotXX icon">
+  <img src="ClearShot/Resources/AppIcon-source.png" width="128" alt="ClearShot icon">
 </p>
 
-<h1 align="center">ScreenshotXX</h1>
+<h1 align="center">ClearShot</h1>
 
 <p align="center">
   Free and open-source screenshots for your Mac.<br>
@@ -10,11 +10,11 @@
 </p>
 
 ```bash
-brew install --cask austinejose1516/tap/screenshotxx
+brew install --cask austinejose1516/tap/clearshot
 ```
 
 <p align="center">
-  <a href="https://github.com/austinejose1516/ScreenshotXX/releases/latest"><img src="https://img.shields.io/github/v/release/austinejose1516/ScreenshotXX?label=release" alt="Latest release"></a>
+  <a href="https://github.com/austinejose1516/ClearShot/releases/latest"><img src="https://img.shields.io/github/v/release/austinejose1516/ClearShot?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple" alt="macOS 26 or later">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-green" alt="MIT licence"></a>
@@ -24,17 +24,17 @@ brew install --cask austinejose1516/tap/screenshotxx
 
 ## Install
 
-ScreenshotXX installs with [Homebrew](https://brew.sh):
+ClearShot installs with [Homebrew](https://brew.sh):
 
 ```bash
-brew install --cask austinejose1516/tap/screenshotxx
+brew install --cask austinejose1516/tap/clearshot
 ```
 
 | To | Run |
 |---|---|
-| Update to the newest version | `brew upgrade --cask screenshotxx` (or just `brew upgrade`) |
-| Uninstall | `brew uninstall --cask screenshotxx` |
-| Uninstall and remove its settings and log | `brew uninstall --zap --cask screenshotxx` |
+| Update to the newest version | `brew upgrade --cask clearshot` (or just `brew upgrade`) |
+| Uninstall | `brew uninstall --cask clearshot` |
+| Uninstall and remove its settings and log | `brew uninstall --zap --cask clearshot` |
 
 **No admin rights?** Install into your own Applications folder instead of `/Applications`. Add this line to `~/.zshrc` once, so installs and upgrades both go there:
 
@@ -44,11 +44,11 @@ export HOMEBREW_CASK_OPTS="--appdir=$HOME/Applications"
 
 **First launch.**
 
-1. The app is not notarized yet, so the first time right-click ScreenshotXX in Applications and choose **Open**.
-2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ScreenshotXX on in System Settings.
-3. Quit ScreenshotXX from the menu bar and open it again. Press **⌃⇧A** to capture.
+1. The app is not notarized yet, so the first time right-click ClearShot in Applications and choose **Open**.
+2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ClearShot on in System Settings.
+3. Quit ClearShot from the menu bar and open it again. Press **⌃⇧A** to capture.
 
-Needs macOS 26 (Tahoe) or later. ScreenshotXX lives in the menu bar; it has no account and keeps your screenshots on your Mac. The only thing it sends over the network is a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away).
+Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. The only thing it sends over the network is a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away).
 
 ## Features
 
@@ -88,7 +88,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 
 - **Appearance**: System, Light or Dark, and an accent colour: Ocean, Violet, Sunset, Forest or Graphite.
 - Save folder, file format, clipboard, shutter sound, mouse pointer in captures, card duration, launch at login.
-- Change any shortcut, or let ScreenshotXX take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
+- Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 
 ## Keyboard shortcuts
 
@@ -116,27 +116,27 @@ make build      # generate the Xcode project and build Debug
 make run        # build and launch
 make core-test  # Swift Testing suite for the Core package
 make check      # tests + build
-make dmg        # Release build + build/ScreenshotXX-<version>.dmg
+make dmg        # Release build + build/ClearShot-<version>.dmg
 ```
 
 `make gen` creates `Local.xcconfig` (git-ignored) for your signing settings. Follow the comments inside it once: a stable signature keeps the Screen Recording permission across rebuilds.
 
 ### Project layout
 
-- `Packages/ScreenshotXXCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
-- `ScreenshotXX/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings.
-- `scripts/make-icns.sh` — builds the app icon from `ScreenshotXX/Resources/AppIcon-source.png`.
-- `~/Library/Logs/ScreenshotXX.log` — a small diagnostics log (Settings → Show Log in Finder).
+- `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
+- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings.
+- `scripts/make-icns.sh` — builds the app icon from `ClearShot/Resources/AppIcon-source.png`.
+- `~/Library/Logs/ClearShot.log` — a small diagnostics log (Settings → Show Log in Finder).
 
 ### Releasing
 
 1. Bump `MARKETING_VERSION` in `project.yml`.
 2. Push a tag such as `v0.2.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
-3. Put the new version and DMG checksum into `Casks/screenshotxx.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`). Users then get it with `brew upgrade`.
+3. Put the new version and DMG checksum into `Casks/clearshot.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`). Users then get it with `brew upgrade`.
 
 ## Contributing
 
-Ideas, bug reports and pull requests are welcome. [Open an issue](https://github.com/austinejose1516/ScreenshotXX/issues) to start. Please run `make check` before sending a pull request.
+Ideas, bug reports and pull requests are welcome. [Open an issue](https://github.com/austinejose1516/ClearShot/issues) to start. Please run `make check` before sending a pull request.
 
 ## Licence
 

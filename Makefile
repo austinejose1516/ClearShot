@@ -1,8 +1,8 @@
-PROJECT := ScreenshotXX.xcodeproj
-SCHEME  := ScreenshotXX
+PROJECT := ClearShot.xcodeproj
+SCHEME  := ClearShot
 DERIVED := build/DerivedData
-APP     := $(DERIVED)/Build/Products/Debug/ScreenshotXX.app
-CORE    := Packages/ScreenshotXXCore
+APP     := $(DERIVED)/Build/Products/Debug/ClearShot.app
+CORE    := Packages/ClearShotCore
 
 .PHONY: gen build run stop core-test check clean release dmg
 
@@ -29,7 +29,7 @@ core-test:
 check: core-test build
 
 stop:
-	-pkill -x ScreenshotXX
+	-pkill -x ClearShot
 
 run: build stop
 	open $(APP)
