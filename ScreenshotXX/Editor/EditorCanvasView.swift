@@ -102,23 +102,6 @@ struct EditorCanvasView: View {
             if let editing = state.editingTextID {
                 TextEditingOverlay(document: document, id: editing, transform: transform, onFinish: finishTextEditing)
             }
-            if let crop = state.cropDraft, gesture == nil {
-                let r = transform.toCanvas(crop)
-                HStack(spacing: 8) {
-                    Button("Cancel") { state.cropDraft = nil }
-                        .keyboardShortcut(.cancelAction)
-                    Button("Crop") {
-                        document.applyCrop(crop)
-                        state.cropDraft = nil
-                        state.tool = .select
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding(8)
-                .glassEffect(.regular, in: .rect(cornerRadius: 10))
-                .fixedSize()
-                .offset(x: r.minX, y: min(r.maxY + 8, size.height * zoom - 44))
-            }
         }
         .padding(24)
     }
@@ -367,7 +350,7 @@ struct EditorCanvasView: View {
         case .bubble: text = "Drag to draw the bubble, type, then drag its tail"
         case .step: text = "Click to place the next number"
         case .blur: text = "Drag over the part to hide · Pixelate or Blur below"
-        case .crop: text = "Drag the part to keep, then press Crop or Enter"
+        case .crop: text = "Drag the part to keep, then press Crop in the toolbar or Enter"
         }
         tipTask?.cancel()
         withAnimation(.easeOut(duration: 0.2)) { tip = text }

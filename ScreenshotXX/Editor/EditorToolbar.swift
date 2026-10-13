@@ -165,6 +165,20 @@ struct EditorToolbar: View {
                         .onChange(of: state.boxed) { state.applyStyle(to: document) }
                 }
             }
+            if state.tool == .crop {
+                Button("Cancel") { state.cropDraft = nil }
+                    .disabled(state.cropDraft == nil)
+                    .fixedSize()
+                Button {
+                    state.applyCrop(to: document)
+                } label: {
+                    Label("Crop", systemImage: "crop").labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(state.cropDraft == nil)
+                .fixedSize()
+                .help("Crop to the dragged area (Enter)")
+            }
             Spacer(minLength: 0)
             Text(hint)
                 .font(.caption)
@@ -187,7 +201,7 @@ struct EditorToolbar: View {
         case .bubble: "Drag to draw the bubble, type, then drag its tail"
         case .step: "Click to place the next number"
         case .blur: "Drag over the part to hide"
-        case .crop: "Drag the part to keep · Enter crops · Esc cancels"
+        case .crop: "Drag the part to keep, then Crop · Esc cancels"
         }
     }
 

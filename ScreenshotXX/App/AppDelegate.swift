@@ -3,10 +3,8 @@ import ScreenshotXXCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = AppSettings()
-    let captureStore = CaptureStore()
     private(set) lazy var quickAccess = QuickAccessController(settings: settings)
-    private(set) lazy var captureCoordinator = CaptureCoordinator(settings: settings, store: captureStore,
-                                                                  quickAccess: quickAccess) { [weak self] in
+    private(set) lazy var captureCoordinator = CaptureCoordinator(settings: settings, quickAccess: quickAccess) { [weak self] in
         self?.showOnboarding()
     }
     private var hotkeys: HotkeyService?
@@ -25,9 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EditorSessionStore.shared.onFinished = { [weak self] captureID in
             self?.quickAccess.close(id: captureID)
         }
-        quickAccess.onDelete = { [weak self] capture in
+        quickAccess.onDismissed = { captureID in
+            EditorSessionStore.shared.cardDismissed(captureID)
+        }
+        quickAccess.onDelete = { capture in
             EditorSessionStore.shared.close(captureID: capture.id)
-            self?.captureStore.remove(id: capture.id)
             guard let url = capture.fileURL else { return }
             do {
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)

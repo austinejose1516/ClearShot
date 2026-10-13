@@ -20,6 +20,8 @@ final class QuickAccessController {
 
     var onEdit: ((Capture) -> Void)?
     var onDelete: ((Capture) -> Void)?
+    /// Every way a card leaves (close, auto-close, overflow, delete, after Save).
+    var onDismissed: ((Capture.ID) -> Void)?
 
     init(settings: AppSettings) {
         self.settings = settings
@@ -102,6 +104,7 @@ final class QuickAccessController {
         autoCloseTasks.removeValue(forKey: id)?.cancel()
         hovered.remove(id)
         entry.presentation.isDismissing = true
+        onDismissed?(id)
         Task {
             try? await Task.sleep(for: .milliseconds(260))
             entry.panel.orderOut(nil)

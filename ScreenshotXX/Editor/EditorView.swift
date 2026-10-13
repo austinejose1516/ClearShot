@@ -37,16 +37,9 @@ struct EditorView: View {
         actions.save = save
         actions.selectAll = { document.selection = Set(document.annotations.map(\.id)) }
         actions.deselect = { document.selection = []; state.cropDraft = nil; state.tool = .select }
-        actions.confirm = { applyCrop() }
+        actions.confirm = { state.applyCrop(to: document) }
         actions.zoomIn = { state.zoomIsFit = false; state.zoom = min(8, state.zoom * 1.25) }
         actions.zoomOut = { state.zoomIsFit = false; state.zoom = max(0.05, state.zoom / 1.25) }
-    }
-
-    private func applyCrop() {
-        guard let draft = state.cropDraft else { return }
-        document.applyCrop(draft)
-        state.cropDraft = nil
-        state.tool = .select
     }
 
     private func copy() {
@@ -75,7 +68,7 @@ struct EditorView: View {
             return
         }
         do {
-            try FileSaver.overwrite(image, format: .png, at: url)
+            try FileSaver.overwrite(image, format: ImageFormat(url: url) ?? .png, at: url)
             DiagnosticLog.write("editor saved \(image.width)x\(image.height) px to \(url.path(percentEncoded: false))")
             onSaved(url)
         } catch {

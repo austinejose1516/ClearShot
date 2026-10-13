@@ -10,6 +10,15 @@ public enum ImageFormat: String, CaseIterable, Sendable, Codable {
         case .jpeg: "jpg"
         }
     }
+
+    /// The format a file should be written in, from its extension. Nil for anything else.
+    public init?(url: URL) {
+        switch url.pathExtension.lowercased() {
+        case "png": self = .png
+        case "jpg", "jpeg": self = .jpeg
+        default: return nil
+        }
+    }
 }
 
 /// User preferences, backed by UserDefaults. One instance per app, created by AppDelegate.

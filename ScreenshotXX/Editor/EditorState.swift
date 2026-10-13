@@ -67,6 +67,14 @@ final class EditorState {
         document.commit()
     }
 
+    /// Crop to the dragged area and go back to Select. Used by the toolbar button and Enter.
+    func applyCrop(to document: EditorDocument) {
+        guard let draft = cropDraft else { return }
+        document.applyCrop(draft)
+        cropDraft = nil
+        tool = .select
+    }
+
     /// Turn the arrowhead on or off for selected lines and curves.
     func applyArrowhead(_ on: Bool, to document: EditorDocument) {
         for id in document.selection {

@@ -2,14 +2,14 @@ import AppKit
 import ScreenshotXXCore
 import SwiftUI
 
-final class EditorWindowController: NSWindowController {
+final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let editorDocument: EditorDocument
     let state = EditorState()
-    private(set) var fileURL: URL?
+    private let onWindowClosed: () -> Void
 
-    init(capture: Capture, onFinished: @escaping () -> Void) {
+    init(capture: Capture, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
         editorDocument = EditorDocument(baseImage: capture.image)
-        fileURL = capture.fileURL
+        self.onWindowClosed = onWindowClosed
         let window = EditorWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -19,13 +19,13 @@ final class EditorWindowController: NSWindowController {
         window.minSize = NSSize(width: 1040, height: 600)
         window.isReleasedWhenClosed = false
         super.init(window: window)
+        window.delegate = self
         window.contentViewController = NSHostingController(rootView: EditorView(
             document: editorDocument,
             state: state,
             actions: window.actions,
-            fileURL: fileURL,
-            onSaved: { [weak self, weak window] url in
-                self?.fileURL = url
+            fileURL: capture.fileURL,
+            onSaved: { [weak window] url in
                 window?.title = url.lastPathComponent
                 window?.isDocumentEdited = false
                 onFinished()
@@ -37,4 +37,8 @@ final class EditorWindowController: NSWindowController {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not supported") }
+
+    func windowWillClose(_ notification: Notification) {
+        onWindowClosed()
+    }
 }
