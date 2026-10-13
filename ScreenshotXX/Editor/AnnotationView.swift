@@ -21,7 +21,10 @@ struct AnnotationView: View {
             case .freehand(let figure):
                 Smoothing.path(through: figure.points).stroke(stroke, style: line)
             case .box(let figure):
-                let outline = figure.form == .ellipse ? Path(ellipseIn: figure.rect.standardized) : Path(figure.rect.standardized)
+                let rect = figure.rect.standardized
+                let outline = figure.form == .ellipse
+                    ? Path(ellipseIn: rect)
+                    : Path(roundedRect: rect, cornerRadius: min(figure.cornerRadius, min(rect.width, rect.height) / 2))
                 if let fill = style.fillColor { outline.fill(Color(fill)) }
                 outline.stroke(stroke, style: line)
             case .text(let content):

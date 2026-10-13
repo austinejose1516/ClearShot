@@ -57,6 +57,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         case .copy: copyToClipboard()
         case .save: fileURL.map(write(to:)) ?? saveAs()
         case .saveAs: saveAs()
+        case .newLine: (window as? EditorWindow)?.insertNewLineInText()
         }
     }
 

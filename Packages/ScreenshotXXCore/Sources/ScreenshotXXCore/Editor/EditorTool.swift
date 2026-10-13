@@ -47,8 +47,9 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .line, .arrow: "Drag to draw"
         case .curve: "Drag to draw, then drag the middle dot to bend"
         case .pen: "Drag to draw freehand"
-        case .rect, .ellipse: "Drag to draw · Fill makes it solid"
-        case .text: "Drag a box (sets the size) or click, then type · Enter finishes"
+        case .rect: "Drag to draw · Fill makes it solid · Corners rounds it"
+        case .ellipse: "Drag to draw · Fill makes it solid"
+        case .text: "Drag a box (sets the size) or click, then type · Enter finishes · ⌘Enter adds a line"
         case .bubble: "Drag to draw the bubble, type, then drag its tail"
         case .step: "Click to place the next number · drag a corner dot to resize"
         case .blur: "Drag over the part to hide"
@@ -61,11 +62,21 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .select, .crop: []
         case .line, .arrow, .curve, .pen: [.color, .width]
-        case .rect, .ellipse: [.color, .width, .fill]
+        case .rect: [.color, .width, .fill, .corners]
+        case .ellipse: [.color, .width, .fill]
         case .text: [.color, .fontSize, .textStyle]
         case .bubble: [.color, .width, .fontSize]
         case .step: [.color, .stepSize]
         case .blur: [.blurMode]
+        }
+    }
+
+    /// Pen, Step and Blur are used several times in a row; the other drawing tools hand back to Select
+    /// after one annotation, so it can be adjusted straight away.
+    public var staysActive: Bool {
+        switch self {
+        case .select, .pen, .step, .blur, .crop: true
+        case .line, .arrow, .curve, .rect, .ellipse, .text, .bubble: false
         }
     }
 
@@ -79,7 +90,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .line: Line(start: start, end: end)
         case .arrow: Line(start: start, end: end, arrow: true)
         case .curve: Curve.bent(from: start, to: end, arrow: true)
-        case .rect: Box(rect: area, form: .rectangle)
+        case .rect: Box(rect: area, form: .rectangle, cornerRadius: values.cornerRadius)
         case .ellipse: Box(rect: area, form: .ellipse)
         case .bubble: Bubble.drawn(from: start, to: end)
         case .blur: Blur(rect: area, mode: values.blurMode)

@@ -40,6 +40,8 @@ public protocol Figure: Equatable, Sendable {
     /// The text the inline editor edits, if this type has any.
     var editableText: String? { get }
     func hitTest(_ point: CGPoint, tolerance: CGFloat, style: Annotation.Style) -> Bool
+    /// Inside an outline shape (unfilled rectangle or ellipse). The pointer selects by clicking inside.
+    func interiorContains(_ point: CGPoint) -> Bool
     mutating func move(by delta: CGVector)
     mutating func drag(_ handle: HandleKind, to point: CGPoint)
     /// This type's own part of a toolbar change (arrowhead, font size, …). Colour, width and fill live on the style.
@@ -54,6 +56,7 @@ extension Figure {
     public var handles: [Handle] { [] }
     public var isTooSmall: Bool { max(bounds.width, bounds.height) < 3 }
     public var editableText: String? { nil }
+    public func interiorContains(_ point: CGPoint) -> Bool { false }
     public mutating func drag(_ handle: HandleKind, to point: CGPoint) {}
     public mutating func apply(_ change: StyleChange) {}
     public func read(into values: inout StyleValues) {}
@@ -95,7 +98,7 @@ public struct Annotation: Identifiable, Equatable, Sendable {
     }
 
     public struct Style: Equatable, Sendable {
-        public static let defaultWidth: CGFloat = 8
+        public static let defaultWidth: CGFloat = 4
 
         public var strokeColor: RGBAColor
         public var strokeWidth: CGFloat
@@ -127,8 +130,10 @@ public struct Annotation: Identifiable, Equatable, Sendable {
         if case .text(let content) = kind { content } else { nil }
     }
 
-    public func hitTest(_ point: CGPoint, tolerance: CGFloat) -> Bool {
+    /// `includingInterior`: also inside unfilled rectangles and ellipses (the pointer tool).
+    public func hitTest(_ point: CGPoint, tolerance: CGFloat, includingInterior: Bool = false) -> Bool {
         kind.figure.hitTest(point, tolerance: tolerance, style: style)
+            || (includingInterior && kind.figure.interiorContains(point))
     }
 
     public mutating func move(by delta: CGVector) {
@@ -161,7 +166,7 @@ public struct Annotation: Identifiable, Equatable, Sendable {
         case .fill(let on):
             guard can.contains(.fill) else { return }
             style.fillColor = on ? style.strokeColor : nil
-        case .arrow, .fontSize, .bold, .boxed, .blurMode, .stepSize:
+        case .arrow, .fontSize, .bold, .boxed, .blurMode, .stepSize, .cornerRadius:
             kind.modify { $0.apply(change) }
         }
     }

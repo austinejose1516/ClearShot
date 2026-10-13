@@ -23,6 +23,7 @@ import Testing
         let arrow = s.document.annotations[0]
         #expect(arrow.kind == .line(Line(start: p(10, 10), end: p(100, 100), arrow: true)))
         #expect(s.document.selection == [arrow.id])
+        #expect(s.tool == .select)
         s.document.undo()
         #expect(s.document.annotations.isEmpty)
     }
@@ -40,6 +41,7 @@ import Testing
         s.tool = .arrow
         drag(s, p(10, 10), p(100, 10))
         s.document.selection = []
+        s.tool = .arrow
         drag(s, p(50, 10), p(60, 30))
         #expect(s.document.annotations.count == 1)
         #expect(s.document.annotations[0].kind == .line(Line(start: p(20, 30), end: p(110, 30), arrow: true)))
@@ -171,7 +173,7 @@ import Testing
         s.document.add(Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 50, height: 50), form: .rectangle)),
                                   style: .init(strokeWidth: 4, fillColor: .red)))
         s.selectAll()
-        #expect(s.shownCapabilities == [.color, .width, .fill])
+        #expect(s.shownCapabilities == [.color, .width, .fill, .corners])
         #expect(s.shownValues.width == 4)
         #expect(s.shownValues.fills)
         s.cancel()
@@ -193,6 +195,7 @@ import Testing
         let s = session()
         s.tool = .rect
         drag(s, p(10, 10), p(50, 50))
+        s.tool = .rect
         #expect(s.cursor(at: p(50, 50), tolerance: 4) == .resize(.bottomRight))
         #expect(s.cursor(at: p(10, 30), tolerance: 4) == .move)
         #expect(s.cursor(at: p(200, 200), tolerance: 4) == .tool(.rect))
@@ -239,5 +242,61 @@ import Testing
         s.tool = .select
         drag(s, p(30, -50))
         #expect(s.editingTextID == s.document.annotations[0].id)
+    }
+
+    @Test func shapeToolsHandBackToSelectButPenStepAndBlurStayOn() {
+        for tool in [EditorTool.line, .arrow, .curve, .rect, .ellipse, .bubble] {
+            let s = session()
+            s.tool = tool
+            drag(s, p(10, 10), p(120, 80))
+            s.finishTextEditing()
+            #expect(s.tool == .select, "\(tool) should hand back to Select")
+        }
+        for tool in [EditorTool.pen, .step, .blur] {
+            let s = session()
+            s.tool = tool
+            drag(s, p(10, 10), p(120, 80))
+            #expect(s.tool == tool, "\(tool) should stay on")
+        }
+    }
+
+    @Test func thePointerSelectsAnUnfilledBoxByClickingInside() {
+        let s = session()
+        s.tool = .ellipse
+        drag(s, p(10, 10), p(110, 110))
+        s.document.selection = []
+        drag(s, p(60, 60))
+        #expect(s.document.selection == [s.document.annotations[0].id])
+        drag(s, p(60, 60), p(80, 60))
+        #expect(s.document.annotations[0].bounds.origin == p(30, 10))
+    }
+
+    @Test func aDrawingToolStillDrawsInsideAnUnfilledBox() {
+        let s = session()
+        s.tool = .rect
+        drag(s, p(10, 10), p(200, 200))
+        s.tool = .rect
+        drag(s, p(50, 50), p(100, 100))
+        #expect(s.document.annotations.count == 2)
+    }
+
+    @Test func newRectanglesUseTheChosenCorners() {
+        let s = session()
+        s.apply(.cornerRadius(16))
+        s.tool = .rect
+        drag(s, p(10, 10), p(110, 60))
+        #expect(s.document.annotations[0].kind == .box(Box(rect: CGRect(x: 10, y: 10, width: 100, height: 50), form: .rectangle, cornerRadius: 16)))
+    }
+
+    @Test func aSliderDragIsOneUndoStep() {
+        let s = session()
+        s.tool = .line
+        drag(s, p(0, 0), p(100, 0))
+        s.apply(.width(10), live: true)
+        s.apply(.width(20), live: true)
+        s.endLiveChange()
+        #expect(s.document.annotations[0].style.strokeWidth == 20)
+        s.document.undo()
+        #expect(s.document.annotations[0].style.strokeWidth == Annotation.Style.defaultWidth)
     }
 }

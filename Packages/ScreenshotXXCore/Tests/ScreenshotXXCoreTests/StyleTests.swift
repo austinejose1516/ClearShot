@@ -62,4 +62,29 @@ import Testing
         #expect(step.kind == .step(Step(number: 1, center: .zero, radius: 64)))
         #expect(StyleValues().reading(step).stepRadius == 64)
     }
+
+    @Test func cornersRoundRectanglesOnly() {
+        var rectangle = Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 50, height: 50), form: .rectangle)))
+        var ellipse = Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 50, height: 50), form: .ellipse)))
+        #expect(rectangle.capabilities.contains(.corners))
+        #expect(ellipse.capabilities.contains(.corners) == false)
+        rectangle.apply(.cornerRadius(12))
+        ellipse.apply(.cornerRadius(12))
+        #expect(StyleValues().reading(rectangle).cornerRadius == 12)
+        #expect(ellipse.kind == .box(Box(rect: CGRect(x: 0, y: 0, width: 50, height: 50), form: .ellipse)))
+    }
+
+    @Test func stepsStartAtFortyPixels() {
+        #expect(StyleValues().stepRadius * 2 == 40)
+    }
+
+    @Test func defaultThicknessIsNormalNotHeavy() {
+        #expect(StyleValues().width == 4)
+        #expect(Annotation.Style().strokeWidth == 4)
+    }
+
+    @Test func thePaletteHasNineColoursIncludingPink() {
+        #expect(RGBAColor.presets.count == 9)
+        #expect(RGBAColor.presets.contains(.pink))
+    }
 }

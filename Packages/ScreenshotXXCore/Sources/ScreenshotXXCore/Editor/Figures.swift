@@ -119,7 +119,7 @@ public struct Freehand: Figure {
     }
 }
 
-/// A rectangle or an ellipse, optionally filled.
+/// A rectangle (optionally with rounded corners) or an ellipse, optionally filled.
 public struct Box: Figure {
     public enum Form: Equatable, Sendable {
         case rectangle, ellipse
@@ -127,16 +127,32 @@ public struct Box: Figure {
 
     public var rect: CGRect
     public var form: Form
+    public var cornerRadius: CGFloat
 
-    public init(rect: CGRect, form: Form) {
+    public init(rect: CGRect, form: Form, cornerRadius: CGFloat = 0) {
         self.rect = rect
         self.form = form
+        self.cornerRadius = cornerRadius
     }
 
     public var bounds: CGRect { rect.standardized }
     public var handles: [Handle] { rect.cornerHandles }
-    public var capabilities: StyleCapabilities { [.color, .width, .fill] }
+    public var capabilities: StyleCapabilities {
+        form == .rectangle ? [.color, .width, .fill, .corners] : [.color, .width, .fill]
+    }
     public var asKind: Annotation.Kind { .box(self) }
+
+    public func interiorContains(_ point: CGPoint) -> Bool {
+        form == .rectangle ? rect.standardized.contains(point) : AnnotationGeometry.isInsideEllipse(point, rect)
+    }
+
+    public mutating func apply(_ change: StyleChange) {
+        if case .cornerRadius(let radius) = change, form == .rectangle { cornerRadius = radius }
+    }
+
+    public func read(into values: inout StyleValues) {
+        if form == .rectangle { values.cornerRadius = cornerRadius }
+    }
 
     public func hitTest(_ point: CGPoint, tolerance: CGFloat, style: Annotation.Style) -> Bool {
         let reach = tolerance + style.strokeWidth / 2

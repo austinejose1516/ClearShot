@@ -16,6 +16,8 @@ public struct StyleCapabilities: OptionSet, Sendable, Hashable {
     public static let textStyle = StyleCapabilities(rawValue: 1 << 5)
     public static let blurMode = StyleCapabilities(rawValue: 1 << 6)
     public static let stepSize = StyleCapabilities(rawValue: 1 << 7)
+    /// Rounded corners (rectangles).
+    public static let corners = StyleCapabilities(rawValue: 1 << 8)
 }
 
 /// One change made in the toolbar.
@@ -30,14 +32,17 @@ public enum StyleChange: Equatable, Sendable {
     case boxed(Bool)
     case blurMode(BlurMode)
     case stepSize(CGFloat)
+    case cornerRadius(CGFloat)
 }
 
 /// The toolbar's values: what new annotations get, and what the toolbar shows for a selection.
 public struct StyleValues: Equatable, Sendable {
-    public static let widths: [CGFloat] = [2, 4, 6, 8, 12, 16, 24, 32]
+    public static let widthRange: ClosedRange<CGFloat> = 1...40
     public static let opacities: [Double] = [1, 0.75, 0.5, 0.25]
     public static let fontSizes: [CGFloat] = [16, 24, 32, 48, 64, 96, 128]
+    /// Radii; the toolbar shows diameters (40 px … 192 px).
     public static let stepSizes: [CGFloat] = [20, 28, 36, 48, 64, 96]
+    public static let cornerRadii: [CGFloat] = [0, 8, 16, 24, 40]
 
     public var color: RGBAColor = .red
     public var opacity: Double = 1
@@ -49,7 +54,8 @@ public struct StyleValues: Equatable, Sendable {
     public var bold = true
     public var boxed = false
     public var blurMode: BlurMode = .pixelate
-    public var stepRadius: CGFloat = 36
+    public var stepRadius: CGFloat = 20
+    public var cornerRadius: CGFloat = 0
 
     public init() {}
 
@@ -65,6 +71,7 @@ public struct StyleValues: Equatable, Sendable {
         case .boxed(let value): boxed = value
         case .blurMode(let value): blurMode = value
         case .stepSize(let value): stepRadius = value
+        case .cornerRadius(let value): cornerRadius = value
         }
     }
 

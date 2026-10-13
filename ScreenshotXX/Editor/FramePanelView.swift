@@ -7,6 +7,9 @@ import UniformTypeIdentifiers
 struct FramePanelView: View {
     let document: EditorDocument
 
+    /// The colour panel reports every small move; one undo step once it settles.
+    @State private var colourCommit: Task<Void, Never>?
+
     var body: some View {
         let frame = document.frame
         ScrollView {
@@ -22,6 +25,21 @@ struct FramePanelView: View {
                             } action: { set { $0.background = .solid(preset) } }
                         }
                     }
+                    ColorPicker("Custom colour", selection: Binding(
+                        get: {
+                            if case .solid(let colour) = frame.background { Color(colour) } else { Color.white }
+                        },
+                        set: { colour in
+                            var frame = document.frame
+                            frame.background = .solid(RGBAColor(colour))
+                            document.setFrame(frame)
+                            colourCommit?.cancel()
+                            colourCommit = Task {
+                                try? await Task.sleep(for: .milliseconds(400))
+                                guard !Task.isCancelled else { return }
+                                document.commit()
+                            }
+                        }), supportsOpacity: false)
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                         ForEach(GradientPreset.all) { preset in
                             Button {

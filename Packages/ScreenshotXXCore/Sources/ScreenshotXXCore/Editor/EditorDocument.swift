@@ -96,8 +96,8 @@ public final class EditorDocument {
     }
 
     /// Top-most annotation under the point, if any.
-    public func hitTest(_ point: CGPoint, tolerance: CGFloat) -> Annotation.ID? {
-        state.annotations.last { $0.hitTest(point, tolerance: tolerance) }?.id
+    public func hitTest(_ point: CGPoint, tolerance: CGFloat, includingInterior: Bool = false) -> Annotation.ID? {
+        state.annotations.last { $0.hitTest(point, tolerance: tolerance, includingInterior: includingInterior) }?.id
     }
 
     public func moveSelection(by delta: CGVector) {

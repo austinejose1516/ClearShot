@@ -21,4 +21,11 @@ import Testing
         #expect(EditorCommand(key: "\r", keyCode: 36, command: false, shift: false) == .confirm)
         #expect(EditorCommand(key: "x", keyCode: 7, command: false, shift: false) == nil)
     }
+
+    @Test func whileTypingOnlyCommandReturnIsOursAndItAddsANewLine() {
+        #expect(EditorCommand(key: "\r", keyCode: 36, command: true, shift: false, editingText: true) == .newLine)
+        #expect(EditorCommand(key: "\r", keyCode: 36, command: false, shift: false, editingText: true) == nil)
+        #expect(EditorCommand(key: "z", keyCode: 6, command: true, shift: false, editingText: true) == nil)
+        #expect(EditorCommand(key: "", keyCode: 51, command: false, shift: false, editingText: true) == nil)
+    }
 }

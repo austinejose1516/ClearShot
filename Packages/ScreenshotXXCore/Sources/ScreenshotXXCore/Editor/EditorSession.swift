@@ -72,7 +72,8 @@ public final class EditorSession {
     }
 
     /// One toolbar change: it updates the defaults, and each selected annotation where it has that property.
-    public func apply(_ change: StyleChange) {
+    /// `live` (a slider being dragged) skips the undo step; `endLiveChange()` records one for the whole drag.
+    public func apply(_ change: StyleChange, live: Bool = false) {
         defaults.apply(change)
         guard !document.selection.isEmpty else { return }
         for annotation in selected {
@@ -80,6 +81,10 @@ public final class EditorSession {
             changed.apply(change)
             document.update(changed)
         }
+        if !live { document.commit() }
+    }
+
+    public func endLiveChange() {
         document.commit()
     }
 
@@ -164,6 +169,7 @@ public final class EditorSession {
             document.commit()
             document.selection = [id]
             if annotation.editableText != nil { startEditing(id, isNew: false) }
+            handBackIfSingleUse()
         case .moving, .reshaping:
             document.commit()
         case .pressedOnSelectedText(let id, _):
@@ -183,7 +189,7 @@ public final class EditorSession {
         if let hit = handle(at: point, tolerance: tolerance) {
             return hit.kind.isCorner ? .resize(hit.kind) : .moveHandle
         }
-        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance),
+        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance, includingInterior: tool == .select),
            let annotation = document.annotation(id: id) {
             return annotation.editableText != nil && document.selection == [id] ? .editText : .move
         }
@@ -201,7 +207,7 @@ public final class EditorSession {
             gesture = .reshaping(annotation, hit.kind)
             return
         }
-        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance) {
+        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance, includingInterior: tool == .select) {
             grab(id, at: point)
             return
         }
@@ -270,6 +276,11 @@ public final class EditorSession {
         document.insert(annotation)
         document.selection = [annotation.id]
         startEditing(annotation.id, isNew: true)
+        handBackIfSingleUse()
+    }
+
+    private func handBackIfSingleUse() {
+        if !tool.staysActive { tool = .select }
     }
 
     private func startEditing(_ id: Annotation.ID, isNew: Bool) {
@@ -285,14 +296,10 @@ public final class EditorSession {
     }
 
     /// Ends inline editing. Empty text is removed (or never added, if it was new).
-    /// Text and Bubble tools hand back to Select, so the next click does not start another one.
     public func finishTextEditing() {
         guard let id = editingTextID else { return }
         editingTextID = nil
-        defer {
-            editingTextIsNew = false
-            if tool == .text || tool == .bubble { tool = .select }
-        }
+        defer { editingTextIsNew = false }
         guard let annotation = document.annotation(id: id) else { return }
         let emptyText = annotation.textContent.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
         if emptyText {

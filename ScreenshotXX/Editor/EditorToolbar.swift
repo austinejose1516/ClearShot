@@ -7,6 +7,9 @@ struct EditorToolbar: View {
     let viewState: EditorViewState
     let onCommand: (EditorCommand) -> Void
 
+    /// The colour panel reports every small move; this records one undo step once it settles.
+    @State private var colourCommit: Task<Void, Never>?
+
     var body: some View {
         VStack(spacing: 0) {
             mainRow
@@ -107,15 +110,37 @@ struct EditorToolbar: View {
                                 .frame(width: 16, height: 16)
                         }
                         .buttonStyle(.plain)
+                        .help(name(of: preset))
                     }
+                    ColorPicker("Custom colour", selection: Binding(
+                        get: { Color(values.color) },
+                        set: { pickCustom(RGBAColor($0).withAlpha(1)) }), supportsOpacity: false)
+                        .labelsHidden()
+                        .help("Pick any colour")
                 }
                 picker("Opacity", value: values.opacity, options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" }) {
                     session.apply(.opacity($0))
                 }
             }
             if can.contains(.width) {
-                picker("Width", value: values.width, options: StyleValues.widths, label: { "\(Int($0)) px" }) {
-                    session.apply(.width($0))
+                HStack(spacing: 6) {
+                    Text("Width")
+                    Slider(value: Binding(get: { values.width }, set: { session.apply(.width($0.rounded()), live: true) }),
+                           in: StyleValues.widthRange) { editing in
+                        if !editing { session.endLiveChange() }
+                    }
+                    .frame(width: 110)
+                    Text("\(Int(values.width)) px")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .leading)
+                }
+                .fixedSize()
+            }
+            if can.contains(.corners) {
+                picker("Corners", value: values.cornerRadius, options: StyleValues.cornerRadii,
+                       label: { $0 == 0 ? "Square" : "\(Int($0)) px" }) {
+                    session.apply(.cornerRadius($0))
                 }
             }
             if can.contains(.fill) {
@@ -179,6 +204,22 @@ struct EditorToolbar: View {
             ForEach(all, id: \.self) { Text(label($0)).tag($0) }
         }
         .fixedSize()
+    }
+
+    private func pickCustom(_ colour: RGBAColor) {
+        session.apply(.color(colour), live: true)
+        colourCommit?.cancel()
+        colourCommit = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            session.endLiveChange()
+        }
+    }
+
+    private func name(of colour: RGBAColor) -> String {
+        let names: [(RGBAColor, String)] = [(.red, "Red"), (.orange, "Orange"), (.yellow, "Yellow"), (.green, "Green"),
+                                             (.blue, "Blue"), (.purple, "Purple"), (.pink, "Pink"), (.black, "Black"), (.white, "White")]
+        return names.first { $0.0 == colour }?.1 ?? "Colour"
     }
 
     private func toggle(_ title: String, isOn: Bool, set: @escaping @MainActor (Bool) -> Void) -> some View {

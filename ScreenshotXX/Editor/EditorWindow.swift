@@ -5,14 +5,18 @@ import ScreenshotXXCore
 final class EditorWindow: NSWindow {
     var onCommand: ((EditorCommand) -> Void)?
 
-    /// While the inline text field is focused, keys belong to it.
+    /// While the inline text field is focused, keys belong to it (except ⌘Return, a new line).
     private var textIsEditing: Bool { firstResponder is NSTextView }
+
+    func insertNewLineInText() {
+        (firstResponder as? NSTextView)?.insertNewlineIgnoringFieldEditor(nil)
+    }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard flags.contains(.command), !textIsEditing,
+        guard flags.contains(.command),
               let command = EditorCommand(key: event.charactersIgnoringModifiers ?? "", keyCode: event.keyCode,
-                                          command: true, shift: flags.contains(.shift)) else {
+                                          command: true, shift: flags.contains(.shift), editingText: textIsEditing) else {
             return super.performKeyEquivalent(with: event)
         }
         onCommand?(command)
