@@ -1040,3 +1040,77 @@ git commit -m "feat: full-screen capture to PNG, clipboard and shutter sound"
 ```
 
 Task test command: `make check`
+
+---
+
+### Task 3: Area capture — frozen screen, drag a rectangle, size label, Esc cancels
+
+**Files:**
+- Create (Core): `Packages/ScreenshotXXCore/Sources/ScreenshotXXCore/Capture/SelectionGeometry.swift`
+- Test (Core): `Packages/ScreenshotXXCore/Tests/ScreenshotXXCoreTests/SelectionGeometryTests.swift`
+- Create (App): `ScreenshotXX/Capture/AreaCaptureSession.swift`, `ScreenshotXX/Capture/SelectionOverlayWindow.swift`, `ScreenshotXX/Capture/SelectionOverlayView.swift`
+- Modify (App): `ScreenshotXX/Capture/ScreenCapturer.swift` (add `screenDisplays()`), `ScreenshotXX/Capture/CaptureCoordinator.swift` (`.area` runs the session)
+
+**Interfaces:**
+- Consumes: `ScreenCapturer.captureDisplay(_:showsCursor:)`, `CaptureCoordinator.finish(_:)` (Task 2), `Capture` (Task 2).
+- Produces (Core): `public enum SelectionGeometry { static let minimumSize: CGFloat = 3; static func normalizedRect(from: CGPoint, to: CGPoint) -> CGRect; static func isUsable(_ rect: CGRect) -> Bool; static func pixelRect(viewRect: CGRect, viewSize: CGSize, imageSize: CGSize) -> CGRect /* whole pixels, clamped to the image */ }`
+- Produces (App): `ScreenCapturer.screenDisplays() async throws -> [(screen: NSScreen, display: SCDisplay)]`
+- Produces (App): `@MainActor final class AreaCaptureSession { enum Outcome { case selected(CGImage); case cancelled }; static func run(showsCursor: Bool) async throws -> Outcome }` — snapshots every screen, shows one overlay per screen, resolves on the first drag-end or Esc, then closes all overlays.
+- Produces (App): `final class SelectionOverlayWindow: NSWindow` (borderless, `.screenSaver` level, key window, Esc → `onCancel`).
+- Produces (App): `struct SelectionOverlayView: View` with `init(frozen: CGImage, onSelect: @escaping (CGRect) -> Void, onCancel: @escaping () -> Void)`; the rect it reports is in view points (top-left origin).
+
+Design notes:
+- The frozen image has the same aspect as the overlay view, so a view rect maps to image pixels by one scale factor. No AppKit coordinate flip is needed anywhere in Task 3.
+- Dimming uses one even-odd path (screen rect + selection rect), so the selection shows the undimmed frozen image.
+- A drag smaller than 3 pt is a click: cancel.
+
+- [ ] **Step 1: Write the failing Core tests**
+
+```swift
+import CoreGraphics
+import Testing
+@testable import ScreenshotXXCore
+
+@Suite struct SelectionGeometryTests {
+    @Test func normalizedRectWorksInAnyDragDirection() {
+        let rect = SelectionGeometry.normalizedRect(from: CGPoint(x: 100, y: 100), to: CGPoint(x: 10, y: 20))
+        #expect(rect == CGRect(x: 10, y: 20, width: 90, height: 80))
+    }
+
+    @Test func tinyDragIsNotUsable() {
+        #expect(SelectionGeometry.isUsable(CGRect(x: 0, y: 0, width: 2, height: 10)) == false)
+        #expect(SelectionGeometry.isUsable(CGRect(x: 0, y: 0, width: 3, height: 3)) == true)
+    }
+
+    @Test func pixelRectScalesByImageOverView() {
+        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 10, y: 20, width: 100, height: 50),
+                                               viewSize: CGSize(width: 1800, height: 1169),
+                                               imageSize: CGSize(width: 3600, height: 2338))
+        #expect(rect == CGRect(x: 20, y: 40, width: 200, height: 100))
+    }
+
+    @Test func pixelRectIsClampedToTheImage() {
+        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 1750, y: 1100, width: 100, height: 100),
+                                               viewSize: CGSize(width: 1800, height: 1169),
+                                               imageSize: CGSize(width: 3600, height: 2338))
+        #expect(rect == CGRect(x: 3500, y: 2200, width: 100, height: 138))
+    }
+
+    @Test func pixelRectUsesWholePixelsThatCoverTheSelection() {
+        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 10.4, y: 20.6, width: 100, height: 50),
+                                               viewSize: CGSize(width: 1800, height: 1169),
+                                               imageSize: CGSize(width: 3600, height: 2338))
+        #expect(rect == CGRect(x: 20, y: 41, width: 201, height: 101))
+    }
+}
+```
+
+- [ ] **Step 2: Run to verify it fails** — `swift test --package-path Packages/ScreenshotXXCore` → `cannot find 'SelectionGeometry' in scope`.
+- [ ] **Step 3: Implement SelectionGeometry** (normalize with min/abs; `isUsable` compares to `minimumSize`; `pixelRect` scales by `imageSize.width / viewSize.width`, applies `.integral`, then `.intersection` with the image bounds).
+- [ ] **Step 4: Run to verify it passes** → `16 tests in 6 suites passed`.
+- [ ] **Step 5: App: ScreenCapturer.screenDisplays, SelectionOverlayWindow, SelectionOverlayView, AreaCaptureSession; CaptureCoordinator.area → run session → crop frozen image with `SelectionGeometry.pixelRect` → `finish(Capture(kind: .area, image:))`; cancelled → log only.**
+- [ ] **Step 6: Build** — `make build` → no errors, no warnings.
+- [ ] **Step 7: Verify by hand** — Austin: relaunch, ⌃⇧A, screen dims, drag a box, size label shows W × H, release → shutter. Esc on a second try → nothing saved. I check: new PNG whose pixel size is 2× the label, and `ScreenshotXX.log` has `area selected` then `saved`.
+- [ ] **Step 8: Commit** — `git commit -m "feat: area capture with frozen-screen overlay"`
+
+Task test command: `make check`

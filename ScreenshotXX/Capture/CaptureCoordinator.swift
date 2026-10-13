@@ -7,6 +7,7 @@ final class CaptureCoordinator {
     private let settings: AppSettings
     private let store: CaptureStore
     private let onPermissionMissing: () -> Void
+    private var isCapturing = false
     @ObservationIgnored private let log = Logger(subsystem: "com.austinejose.screenshotxx", category: "capture")
 
     init(settings: AppSettings, store: CaptureStore, onPermissionMissing: @escaping () -> Void) {
@@ -22,15 +23,37 @@ final class CaptureCoordinator {
             onPermissionMissing()
             return
         }
+        guard !isCapturing else { return }
         switch kind {
         case .fullScreen:
             Task { await captureFullScreen() }
-        case .area, .window:
+        case .area:
+            Task { await captureArea() }
+        case .window:
             log.notice("capture requested: \(kind.rawValue, privacy: .public) (not implemented yet)")
         }
     }
 
+    private func captureArea() async {
+        isCapturing = true
+        defer { isCapturing = false }
+        do {
+            switch try await AreaCaptureSession.run(showsCursor: settings.showsCursor) {
+            case .selected(let image):
+                DiagnosticLog.write("area selected: \(image.width)x\(image.height) px")
+                finish(Capture(kind: .area, image: image))
+            case .cancelled:
+                DiagnosticLog.write("area cancelled")
+            }
+        } catch {
+            DiagnosticLog.write("area capture failed: \(error)")
+            ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
+        }
+    }
+
     private func captureFullScreen() async {
+        isCapturing = true
+        defer { isCapturing = false }
         do {
             let display = try await ScreenCapturer.display(under: NSEvent.mouseLocation)
             DiagnosticLog.write("display found: id=\(display.displayID) \(display.width)x\(display.height) pt")

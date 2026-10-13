@@ -24,6 +24,16 @@ enum ScreenCapturer {
         return first
     }
 
+    /// Every NSScreen paired with its ScreenCaptureKit display.
+    static func screenDisplays() async throws -> [(screen: NSScreen, display: SCDisplay)] {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        return NSScreen.screens.compactMap { screen in
+            guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+                  let display = content.displays.first(where: { $0.displayID == id }) else { return nil }
+            return (screen, display)
+        }
+    }
+
     static func captureDisplay(_ display: SCDisplay, showsCursor: Bool) async throws -> CGImage {
         let filter = SCContentFilter(display: display, excludingWindows: [])
         let configuration = SCScreenshotConfiguration()
