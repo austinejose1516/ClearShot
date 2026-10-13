@@ -85,16 +85,7 @@ struct QuickAccessView: View {
 
     private var actionBar: some View {
         HStack(spacing: 2) {
-            Button(action: onEdit) {
-                Label("Edit", systemImage: "pencil")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: 26)
-                    .background(.tint, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .help("Edit")
+            BarIcon(symbol: "pencil", help: "Edit", prominent: true, action: onEdit)
             BarIcon(symbol: copied ? "checkmark" : "doc.on.doc", help: "Copy to clipboard") {
                 onCopy()
                 copied = true
@@ -138,9 +129,11 @@ private struct CircleButton: View {
     }
 }
 
+/// One action in the bar; every icon is the same size. `prominent` fills it with the accent colour (Edit).
 private struct BarIcon: View {
     let symbol: String
     let help: String
+    var prominent = false
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
@@ -148,9 +141,11 @@ private struct BarIcon: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: prominent ? .semibold : .medium))
+                .foregroundStyle(prominent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 .frame(width: 28, height: 26)
-                .contentShape(Rectangle())
+                .background { if prominent { Capsule().fill(.tint) } }
+                .contentShape(Capsule())
                 .opacity(isEnabled ? 1 : 0.35)
         }
         .buttonStyle(.plain)
