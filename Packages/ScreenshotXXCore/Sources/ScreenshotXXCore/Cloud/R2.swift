@@ -51,8 +51,17 @@ public enum R2Name {
     }
 
     public static func random(format: ImageFormat, using generator: inout some RandomNumberGenerator) -> String {
-        let stem = String((0..<length).map { _ in alphabet.randomElement(using: &generator)! })
-        return "\(stem).\(format.fileExtension)"
+        "\(stem(using: &generator)).\(format.fileExtension)"
+    }
+
+    /// The name without an extension: "k3x9p2m7qa".
+    public static func stem() -> String {
+        var generator = SystemRandomNumberGenerator()
+        return stem(using: &generator)
+    }
+
+    public static func stem(using generator: inout some RandomNumberGenerator) -> String {
+        String((0..<length).map { _ in alphabet.randomElement(using: &generator)! })
     }
 }
 
@@ -61,6 +70,8 @@ public enum R2Failure: LocalizedError, Equatable, Sendable {
     case wrongKeys
     case bucketNotFound
     case offline
+    /// The address did not answer: a wrong Account ID looks like this, so does a blocked network.
+    case unreachable(String)
     case publicURLNotServing
     case badSettings
     case server(String)
@@ -70,6 +81,7 @@ public enum R2Failure: LocalizedError, Equatable, Sendable {
         case .wrongKeys: "The keys were not accepted. Check the Access Key ID and Secret Access Key."
         case .bucketNotFound: "No bucket with that name in this account."
         case .offline: "No internet connection."
+        case .unreachable(let host): "Could not reach \(host). Check the Account ID and your internet connection."
         case .publicURLNotServing: "The upload worked, but the Public URL did not return the file. Check the Public URL, and that public access is on for the bucket."
         case .badSettings: "Fill in Account ID, Access Key ID, Secret Access Key, Bucket and Public URL in Settings → Cloud."
         case .server(let detail): "The server said: \(detail)"

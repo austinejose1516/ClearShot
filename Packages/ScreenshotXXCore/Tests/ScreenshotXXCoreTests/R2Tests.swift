@@ -27,6 +27,7 @@ import Testing
         #expect(stem.count == 10)
         #expect(stem.allSatisfy { ($0.isLetter && $0.isLowercase) || $0.isNumber })
         #expect(R2Name.random(format: .png) != R2Name.random(format: .png))
+        #expect(R2Name.stem().count == 10 && !R2Name.stem().contains("."))
     }
 
     @Test func serverAnswersBecomePlainFailures() {
@@ -40,5 +41,6 @@ import Testing
         #expect(R2Response.failure(status: 500, body: xml("InternalError")) == .server("InternalError"))
         #expect(R2Response.failure(status: 502, body: Data()) == .server("HTTP 502"))
         #expect(R2Failure.wrongKeys.errorDescription?.contains("Access Key ID") == true)
+        #expect(R2Failure.unreachable("abc.r2.cloudflarestorage.com").errorDescription?.contains("Account ID") == true)
     }
 }

@@ -52,7 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.window.map(WindowPresenter.show)
     }
 
-    func showSettings() {
+    func showSettings(tab: SettingsWindowController.Tab? = nil) {
+        if let tab { settingsWindow.show(tab) }
         settingsWindow.window.map(WindowPresenter.show)
     }
 
