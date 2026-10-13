@@ -113,9 +113,8 @@ struct EditorToolbar: View {
                 }
                 .chip()
                 labelled("Opacity") {
-                    menuPicker(value: values.opacity, options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" }) {
-                        session.apply(.opacity($0))
-                    }
+                    menuPicker(Binding(get: { values.opacity }, set: { session.apply(.opacity($0)) }),
+                               options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" })
                 }
             }
             if can.contains(.width) {
@@ -133,35 +132,33 @@ struct EditorToolbar: View {
             }
             if can.contains(.corners) {
                 labelled("Corners") {
-                    menuPicker(value: values.cornerRadius, options: StyleValues.cornerRadii,
-                               label: { $0 == 0 ? "Square" : "\(Int($0)) px" }) { session.apply(.cornerRadius($0)) }
+                    menuPicker(Binding(get: { values.cornerRadius }, set: { session.apply(.cornerRadius($0)) }),
+                               options: StyleValues.cornerRadii, label: { $0 == 0 ? "Square" : "\(Int($0)) px" })
                 }
             }
             if can.contains(.fill) {
-                toggle("Fill", isOn: values.fills) { session.apply(.fill($0)) }.chip()
+                toggle("Fill", isOn: Binding(get: { values.fills }, set: { session.apply(.fill($0)) })).chip()
             }
             if can.contains(.arrow) {
-                toggle("Arrowhead", isOn: values.arrow) { session.apply(.arrow($0)) }.chip()
+                toggle("Arrowhead", isOn: Binding(get: { values.arrow }, set: { session.apply(.arrow($0)) })).chip()
             }
             if can.contains(.fontSize) {
                 labelled("Size") {
-                    menuPicker(value: values.fontSize, options: StyleValues.fontSizes, label: { "\(Int($0))" }) {
-                        session.apply(.fontSize($0))
-                    }
+                    menuPicker(Binding(get: { values.fontSize }, set: { session.apply(.fontSize($0)) }),
+                               options: StyleValues.fontSizes, label: { "\(Int($0))" })
                 }
             }
             if can.contains(.textStyle) {
                 HStack(spacing: 10) {
-                    toggle("Bold", isOn: values.bold) { session.apply(.bold($0)) }
-                    toggle("Boxed", isOn: values.boxed) { session.apply(.boxed($0)) }
+                    toggle("Bold", isOn: Binding(get: { values.bold }, set: { session.apply(.bold($0)) }))
+                    toggle("Boxed", isOn: Binding(get: { values.boxed }, set: { session.apply(.boxed($0)) }))
                 }
                 .chip()
             }
             if can.contains(.stepSize) {
                 labelled("Size") {
-                    menuPicker(value: values.stepRadius, options: StyleValues.stepSizes, label: { "\(Int($0 * 2)) px" }) {
-                        session.apply(.stepSize($0))
-                    }
+                    menuPicker(Binding(get: { values.stepRadius }, set: { session.apply(.stepSize($0)) }),
+                               options: StyleValues.stepSizes, label: { "\(Int($0 * 2)) px" })
                 }
             }
             if can.contains(.blurMode) {
@@ -211,18 +208,20 @@ struct EditorToolbar: View {
     }
 
     /// A menu of fixed values that also lists the current value when it is not one of them (e.g. after a resize).
-    private func menuPicker<Value: BinaryFloatingPoint>(value: Value, options: [Value], label: @escaping (Value) -> String,
-                                                        set: @escaping @MainActor (Value) -> Void) -> some View {
+    /// Takes a ready Binding: passing a main-actor closure into Binding crashes the Swift 6.3 compiler.
+    private func menuPicker<Value: BinaryFloatingPoint>(_ selection: Binding<Value>, options: [Value],
+                                                        label: @escaping (Value) -> String) -> some View {
+        let value = selection.wrappedValue
         let all = options.contains(value) ? options : (options + [value]).sorted()
-        return Picker("", selection: Binding(get: { value }, set: set)) {
+        return Picker("", selection: selection) {
             ForEach(all, id: \.self) { Text(label($0)).tag($0) }
         }
         .labelsHidden()
         .fixedSize()
     }
 
-    private func toggle(_ title: String, isOn: Bool, set: @escaping @MainActor (Bool) -> Void) -> some View {
-        Toggle(title, isOn: Binding(get: { isOn }, set: set))
+    private func toggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
             .toggleStyle(.checkbox)
             .fixedSize()
     }
