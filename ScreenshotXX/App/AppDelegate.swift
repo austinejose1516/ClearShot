@@ -13,13 +13,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
+        Theme.apply(settings.appearance)
         let hotkeys = HotkeyService(coordinator: captureCoordinator)
         hotkeys.register()
         self.hotkeys = hotkeys
 
-        quickAccess.onEdit = { capture in
-            DiagnosticLog.write("edit requested for \(capture.id)")
-            EditorSessionStore.shared.open(capture: capture)
+        quickAccess.onEdit = { [settings] capture in
+            EditorSessionStore.shared.open(capture: capture, settings: settings)
         }
         EditorSessionStore.shared.onFinished = { [weak self] captureID in
             self?.quickAccess.close(id: captureID)
@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showOnboarding() {
-        let controller = onboarding ?? PermissionOnboardingWindowController()
+        let controller = onboarding ?? PermissionOnboardingWindowController(settings: settings)
         onboarding = controller
         controller.window.map(WindowPresenter.show)
     }

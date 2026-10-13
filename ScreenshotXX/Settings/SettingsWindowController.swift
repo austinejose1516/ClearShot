@@ -8,9 +8,9 @@ final class SettingsWindowController: NSWindowController {
     convenience init(settings: AppSettings) {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().environment(settings)))
-        tabs.addTabViewItem(Self.tab("Shortcuts", symbol: "keyboard", ShortcutsSettingsTab()))
-        tabs.addTabViewItem(Self.tab("About", symbol: "info.circle", AboutSettingsTab()))
+        tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().themed(settings)))
+        tabs.addTabViewItem(Self.tab("Shortcuts", symbol: "keyboard", ShortcutsSettingsTab().themed(settings)))
+        tabs.addTabViewItem(Self.tab("About", symbol: "info.circle", AboutSettingsTab().themed(settings)))
         let window = NSWindow(contentViewController: tabs)
         window.styleMask = [.titled, .closable]
         window.toolbarStyle = .preference

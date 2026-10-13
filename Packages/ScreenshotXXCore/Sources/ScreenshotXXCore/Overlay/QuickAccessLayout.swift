@@ -2,7 +2,7 @@ import CoreGraphics
 
 /// Where the Quick Access cards sit: a row along the bottom-left of a screen's visible area, newest on the left.
 public enum QuickAccessLayout {
-    public static let cardSize = CGSize(width: 232, height: 212)
+    public static let cardSize = CGSize(width: 232, height: 168)
     public static let margin: CGFloat = 16
     public static let gap: CGFloat = 8
     /// Transparent room around the card inside its panel, so entrance and hover animations are not clipped.

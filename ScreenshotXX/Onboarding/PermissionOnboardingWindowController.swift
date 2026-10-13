@@ -1,8 +1,9 @@
 import AppKit
+import ScreenshotXXCore
 import SwiftUI
 
 final class PermissionOnboardingWindowController: NSWindowController {
-    convenience init() {
+    convenience init(settings: AppSettings) {
         let window = NSWindow(
             contentRect: .zero,
             styleMask: [.titled, .closable],
@@ -13,7 +14,7 @@ final class PermissionOnboardingWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         self.init(window: window)
         window.contentViewController = NSHostingController(
-            rootView: PermissionOnboardingView { [weak window] in window?.close() }
+            rootView: PermissionOnboardingView { [weak window] in window?.close() }.themed(settings)
         )
         window.center()
     }

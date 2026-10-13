@@ -11,9 +11,10 @@ final class EditorSessionStore {
     /// Called after Save or Copy, once the editor window is closed (the card closes too).
     var onFinished: ((Capture.ID) -> Void)?
 
-    func open(capture: Capture) {
+    func open(capture: Capture, settings: AppSettings) {
         let controller = controllers[capture.id] ?? EditorWindowController(
             capture: capture,
+            settings: settings,
             onFinished: { [weak self] in self?.didFinish(captureID: capture.id) },
             onWindowClosed: { [weak self] in self?.releaseIfDone(capture.id, windowIsOpen: false) })
         controllers[capture.id] = controller

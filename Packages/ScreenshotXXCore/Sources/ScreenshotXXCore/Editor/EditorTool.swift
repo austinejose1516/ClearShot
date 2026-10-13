@@ -5,6 +5,15 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
 
     public var id: String { rawValue }
 
+    /// How the toolbar groups the tools: Select · Draw · Shapes · Text · Fix.
+    public static let groups: [[EditorTool]] = [
+        [.select],
+        [.line, .arrow, .curve, .pen],
+        [.rect, .ellipse],
+        [.text, .bubble, .step],
+        [.blur, .crop],
+    ]
+
     public var title: String {
         switch self {
         case .select: "Select"

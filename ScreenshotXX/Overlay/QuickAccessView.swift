@@ -8,7 +8,7 @@ final class CardPresentation {
     var isDismissing = false
 }
 
-/// The card: thumbnail you can drag out, size caption, and Edit / Copy / Reveal / Close.
+/// The card: the screenshot fills it; on hover a glass bar slides up with the actions, plus close and size on top.
 struct QuickAccessView: View {
     let capture: Capture
     let presentation: CardPresentation
@@ -25,32 +25,30 @@ struct QuickAccessView: View {
 
     var body: some View {
         let dismissing = presentation.isDismissing
-        VStack(spacing: 8) {
+        let size = QuickAccessLayout.cardSize
+        ZStack {
             thumbnail
-            Text("\(capture.image.width) × \(capture.image.height)")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-            HStack(spacing: 4) {
-                tool("Edit", "pencil", action: onEdit)
-                tool(copied ? "Copied" : "Copy", copied ? "checkmark" : "doc.on.doc") {
-                    onCopy()
-                    copied = true
-                    Task {
-                        try? await Task.sleep(for: .seconds(1.2))
-                        copied = false
+            if hovered {
+                VStack(spacing: 0) {
+                    HStack {
+                        CircleButton(symbol: "xmark", help: "Close", action: onClose)
+                        Spacer()
+                        Text("\(capture.image.width) × \(capture.image.height)")
+                            .font(.caption2.monospacedDigit().weight(.medium))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .glassEffect(.regular, in: .capsule)
                     }
+                    Spacer(minLength: 0)
+                    actionBar
                 }
-                tool("Reveal in Finder", "folder", action: onReveal)
-                    .disabled(capture.fileURL == nil)
-                Spacer()
-                tool("Move to Trash", "trash", action: onDelete)
-                    .disabled(capture.fileURL == nil)
-                tool("Close", "xmark", action: onClose)
+                .padding(8)
+                .transition(.opacity.combined(with: .offset(y: 8)))
             }
         }
-        .padding(10)
-        .frame(width: QuickAccessLayout.cardSize.width, height: QuickAccessLayout.cardSize.height)
+        .frame(width: size.width, height: size.height)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.18)))
         .scaleEffect(dismissing ? 0.88 : (appeared ? (hovered ? 1.03 : 1) : 0.8))
         .opacity(dismissing ? 0 : (appeared ? 1 : 0))
         .offset(y: dismissing ? 18 : (appeared ? 0 : 36))
@@ -69,23 +67,89 @@ struct QuickAccessView: View {
         Image(decorative: capture.image, scale: 1)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(height: 132)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.25)))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
+            .padding(10)
+            .frame(width: QuickAccessLayout.cardSize.width, height: QuickAccessLayout.cardSize.height)
+            .contentShape(Rectangle())
             .onDrag {
                 capture.fileURL.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
             }
             .help(capture.fileURL?.lastPathComponent ?? "Not saved to disk")
     }
 
-    private func tool(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+    private var actionBar: some View {
+        HStack(spacing: 2) {
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .background(.tint, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .help("Edit")
+            Button {
+                onCopy()
+                copied = true
+                Task {
+                    try? await Task.sleep(for: .seconds(1.2))
+                    copied = false
+                }
+            } label: {
+                Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .frame(height: 26)
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help("Copy to clipboard")
+            Spacer(minLength: 0)
+            BarIcon(symbol: "folder", help: "Reveal in Finder", action: onReveal)
+                .disabled(capture.fileURL == nil)
+            BarIcon(symbol: "trash", help: "Move to Trash", action: onDelete)
+                .disabled(capture.fileURL == nil)
+        }
+        .padding(3)
+        .glassEffect(.regular, in: .capsule)
+    }
+}
+
+private struct CircleButton: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 28, height: 24)
+                .font(.system(size: 10, weight: .bold))
+                .frame(width: 22, height: 22)
+                .glassEffect(.regular, in: .circle)
         }
-        .buttonStyle(.borderless)
-        .help(title)
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}
+
+private struct BarIcon: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 28, height: 26)
+                .contentShape(Rectangle())
+                .opacity(isEnabled ? 1 : 0.35)
+        }
+        .buttonStyle(.plain)
+        .help(help)
     }
 }

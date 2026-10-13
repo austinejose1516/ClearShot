@@ -40,4 +40,11 @@ import Testing
     @Test func everyToolHasAHint() {
         #expect(EditorTool.allCases.allSatisfy { !$0.hint.isEmpty && !$0.title.isEmpty && !$0.symbol.isEmpty })
     }
+
+    @Test func toolbarGroupsHoldEveryToolExactlyOnce() {
+        let grouped = EditorTool.groups.flatMap { $0 }
+        #expect(grouped.count == EditorTool.allCases.count)
+        #expect(Set(grouped) == Set(EditorTool.allCases))
+        #expect(EditorTool.groups.first == [.select])
+    }
 }

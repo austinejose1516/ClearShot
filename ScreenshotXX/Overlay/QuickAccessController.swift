@@ -50,7 +50,7 @@ final class QuickAccessController {
             },
             onClose: { [weak self] in self?.close(id: capture.id) },
             onHoverChange: { [weak self] inside in self?.hoverChanged(capture.id, inside: inside) })
-        panel.contentView = FirstMouseHostingView(rootView: view)
+        panel.contentView = FirstMouseHostingView(rootView: view.themed(settings))
         entries.insert(Entry(id: capture.id, panel: panel, presentation: presentation,
                              displayID: (screen ?? NSScreen.main)?.displayID), at: 0)
         layout(animated: true, appearing: capture.id)

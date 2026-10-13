@@ -35,6 +35,8 @@ public final class AppSettings {
         static let showsCursor = "showsCursor"
         static let playsSound = "playsSound"
         static let cardAutoCloseSeconds = "cardAutoCloseSeconds"
+        static let appearance = "appearance"
+        static let accent = "accent"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -46,6 +48,8 @@ public final class AppSettings {
     public var playsSound: Bool { didSet { defaults.set(playsSound, forKey: Key.playsSound) } }
     /// 0 means the Quick Access card stays until closed.
     public var cardAutoCloseSeconds: Int { didSet { defaults.set(cardAutoCloseSeconds, forKey: Key.cardAutoCloseSeconds) } }
+    public var appearance: Appearance { didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) } }
+    public var accent: AccentTheme { didSet { defaults.set(accent.rawValue, forKey: Key.accent) } }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -56,5 +60,7 @@ public final class AppSettings {
         showsCursor = defaults.object(forKey: Key.showsCursor) as? Bool ?? false
         playsSound = defaults.object(forKey: Key.playsSound) as? Bool ?? true
         cardAutoCloseSeconds = defaults.object(forKey: Key.cardAutoCloseSeconds) as? Int ?? 0
+        appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
+        accent = defaults.string(forKey: Key.accent).flatMap(AccentTheme.init(rawValue:)) ?? .ocean
     }
 }

@@ -22,6 +22,8 @@ import Testing
         #expect(settings.showsCursor == false)
         #expect(settings.playsSound == true)
         #expect(settings.cardAutoCloseSeconds == 0)
+        #expect(settings.appearance == .system)
+        #expect(settings.accent == .ocean)
     }
 
     @Test func changesPersistAcrossInstances() {
@@ -35,6 +37,8 @@ import Testing
         first.playsSound = false
         first.cardAutoCloseSeconds = 15
         first.saveFolder = URL(filePath: "/tmp/shots", directoryHint: .isDirectory)
+        first.appearance = .dark
+        first.accent = .sunset
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
@@ -43,10 +47,18 @@ import Testing
         #expect(second.playsSound == false)
         #expect(second.cardAutoCloseSeconds == 15)
         #expect(second.saveFolder.path() == "/tmp/shots/")
+        #expect(second.appearance == .dark)
+        #expect(second.accent == .sunset)
     }
 
     @Test func jpegFilesUseJpgExtension() {
         #expect(ImageFormat.jpeg.fileExtension == "jpg")
         #expect(ImageFormat.png.fileExtension == "png")
+    }
+
+    @Test func everyAccentHasItsOwnColourAndName() {
+        let colours = AccentTheme.allCases.map(\.color)
+        #expect(Set(colours).count == AccentTheme.allCases.count)
+        #expect(AccentTheme.allCases.map(\.title) == ["Ocean", "Violet", "Sunset", "Forest", "Graphite"])
     }
 }

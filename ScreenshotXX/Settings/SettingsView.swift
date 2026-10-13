@@ -22,6 +22,30 @@ struct GeneralSettingsTab: View {
                 }
             }
 
+            Section("Appearance") {
+                Picker("Mode", selection: $settings.appearance) {
+                    ForEach(Appearance.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                LabeledContent("Accent") {
+                    HStack(spacing: 10) {
+                        ForEach(AccentTheme.allCases, id: \.self) { accent in
+                            Button { settings.accent = accent } label: {
+                                Circle()
+                                    .fill(Color(accent.color))
+                                    .frame(width: 18, height: 18)
+                                    .padding(3)
+                                    .overlay(Circle().stroke(Color(accent.color), lineWidth: settings.accent == accent ? 2 : 0))
+                            }
+                            .buttonStyle(.plain)
+                            .help(accent.title)
+                        }
+                        Text(settings.accent.title).foregroundStyle(.secondary).frame(width: 64, alignment: .leading)
+                    }
+                }
+            }
+            .onChange(of: settings.appearance) { _, appearance in Theme.apply(appearance) }
+
             Section("Saving") {
                 LabeledContent("Folder") {
                     HStack(spacing: 8) {
@@ -65,7 +89,7 @@ struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 560)
+        .frame(width: 540, height: 660)
     }
 
     private func chooseFolder() {

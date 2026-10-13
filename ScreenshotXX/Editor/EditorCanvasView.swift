@@ -24,7 +24,7 @@ struct EditorCanvasView: View {
             .onChange(of: session.document.layout.canvasSize) { _, canvas in viewState.fit(canvas: canvas, in: proxy.size) }
             .overlay(alignment: .top) { tipBanner }
         }
-        .background(Color(nsColor: .underPageBackgroundColor))
+        .background(DotGrid())
     }
 
     private var canvas: some View {
@@ -42,8 +42,8 @@ struct EditorCanvasView: View {
             if let draft = session.textDraft {
                 let rect = transform.toCanvas(draft)
                 Rectangle()
-                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .background(Color.accentColor.opacity(0.08))
+                    .stroke(.tint, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                    .background(.tint.opacity(0.08))
                     .frame(width: max(1, rect.width), height: max(1, rect.height))
                     .offset(x: rect.minX, y: rect.minY)
             }

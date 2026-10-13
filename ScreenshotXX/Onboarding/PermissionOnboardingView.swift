@@ -53,7 +53,7 @@ struct PermissionOnboardingView: View {
             Text("\(number)")
                 .font(.caption.bold())
                 .frame(width: 20, height: 20)
-                .background(Color.accentColor, in: Circle())
+                .background(.tint, in: Circle())
                 .foregroundStyle(.white)
             Text(text).fixedSize(horizontal: false, vertical: true)
         }

@@ -50,7 +50,7 @@ struct FramePanelView: View {
                                     .frame(height: 34)
                                     .clipShape(RoundedRectangle(cornerRadius: 6))
                                     .overlay(RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.accentColor, lineWidth: frame.background == .gradient(preset) ? 2 : 0))
+                                        .stroke(.tint, lineWidth: frame.background == .gradient(preset) ? 2 : 0))
                             }
                             .buttonStyle(.plain)
                             .help(preset.name)
@@ -89,7 +89,7 @@ struct FramePanelView: View {
         Button(action: action) {
             label()
                 .frame(width: 20, height: 20)
-                .overlay(Circle().stroke(Color.accentColor, lineWidth: selected ? 2 : 0))
+                .overlay(Circle().stroke(.tint, lineWidth: selected ? 2 : 0))
         }
         .buttonStyle(.plain)
         .help(help)

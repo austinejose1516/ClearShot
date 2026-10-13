@@ -46,7 +46,7 @@ final class CaptureCoordinator {
             let display = try ScreenCapturer.display(for: .underMouse, in: content)
             return Capture(kind: .fullScreen, image: try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor))
         case .area, .window:
-            switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, showsCursor: settings.showsCursor) {
+            switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, settings: settings) {
             case .area(let image):
                 return Capture(kind: .area, image: image)
             case .window(let window):

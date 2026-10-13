@@ -25,11 +25,12 @@ final class OverlayCaptureSession {
         state = OverlayState(mode: mode)
     }
 
-    static func run(mode: Mode, showsCursor: Bool) async throws -> Outcome {
-        try await OverlayCaptureSession(mode: mode).start(showsCursor: showsCursor)
+    static func run(mode: Mode, settings: AppSettings) async throws -> Outcome {
+        try await OverlayCaptureSession(mode: mode).start(settings: settings)
     }
 
-    private func start(showsCursor: Bool) async throws -> Outcome {
+    private func start(settings: AppSettings) async throws -> Outcome {
+        let showsCursor = settings.showsCursor
         let content = try await ScreenCapturer.content()
         let pairs = ScreenCapturer.screenDisplays(in: content)
         guard !pairs.isEmpty else { throw ScreenCapturer.Failure.noDisplay }
@@ -67,7 +68,7 @@ final class OverlayCaptureSession {
                     self?.resolve(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled)
                 },
                 onCancel: { [weak self] in self?.resolve(.cancelled) })
-            panel.contentView = FirstMouseHostingView(rootView: view)
+            panel.contentView = FirstMouseHostingView(rootView: view.themed(settings))
             panels.append(panel)
         }
 

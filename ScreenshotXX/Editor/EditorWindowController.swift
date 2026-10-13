@@ -13,7 +13,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     var editorDocument: EditorDocument { session.document }
 
-    init(capture: Capture, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
+    init(capture: Capture, settings: AppSettings, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
         session = EditorSession(document: EditorDocument(baseImage: capture.image))
         fileURL = capture.fileURL
         self.onFinished = onFinished
@@ -33,7 +33,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             session: session,
             viewState: viewState,
             onCommand: { [weak self] in self?.perform($0) },
-            onEdited: { [weak window] edited in window?.isDocumentEdited = edited }))
+            onEdited: { [weak window] edited in window?.isDocumentEdited = edited })
+            .themed(settings))
         window.center()
     }
 

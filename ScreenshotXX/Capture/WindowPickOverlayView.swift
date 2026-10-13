@@ -54,7 +54,7 @@ private struct WindowHighlight: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 10)
             .fill(.white.opacity(0.12))
-            .stroke(Color.accentColor, lineWidth: 2)
+            .stroke(.tint, lineWidth: 2)
             .frame(width: rect.width, height: rect.height)
             .offset(x: rect.minX, y: rect.minY)
             .allowsHitTesting(false)

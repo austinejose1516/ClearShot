@@ -51,7 +51,7 @@ private extension View {
     /// Scales an image-sized view with the canvas zoom and puts its top-left corner at `origin` (image pixels).
     func placed(at origin: CGPoint, transform: CanvasTransform) -> some View {
         let point = transform.toCanvas(origin)
-        return overlay(Rectangle().stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1 / transform.scale, dash: [4, 3])))
+        return overlay(Rectangle().stroke(.tint, style: StrokeStyle(lineWidth: 1 / transform.scale, dash: [4, 3])))
             .scaleEffect(transform.scale, anchor: .topLeading)
             .offset(x: point.x, y: point.y)
     }

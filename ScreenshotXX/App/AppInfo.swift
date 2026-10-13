@@ -55,7 +55,7 @@ struct Badge: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(Color.accentColor.opacity(0.15), in: Capsule())
-            .foregroundStyle(Color.accentColor)
+            .background(.tint.opacity(0.15), in: Capsule())
+            .foregroundStyle(.tint)
     }
 }

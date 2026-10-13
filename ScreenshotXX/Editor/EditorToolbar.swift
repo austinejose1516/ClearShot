@@ -1,7 +1,8 @@
 import ScreenshotXXCore
 import SwiftUI
 
-/// Two rows: tools and file actions on top; below, only the settings that apply to the tool or the selection.
+/// Two fixed-height rows (so the canvas never jumps): tools and file actions on top; below, only the
+/// settings that apply to the tool or the selection.
 struct EditorToolbar: View {
     let session: EditorSession
     let viewState: EditorViewState
@@ -16,38 +17,34 @@ struct EditorToolbar: View {
             Divider()
             optionsRow
         }
+        .background(.bar)
     }
 
-    // MARK: - Row 1
+    // MARK: - Row 1: tools and actions
 
     private var mainRow: some View {
-        @Bindable var session = session
         @Bindable var viewState = viewState
-        return HStack(spacing: 10) {
-            HStack(spacing: 2) {
-                ForEach(EditorTool.allCases) { tool in
-                    Button {
-                        session.tool = tool
-                        viewState.showTip(tool.hint)
-                    } label: {
-                        Image(systemName: tool.symbol)
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(width: 30, height: 26)
+        return HStack(spacing: 8) {
+            ForEach(Array(EditorTool.groups.enumerated()), id: \.offset) { _, group in
+                Group {
+                    ForEach(group) { tool in
+                        ToolButton(symbol: tool.symbol, help: tool.title, isOn: session.tool == tool) {
+                            session.tool = tool
+                            viewState.showTip(tool.hint)
+                        }
                     }
-                    .buttonStyle(.borderless)
-                    .background(session.tool == tool ? Color.accentColor.opacity(0.22) : .clear,
-                                in: RoundedRectangle(cornerRadius: 6))
-                    .help(tool.title)
                 }
+                .grouped()
             }
-            Divider().frame(height: 20)
-            Button { onCommand(.undo) } label: { Image(systemName: "arrow.uturn.backward") }
-                .disabled(!session.document.canUndo).help("Undo (⌘Z)")
-            Button { onCommand(.redo) } label: { Image(systemName: "arrow.uturn.forward") }
-                .disabled(!session.document.canRedo).help("Redo (⇧⌘Z)")
-            Button { onCommand(.delete) } label: { Image(systemName: "trash") }
-                .disabled(session.document.selection.isEmpty).help("Delete")
-            Divider().frame(height: 20)
+            Group {
+                ToolButton(symbol: "arrow.uturn.backward", help: "Undo (⌘Z)") { onCommand(.undo) }
+                    .disabled(!session.document.canUndo)
+                ToolButton(symbol: "arrow.uturn.forward", help: "Redo (⇧⌘Z)") { onCommand(.redo) }
+                    .disabled(!session.document.canRedo)
+                ToolButton(symbol: "trash", help: "Delete (⌫)") { onCommand(.delete) }
+                    .disabled(session.document.selection.isEmpty)
+            }
+            .grouped()
             Picker("Zoom", selection: Binding(
                 get: { viewState.zoomIsFit ? 0 : viewState.zoom },
                 set: { value in
@@ -60,13 +57,15 @@ struct EditorToolbar: View {
             }
             .labelsHidden()
             .fixedSize()
-            Spacer(minLength: 16)
+            .help("Zoom (⌘+ / ⌘−)")
+            Spacer(minLength: 12)
             Toggle(isOn: $viewState.showsFramePanel) {
                 Label("Frame", systemImage: "sidebar.right").labelStyle(.titleAndIcon)
             }
             .toggleStyle(.button)
+            .buttonBorderShape(.capsule)
             .fixedSize()
-            .help("Show or hide the frame panel: background, padding, corners, shadow")
+            .help("Background, padding, corners and shadow")
             .onChange(of: viewState.showsFramePanel) { _, shown in
                 if shown, session.document.frame == FrameStyle() {
                     session.document.setFrame(.starter)
@@ -74,43 +73,37 @@ struct EditorToolbar: View {
                 }
             }
             Button { onCommand(.copy) } label: {
-                Label("Copy", systemImage: "doc.on.doc").labelStyle(.titleAndIcon).padding(.horizontal, 4)
+                Label("Copy", systemImage: "doc.on.doc").labelStyle(.titleAndIcon).padding(.horizontal, 2)
             }
+            .buttonBorderShape(.capsule)
             .fixedSize()
-            .help("Copy the result to the clipboard and close (⌘C)")
+            .help("Copy the result and close (⌘C)")
             Menu {
                 Button("Save As…") { onCommand(.saveAs) }
             } label: {
-                Label("Save", systemImage: "square.and.arrow.down").labelStyle(.titleAndIcon).padding(.horizontal, 4)
+                Label("Save", systemImage: "square.and.arrow.down").labelStyle(.titleAndIcon).padding(.horizontal, 2)
             } primaryAction: {
                 onCommand(.save)
             }
             .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
             .fixedSize()
-            .help("Save into the screenshot file and close (⌘S). Arrow: Save As… (⇧⌘S)")
+            .help("Save and close (⌘S). Arrow: Save As… (⇧⌘S)")
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: 48)
     }
 
-    // MARK: - Row 2
+    // MARK: - Row 2: settings for the tool or selection
 
     private var optionsRow: some View {
         let can = session.shownCapabilities
         let values = session.shownValues
-        return HStack(spacing: 12) {
+        return HStack(spacing: 8) {
             if can.contains(.color) {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     ForEach(RGBAColor.presets, id: \.self) { preset in
-                        Button { session.apply(.color(preset)) } label: {
-                            Circle()
-                                .fill(Color(preset))
-                                .stroke(.primary.opacity(values.color == preset ? 0.9 : 0.25),
-                                        lineWidth: values.color == preset ? 2 : 1)
-                                .frame(width: 16, height: 16)
-                        }
-                        .buttonStyle(.plain)
-                        .help(name(of: preset))
+                        Swatch(color: preset, isOn: values.color == preset) { session.apply(.color(preset)) }
                     }
                     ColorPicker("Custom colour", selection: Binding(
                         get: { Color(values.color) },
@@ -118,49 +111,57 @@ struct EditorToolbar: View {
                         .labelsHidden()
                         .help("Pick any colour")
                 }
-                picker("Opacity", value: values.opacity, options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" }) {
-                    session.apply(.opacity($0))
+                .chip()
+                labelled("Opacity") {
+                    menuPicker(value: values.opacity, options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" }) {
+                        session.apply(.opacity($0))
+                    }
                 }
             }
             if can.contains(.width) {
-                HStack(spacing: 6) {
-                    Text("Width")
+                labelled("Width") {
                     Slider(value: Binding(get: { values.width }, set: { session.apply(.width($0.rounded()), live: true) }),
                            in: StyleValues.widthRange) { editing in
                         if !editing { session.endLiveChange() }
                     }
-                    .frame(width: 110)
+                    .frame(width: 100)
                     Text("\(Int(values.width)) px")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
-                        .frame(width: 36, alignment: .leading)
+                        .frame(width: 34, alignment: .leading)
                 }
-                .fixedSize()
             }
             if can.contains(.corners) {
-                picker("Corners", value: values.cornerRadius, options: StyleValues.cornerRadii,
-                       label: { $0 == 0 ? "Square" : "\(Int($0)) px" }) {
-                    session.apply(.cornerRadius($0))
+                labelled("Corners") {
+                    menuPicker(value: values.cornerRadius, options: StyleValues.cornerRadii,
+                               label: { $0 == 0 ? "Square" : "\(Int($0)) px" }) { session.apply(.cornerRadius($0)) }
                 }
             }
             if can.contains(.fill) {
-                toggle("Fill", isOn: values.fills) { session.apply(.fill($0)) }
+                toggle("Fill", isOn: values.fills) { session.apply(.fill($0)) }.chip()
             }
             if can.contains(.arrow) {
-                toggle("Arrowhead", isOn: values.arrow) { session.apply(.arrow($0)) }
+                toggle("Arrowhead", isOn: values.arrow) { session.apply(.arrow($0)) }.chip()
             }
             if can.contains(.fontSize) {
-                picker("Size", value: values.fontSize, options: StyleValues.fontSizes, label: { "\(Int($0))" }) {
-                    session.apply(.fontSize($0))
+                labelled("Size") {
+                    menuPicker(value: values.fontSize, options: StyleValues.fontSizes, label: { "\(Int($0))" }) {
+                        session.apply(.fontSize($0))
+                    }
                 }
             }
             if can.contains(.textStyle) {
-                toggle("Bold", isOn: values.bold) { session.apply(.bold($0)) }
-                toggle("Boxed", isOn: values.boxed) { session.apply(.boxed($0)) }
+                HStack(spacing: 10) {
+                    toggle("Bold", isOn: values.bold) { session.apply(.bold($0)) }
+                    toggle("Boxed", isOn: values.boxed) { session.apply(.boxed($0)) }
+                }
+                .chip()
             }
             if can.contains(.stepSize) {
-                picker("Size", value: values.stepRadius, options: StyleValues.stepSizes, label: { "\(Int($0 * 2)) px" }) {
-                    session.apply(.stepSize($0))
+                labelled("Size") {
+                    menuPicker(value: values.stepRadius, options: StyleValues.stepSizes, label: { "\(Int($0 * 2)) px" }) {
+                        session.apply(.stepSize($0))
+                    }
                 }
             }
             if can.contains(.blurMode) {
@@ -169,41 +170,61 @@ struct EditorToolbar: View {
                     Text("Blur").tag(BlurMode.blur)
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .fixedSize()
             }
             if session.tool == .crop {
                 Button("Cancel") { session.cancelCrop() }
+                    .buttonBorderShape(.capsule)
                     .disabled(session.cropDraft == nil)
                     .fixedSize()
                 Button { onCommand(.confirm) } label: {
                     Label("Crop", systemImage: "crop").labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
                 .disabled(session.cropDraft == nil)
                 .fixedSize()
                 .help("Crop to the dragged area (Enter)")
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
             Text(session.tool.hint)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(-1)
         }
+        .controlSize(.small)
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .frame(minHeight: 34)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
+        .frame(height: 40)
+    }
+
+    // MARK: - Pieces
+
+    private func labelled<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 6) {
+            Text(title).foregroundStyle(.secondary)
+            content()
+        }
+        .chip()
     }
 
     /// A menu of fixed values that also lists the current value when it is not one of them (e.g. after a resize).
-    private func picker<Value: BinaryFloatingPoint>(_ title: String, value: Value, options: [Value],
-                                                    label: @escaping (Value) -> String,
-                                                    set: @escaping @MainActor (Value) -> Void) -> some View {
+    private func menuPicker<Value: BinaryFloatingPoint>(value: Value, options: [Value], label: @escaping (Value) -> String,
+                                                        set: @escaping @MainActor (Value) -> Void) -> some View {
         let all = options.contains(value) ? options : (options + [value]).sorted()
-        return Picker(title, selection: Binding(get: { value }, set: set)) {
+        return Picker("", selection: Binding(get: { value }, set: set)) {
             ForEach(all, id: \.self) { Text(label($0)).tag($0) }
         }
+        .labelsHidden()
         .fixedSize()
+    }
+
+    private func toggle(_ title: String, isOn: Bool, set: @escaping @MainActor (Bool) -> Void) -> some View {
+        Toggle(title, isOn: Binding(get: { isOn }, set: set))
+            .toggleStyle(.checkbox)
+            .fixedSize()
     }
 
     private func pickCustom(_ colour: RGBAColor) {
@@ -215,16 +236,70 @@ struct EditorToolbar: View {
             session.endLiveChange()
         }
     }
+}
 
-    private func name(of colour: RGBAColor) -> String {
-        let names: [(RGBAColor, String)] = [(.red, "Red"), (.orange, "Orange"), (.yellow, "Yellow"), (.green, "Green"),
-                                             (.blue, "Blue"), (.purple, "Purple"), (.pink, "Pink"), (.black, "Black"), (.white, "White")]
-        return names.first { $0.0 == colour }?.1 ?? "Colour"
+/// A tool or action icon: plain, or a filled accent chip with a white icon when on.
+private struct ToolButton: View {
+    let symbol: String
+    let help: String
+    var isOn = false
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13.5, weight: .medium))
+                .frame(width: 30, height: 26)
+                .foregroundStyle(isOn ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                .background {
+                    if isOn {
+                        RoundedRectangle(cornerRadius: 7).fill(.tint)
+                    } else if hovering && isEnabled {
+                        RoundedRectangle(cornerRadius: 7).fill(.primary.opacity(0.08))
+                    }
+                }
+                .contentShape(Rectangle())
+                .opacity(isEnabled ? 1 : 0.35)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
+    }
+}
+
+private struct Swatch: View {
+    let color: RGBAColor
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Circle()
+                .fill(Color(color))
+                .overlay(Circle().stroke(.primary.opacity(0.18), lineWidth: 0.5))
+                .frame(width: 15, height: 15)
+                .padding(2.5)
+                .overlay(Circle().stroke(.tint, lineWidth: isOn ? 2 : 0))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private extension View {
+    /// A rounded group behind a set of tool buttons.
+    func grouped() -> some View {
+        HStack(spacing: 1) { self }
+            .padding(3)
+            .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func toggle(_ title: String, isOn: Bool, set: @escaping @MainActor (Bool) -> Void) -> some View {
-        Toggle(title, isOn: Binding(get: { isOn }, set: set))
-            .toggleStyle(.checkbox)
-            .fixedSize()
+    /// A soft capsule behind one setting in the second row.
+    func chip() -> some View {
+        padding(.horizontal, 9)
+            .frame(height: 28)
+            .background(.quaternary.opacity(0.55), in: Capsule())
     }
 }
