@@ -75,6 +75,8 @@ import Testing
     @Test func jpegFilesUseJpgExtension() {
         #expect(ImageFormat.jpeg.fileExtension == "jpg")
         #expect(ImageFormat.png.fileExtension == "png")
+        #expect(ImageFormat.jpeg.mimeType == "image/jpeg")
+        #expect(ImageFormat.png.mimeType == "image/png")
     }
 
     @Test func everyAccentHasItsOwnColourAndName() {

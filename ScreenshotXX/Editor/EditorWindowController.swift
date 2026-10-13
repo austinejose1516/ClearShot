@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let session: EditorSession
     private let viewState = EditorViewState()
+    private let settings: AppSettings
     private let fileURL: URL?
     private let onFinished: () -> Void
     private let onWindowClosed: () -> Void
@@ -15,6 +16,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     init(capture: Capture, settings: AppSettings, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
         session = EditorSession(document: EditorDocument(baseImage: capture.editorImage, frame: capture.editorFrame))
+        self.settings = settings
         fileURL = capture.fileURL
         self.onFinished = onFinished
         self.onWindowClosed = onWindowClosed
@@ -63,6 +65,30 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         case .bold: session.apply(.bold(!session.shownValues.bold))
         case .italic: session.apply(.italic(!session.shownValues.italic))
         case .underline: session.apply(.underline(!session.shownValues.underline))
+        case .upload: upload()
+        }
+    }
+
+    /// Sends the result to the cloud bucket and copies the link; then the editor closes, like Copy and Save.
+    /// Without a cloud setup it opens Settings → Cloud instead.
+    private func upload() {
+        guard !viewState.isUploading else { return }
+        guard let uploader = R2Uploader.fromSettings(settings) else {
+            UploadService.openCloudSettings()
+            return
+        }
+        guard let image = renderResult() else { return }
+        let format = settings.imageFormat
+        viewState.isUploading = true
+        Task {
+            defer { viewState.isUploading = false }
+            do {
+                let data = try await Task.detached { try FileSaver.encode(image, format: format) }.value
+                try await UploadService.upload(data, format: format, with: uploader)
+                onFinished()
+            } catch {
+                ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
+            }
         }
     }
 

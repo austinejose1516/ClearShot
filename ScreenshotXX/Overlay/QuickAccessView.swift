@@ -2,10 +2,11 @@ import Observation
 import ScreenshotXXCore
 import SwiftUI
 
-/// Lets the controller play the exit animation before the panel goes away.
+/// Lets the controller play the exit animation before the panel goes away, and show upload progress.
 @Observable
 final class CardPresentation {
     var isDismissing = false
+    var isUploading = false
 }
 
 /// The card: the screenshot fills it; on hover a glass bar slides up with the actions, plus close and size on top.
@@ -16,6 +17,7 @@ struct QuickAccessView: View {
     let onCopy: () -> Void
     /// Gets the Share icon's AppKit view, so the Share menu can open under it.
     let onShare: (NSView?) -> Void
+    let onUpload: () -> Void
     let onReveal: () -> Void
     let onDelete: () -> Void
     let onClose: () -> Void
@@ -103,6 +105,11 @@ struct QuickAccessView: View {
             }
             BarIcon(symbol: "square.and.arrow.up", help: "Share") { onShare(shareAnchor.view) }
                 .background(AnchorView(holder: shareAnchor))
+            if presentation.isUploading {
+                ProgressView().controlSize(.mini).frame(width: 28, height: 26)
+            } else {
+                BarIcon(symbol: "icloud.and.arrow.up", help: "Upload to your cloud bucket and copy the link", action: onUpload)
+            }
             Spacer(minLength: 0)
             BarIcon(symbol: "folder", help: "Reveal in Finder", action: onReveal)
                 .disabled(capture.fileURL == nil)

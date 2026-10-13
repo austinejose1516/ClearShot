@@ -79,6 +79,17 @@ struct EditorToolbar: View {
                     session.document.commit()
                 }
             }
+            Button { onCommand(.upload) } label: {
+                if viewState.isUploading {
+                    ProgressView().controlSize(.small).padding(.horizontal, 14)
+                } else {
+                    Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
+                }
+            }
+            .buttonBorderShape(.capsule)
+            .fixedSize()
+            .disabled(viewState.isUploading)
+            .help("Upload to your cloud bucket, copy the link and close (set up in Settings → Cloud)")
             Button { onShare(shareAnchor.view) } label: {
                 Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
             }

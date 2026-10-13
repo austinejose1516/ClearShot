@@ -11,6 +11,14 @@ public enum ImageFormat: String, CaseIterable, Sendable, Codable {
         }
     }
 
+    /// What an upload is labelled as, so browsers show it as an image.
+    public var mimeType: String {
+        switch self {
+        case .png: "image/png"
+        case .jpeg: "image/jpeg"
+        }
+    }
+
     /// The format a file should be written in, from its extension. Nil for anything else.
     public init?(url: URL) {
         switch url.pathExtension.lowercased() {

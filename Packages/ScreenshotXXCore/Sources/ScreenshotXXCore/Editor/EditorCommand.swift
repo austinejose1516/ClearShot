@@ -5,6 +5,8 @@ public enum EditorCommand: Equatable, Sendable {
     case newLine
     /// ⌘B, ⌘I, ⌘U: flip the text style, also while typing.
     case bold, italic, underline
+    /// Toolbar only: send the result to the cloud bucket and copy the link.
+    case upload
 
     /// The command for a key press in the editor window, or nil to let the system handle it.
     /// `key` is the character without modifiers; key codes cover Delete, Esc and Return.

@@ -7,6 +7,8 @@ import SwiftUI
 final class EditorViewState {
     var canvasZoom = CanvasZoom()
     var showsFramePanel = false
+    /// An upload is in flight: the Upload button shows a spinner and ignores clicks.
+    var isUploading = false
     /// A short help line shown over the canvas when a tool is picked.
     private(set) var tip: String?
     @ObservationIgnored private var tipTask: Task<Void, Never>?
