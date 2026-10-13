@@ -4,6 +4,7 @@ import SwiftUI
 /// Draws one annotation at 1 pt = 1 image pixel.
 struct AnnotationView: View {
     let annotation: Annotation
+    var baseImage: CGImage? = nil
     /// Called with the drawn size of a text box (not during export).
     var onTextMeasured: ((CGSize) -> Void)? = nil
 
@@ -11,9 +12,34 @@ struct AnnotationView: View {
         let style = annotation.style
         let stroke = StrokeStyle(lineWidth: style.strokeWidth, lineCap: .round, lineJoin: .round)
         ZStack(alignment: .topLeading) {
-            if case .text(let content) = annotation.kind {
+            switch annotation.kind {
+            case .text(let content):
                 TextAnnotationView(content: content, color: style.strokeColor, onMeasured: onTextMeasured)
-            } else {
+            case .blur(let rect, let mode):
+                if let baseImage { BlurRegionView(base: baseImage, rect: rect, mode: mode) }
+            case .step(let number, _, let radius):
+                let b = annotation.bounds
+                Circle()
+                    .fill(Color(style.strokeColor))
+                    .overlay(Circle().stroke(.white, lineWidth: max(2, radius * 0.08)))
+                    .overlay(Text("\(number)")
+                        .font(.system(size: radius * 1.15, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white))
+                    .frame(width: b.width, height: b.height)
+                    .offset(x: b.minX, y: b.minY)
+            case .speechBubble(let rect, let tail, let text, let fontSize):
+                let r = rect.standardized
+                SpeechBubbleShape(box: r, tail: tail)
+                    .fill(Color(style.fillColor ?? .white))
+                SpeechBubbleShape(box: r, tail: tail)
+                    .stroke(Color(style.strokeColor), style: stroke)
+                Text(text)
+                    .font(.system(size: fontSize, weight: .semibold))
+                    .foregroundStyle(Color.black)
+                    .multilineTextAlignment(.center)
+                    .frame(width: max(1, r.width - fontSize * 0.8), height: max(1, r.height - fontSize * 0.6))
+                    .offset(x: r.minX + fontSize * 0.4, y: r.minY + fontSize * 0.3)
+            default:
                 if let fill = style.fillColor {
                     AnnotationShape(kind: annotation.kind).fill(Color(fill))
                 }
@@ -71,7 +97,7 @@ struct AnnotationShape: Shape {
         case .curve(let start, let control, let end, _):
             path.move(to: start)
             path.addQuadCurve(to: end, control: control)
-        case .text:
+        case .text, .blur, .step, .speechBubble:
             break
         }
         return path

@@ -2,7 +2,7 @@ import ScreenshotXXCore
 import SwiftUI
 
 enum HandleKind: Equatable {
-    case lineStart, lineEnd, curveControl
+    case lineStart, lineEnd, curveControl, bubbleTail
     case topLeft, topRight, bottomLeft, bottomRight
 }
 
@@ -19,12 +19,19 @@ enum Handles {
         case .curve(let start, let control, let end, _):
             return [(.lineStart, start), (.curveControl, control), (.lineEnd, end)]
         case .text(let content):
-            let b = content.frame
-            return [(.topLeft, CGPoint(x: b.minX, y: b.minY)), (.topRight, CGPoint(x: b.maxX, y: b.minY)),
-                    (.bottomLeft, CGPoint(x: b.minX, y: b.maxY)), (.bottomRight, CGPoint(x: b.maxX, y: b.maxY))]
-        case .freehand:
+            return corners(content.frame)
+        case .blur(let rect, _):
+            return corners(rect.standardized)
+        case .speechBubble(let rect, let tail, _, _):
+            return corners(rect.standardized) + [(.bubbleTail, tail)]
+        case .freehand, .step:
             return []
         }
+    }
+
+    private static func corners(_ b: CGRect) -> [(kind: HandleKind, point: CGPoint)] {
+        [(.topLeft, CGPoint(x: b.minX, y: b.minY)), (.topRight, CGPoint(x: b.maxX, y: b.minY)),
+         (.bottomLeft, CGPoint(x: b.minX, y: b.maxY)), (.bottomRight, CGPoint(x: b.maxX, y: b.maxY))]
     }
 
     /// The annotation after dragging `handle` to `point`.
@@ -47,6 +54,12 @@ enum Handles {
             result.kind = .curve(start: s, control: c, end: point, arrowEnd: a)
         case (.text(let content), _):
             result.kind = .text(scaledText(content, handle, point))
+        case (.blur(let r, let mode), _):
+            result.kind = .blur(rect: resized(r, handle, point), mode: mode)
+        case (.speechBubble(let r, _, let text, let size), .bubbleTail):
+            result.kind = .speechBubble(rect: r, tail: point, text: text, fontSize: size)
+        case (.speechBubble(let r, let tail, let text, let size), _):
+            result.kind = .speechBubble(rect: resized(r, handle, point), tail: tail, text: text, fontSize: size)
         default:
             break
         }

@@ -28,6 +28,14 @@ public final class EditorDocument {
     public var canRedo: Bool { history.canRedo }
     public var imageSize: CGSize { CGSize(width: baseImage.width, height: baseImage.height) }
 
+    /// One more than the highest step number placed so far.
+    public var nextStepNumber: Int {
+        let highest = state.annotations.compactMap { annotation -> Int? in
+            if case .step(let number, _, _) = annotation.kind { number } else { nil }
+        }.max() ?? 0
+        return highest + 1
+    }
+
     public func annotation(id: Annotation.ID) -> Annotation? {
         state.annotations.first { $0.id == id }
     }

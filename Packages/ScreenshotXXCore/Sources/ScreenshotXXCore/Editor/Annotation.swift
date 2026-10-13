@@ -1,6 +1,10 @@
 import CoreGraphics
 import Foundation
 
+public enum BlurMode: String, Equatable, Sendable, Codable, CaseIterable {
+    case pixelate, blur
+}
+
 /// One drawn thing. All coordinates are image pixels, so edits survive padding and inset changes.
 public struct Annotation: Identifiable, Equatable, Sendable, Codable {
     public enum Kind: Equatable, Sendable, Codable {
@@ -10,6 +14,11 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case ellipse(CGRect)
         case curve(start: CGPoint, control: CGPoint, end: CGPoint, arrowEnd: Bool)
         case text(TextContent)
+        /// Hides part of the base image.
+        case blur(rect: CGRect, mode: BlurMode)
+        /// Numbered circle for step-by-step guides.
+        case step(number: Int, center: CGPoint, radius: CGFloat)
+        case speechBubble(rect: CGRect, tail: CGPoint, text: String, fontSize: CGFloat)
     }
 
     public struct Style: Equatable, Sendable, Codable {
@@ -43,6 +52,11 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case .curve(let start, let control, let end, _):
             AnnotationGeometry.bounds(of: CurveGeometry.samples(start: start, control: control, end: end))
         case .text(let content): content.frame
+        case .blur(let rect, _): rect.standardized
+        case .step(_, let center, let radius):
+            CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+        case .speechBubble(let rect, let tail, _, _):
+            rect.standardized.union(CGRect(origin: tail, size: .zero))
         }
     }
 
@@ -67,6 +81,13 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
             return zip(samples, samples.dropFirst()).contains { AnnotationGeometry.distance(from: point, toSegment: $0, $1) <= reach }
         case .text(let content):
             return content.frame.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
+        case .blur(let rect, _):
+            return rect.standardized.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
+        case .step(_, let center, let radius):
+            return hypot(point.x - center.x, point.y - center.y) <= radius + tolerance
+        case .speechBubble(let rect, let tail, _, _):
+            return rect.standardized.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
+                || hypot(point.x - tail.x, point.y - tail.y) <= tolerance * 3
         }
     }
 
@@ -85,6 +106,12 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case .text(var content):
             content.origin = content.origin.offset(delta)
             kind = .text(content)
+        case .blur(let rect, let mode):
+            kind = .blur(rect: rect.offsetBy(dx: delta.dx, dy: delta.dy), mode: mode)
+        case .step(let number, let center, let radius):
+            kind = .step(number: number, center: center.offset(delta), radius: radius)
+        case .speechBubble(let rect, let tail, let text, let fontSize):
+            kind = .speechBubble(rect: rect.offsetBy(dx: delta.dx, dy: delta.dy), tail: tail.offset(delta), text: text, fontSize: fontSize)
         }
     }
 }

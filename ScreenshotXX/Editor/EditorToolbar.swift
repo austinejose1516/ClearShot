@@ -138,21 +138,32 @@ struct EditorToolbar: View {
                     .toggleStyle(.checkbox)
                     .fixedSize()
             }
-            if state.tool == .text || selectionHasText {
+            if state.tool == .blur || selectionHas(.blur) {
+                Picker("Mode", selection: $state.blurMode) {
+                    Text("Pixelate").tag(BlurMode.pixelate)
+                    Text("Blur").tag(BlurMode.blur)
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .onChange(of: state.blurMode) { state.applyStyle(to: document) }
+            }
+            if state.tool == .text || selectionHasText || state.tool == .bubble || selectionHas(.bubble) {
                 Divider().frame(height: 18)
                 Picker("Size", selection: $state.fontSize) {
                     ForEach(EditorState.fontSizes, id: \.self) { Text("\(Int($0))").tag($0) }
                 }
                 .fixedSize()
                 .onChange(of: state.fontSize) { state.applyStyle(to: document) }
-                Toggle("Bold", isOn: $state.bold)
-                    .toggleStyle(.checkbox)
-                    .fixedSize()
-                    .onChange(of: state.bold) { state.applyStyle(to: document) }
-                Toggle("Boxed", isOn: $state.boxed)
-                    .toggleStyle(.checkbox)
-                    .fixedSize()
-                    .onChange(of: state.boxed) { state.applyStyle(to: document) }
+                if state.tool == .text || selectionHasText {
+                    Toggle("Bold", isOn: $state.bold)
+                        .toggleStyle(.checkbox)
+                        .fixedSize()
+                        .onChange(of: state.bold) { state.applyStyle(to: document) }
+                    Toggle("Boxed", isOn: $state.boxed)
+                        .toggleStyle(.checkbox)
+                        .fixedSize()
+                        .onChange(of: state.boxed) { state.applyStyle(to: document) }
+                }
             }
             Spacer(minLength: 0)
             Text(hint)
@@ -173,6 +184,9 @@ struct EditorToolbar: View {
         case .pen: "Drag to draw freehand"
         case .rect, .ellipse: "Drag to draw · Fill for a solid shape"
         case .text: "Click to place text · Enter or Esc to finish · click again to edit"
+        case .bubble: "Drag to draw the bubble, type, then drag its tail"
+        case .step: "Click to place the next number"
+        case .blur: "Drag over the part to hide"
         }
     }
 
@@ -186,6 +200,17 @@ struct EditorToolbar: View {
 
     private var selectionHasText: Bool {
         selected.contains { if case .text = $0.kind { true } else { false } }
+    }
+
+    private enum KindFilter { case blur, bubble }
+
+    private func selectionHas(_ filter: KindFilter) -> Bool {
+        selected.contains {
+            switch ($0.kind, filter) {
+            case (.blur, .blur), (.speechBubble, .bubble): true
+            default: false
+            }
+        }
     }
 
     private var selectionHasArrowable: Bool {

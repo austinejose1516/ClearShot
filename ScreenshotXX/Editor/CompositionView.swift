@@ -32,7 +32,7 @@ struct CompositionView: View {
                 .resizable()
                 .frame(width: size.width, height: size.height)
             ForEach(document.annotations) { annotation in
-                AnnotationView(annotation: annotation, onTextMeasured: isExport ? nil : { size in
+                AnnotationView(annotation: annotation, baseImage: document.baseImage, onTextMeasured: isExport ? nil : { size in
                     remember(size, for: annotation)
                 })
                 .opacity(annotation.id == hiddenAnnotationID ? 0 : 1)

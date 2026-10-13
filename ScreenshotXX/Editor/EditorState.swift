@@ -17,6 +17,8 @@ final class EditorState {
     var boxed = false
     var editingTextID: Annotation.ID?
     var showsFramePanel = false
+    var blurMode: BlurMode = .pixelate
+    var stepRadius: CGFloat = 36
     var editingTextIsNew = false
 
     static let fontSizes: [CGFloat] = [16, 24, 32, 48, 64, 96, 128]
@@ -52,6 +54,10 @@ final class EditorState {
                 content.bold = bold
                 content.boxed = boxed
                 annotation.kind = .text(content)
+            case .speechBubble(let rect, let tail, let text, _):
+                annotation.kind = .speechBubble(rect: rect, tail: tail, text: text, fontSize: fontSize)
+            case .blur(let rect, _):
+                annotation.kind = .blur(rect: rect, mode: blurMode)
             default:
                 break
             }
@@ -80,10 +86,17 @@ final class EditorState {
         opacity = annotation.style.strokeColor.alpha
         strokeWidth = annotation.style.strokeWidth
         fills = annotation.style.fillColor != nil
-        if case .text(let content) = annotation.kind {
+        switch annotation.kind {
+        case .text(let content):
             fontSize = content.fontSize
             bold = content.bold
             boxed = content.boxed
+        case .speechBubble(_, _, _, let size):
+            fontSize = size
+        case .blur(_, let mode):
+            blurMode = mode
+        default:
+            break
         }
     }
 }

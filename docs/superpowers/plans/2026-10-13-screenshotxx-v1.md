@@ -1245,3 +1245,22 @@ Task test command: `make check`
 - [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 58 tests pass** — **Step 5: App** — **Step 6: build** — **Step 7: Austin: padding + gradient + rounded corners + shadow, inset, caption, meme bar; draw on the padded image (annotations stay on the image); Save → PNG size = 1280×880 for 1200×800 + 40 padding (I check with sips)** — **Step 8: commit `feat: frame — padding, inset, backgrounds, caption, meme bar`**
 
 Task test command: `make check`
+
+---
+
+### Task 9: Fun and privacy — blur / pixelate, step numbers, speech bubbles (emoji removed at Austin's request)
+
+**Files:**
+- Modify (Core): `Annotation.swift` (+ `.blur`, `.step`, `.emoji`, `.speechBubble`), `EditorDocument.swift` (+ `nextStepNumber`); Test: `FunAnnotationTests.swift`
+- Modify (App): `EditorTool.swift`, `AnnotationView.swift`, `SelectionHandles.swift`, `EditorCanvasView.swift`, `EditorToolbar.swift`, `EditorState.swift`, `TextEditingOverlay.swift`; create `BlurRegionView.swift`, `SpeechBubbleShape.swift`
+
+**Interfaces (Core):**
+- `BlurMode: pixelate | blur`
+- `Kind.blur(rect:mode:)` — hides a region of the base image; `Kind.step(number:center:radius:)` — numbered circle; `Kind.emoji(character:center:size:rotation:)`; `Kind.speechBubble(rect:tail:text:fontSize:)` — white bubble, coloured border and text, tail point dragged by a handle.
+- `EditorDocument.nextStepNumber` — 1 + the highest step so far.
+
+**Interfaces (App):** tools Blur (mode option Pixelate/Blur), Step (click to place, numbers continue), Emoji (click to place the current emoji; quick row + a field to type any emoji), Bubble (drag a box, type the text, drag the tail). Blur renders the cropped base image through CIPixellate / CIGaussianBlur, cached per rect.
+
+- [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 62 tests pass** — **Step 5: App (two commits: blur + steps, then emoji + bubbles)** — **Step 6: build** — **Step 7: Austin: pixelate a region, blur one, three steps, two emojis, a bubble with text and a dragged tail; Save; PNG shows all** — **Step 8: commit**
+
+Task test command: `make check`

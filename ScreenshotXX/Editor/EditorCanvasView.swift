@@ -132,7 +132,13 @@ struct EditorCanvasView: View {
                 let dx = point.x - start.x, dy = point.y - start.y
                 let control = CGPoint(x: (start.x + point.x) / 2 - dy * 0.25, y: (start.y + point.y) / 2 + dx * 0.25)
                 annotation.kind = .curve(start: start, control: control, end: point, arrowEnd: arrowEnd)
-            case .text:
+            case .blur(_, let mode):
+                annotation.kind = .blur(rect: SelectionGeometry.normalizedRect(from: start, to: point), mode: mode)
+            case .speechBubble(_, _, let text, _):
+                let r = SelectionGeometry.normalizedRect(from: start, to: point)
+                let tail = CGPoint(x: r.minX + r.width * 0.25, y: r.maxY + r.height * 0.5)
+                annotation.kind = .speechBubble(rect: r, tail: tail, text: text, fontSize: max(20, (r.height / 4).rounded()))
+            case .text, .step:
                 return
             }
             document.update(annotation)
@@ -172,7 +178,7 @@ struct EditorCanvasView: View {
         switch state.tool {
         case .select:
             if let id = hitID {
-                if document.selection == [id], let hit = document.annotation(id: id), case .text = hit.kind {
+                if document.selection == [id], let hit = document.annotation(id: id), hit.hasEditableText {
                     gesture = .pendingTextEdit(id, start: point)
                     return
                 }
@@ -213,6 +219,22 @@ struct EditorCanvasView: View {
             let annotation = Annotation(kind: state.tool == .rect ? .rect(rect) : .ellipse(rect), style: state.style)
             document.insert(annotation)
             gesture = .drawing(annotation.id, start: point)
+        case .blur:
+            let annotation = Annotation(kind: .blur(rect: CGRect(origin: point, size: .zero), mode: state.blurMode), style: state.style)
+            document.insert(annotation)
+            gesture = .drawing(annotation.id, start: point)
+        case .bubble:
+            let annotation = Annotation(kind: .speechBubble(rect: CGRect(origin: point, size: .zero), tail: point, text: "", fontSize: 28),
+                                        style: state.style)
+            document.insert(annotation)
+            gesture = .drawing(annotation.id, start: point)
+        case .step:
+            let annotation = Annotation(kind: .step(number: document.nextStepNumber, center: point, radius: state.stepRadius),
+                                        style: state.style)
+            document.add(annotation)
+            document.selection = [annotation.id]
+            gesture = .idle
+
         }
     }
 
@@ -229,6 +251,7 @@ struct EditorCanvasView: View {
             } else {
                 document.commit()
                 document.selection = [id]
+                if case .speechBubble = annotation.kind { startTextEditing(id, isNew: false) }
             }
         case .moving, .resizing:
             document.commit()
@@ -268,17 +291,18 @@ struct EditorCanvasView: View {
             case .topRight: return .frameResize(position: .topRight, directions: .all)
             case .bottomLeft: return .frameResize(position: .bottomLeft, directions: .all)
             case .bottomRight: return .frameResize(position: .bottomRight, directions: .all)
-            case .lineStart, .lineEnd, .curveControl: return .crosshair
+            case .lineStart, .lineEnd, .curveControl, .bubbleTail: return .crosshair
             }
         }
         if state.tool == .select || state.tool == .text,
            let id = document.hitTest(point, tolerance: tolerance), let hit = document.annotation(id: id) {
-            if case .text = hit.kind { return document.selection.contains(id) ? .iBeam : .openHand }
+            if hit.hasEditableText { return document.selection.contains(id) ? .iBeam : .openHand }
             return state.tool == .select ? .openHand : .iBeam
         }
         switch state.tool {
         case .select: return .arrow
         case .text: return .iBeam
+        case .step: return .pointingHand
         default: return .crosshair
         }
     }
@@ -292,6 +316,9 @@ struct EditorCanvasView: View {
         case .pen: text = "Drag to draw freehand"
         case .rect, .ellipse: text = "Drag to draw · Fill makes it solid"
         case .text: text = "Drag to draw a text box, then type · click existing text to edit"
+        case .bubble: text = "Drag to draw the bubble, type, then drag its tail"
+        case .step: text = "Click to place the next number"
+        case .blur: text = "Drag over the part to hide · Pixelate or Blur below"
         }
         tipTask?.cancel()
         withAnimation(.easeOut(duration: 0.2)) { tip = text }
@@ -316,6 +343,9 @@ struct EditorCanvasView: View {
         case .ellipse: "ellipse"
         case .curve: "curve"
         case .text(let content): "text(\(content.text.prefix(8)), measured=\(content.measuredSize != .zero))"
+        case .blur: "blur"
+        case .step: "step"
+        case .speechBubble: "bubble"
         }
     }
 
@@ -329,8 +359,9 @@ struct EditorCanvasView: View {
         guard let id = state.editingTextID else { return }
         DiagnosticLog.write("text editing finish")
         state.editingTextID = nil
-        guard let annotation = document.annotation(id: id), case .text(let content) = annotation.kind else { return }
-        if content.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        guard let annotation = document.annotation(id: id) else { return }
+        if case .text(let content) = annotation.kind,
+           content.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             if state.editingTextIsNew { document.revert() } else { document.remove(ids: [id]) }
         } else {
             document.commit()
@@ -348,5 +379,15 @@ struct EditorCanvasView: View {
             }
         }
         return nil
+    }
+}
+
+extension Annotation {
+    /// Text and speech bubbles open the inline editor on click.
+    var hasEditableText: Bool {
+        switch kind {
+        case .text, .speechBubble: true
+        default: false
+        }
     }
 }
