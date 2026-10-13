@@ -1,0 +1,13 @@
+# XcodeGen output (regenerate with `make gen`)
+*.xcodeproj
+# Per-machine signing settings
+Local.xcconfig
+# Build output
+build/
+DerivedData/
+.build/
+# Scratch
+.superpowers/
+.DS_Store
+*.xcuserstate
+xcuserdata/
