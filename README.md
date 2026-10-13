@@ -9,9 +9,9 @@
   Capture an area, a window or the full screen, then mark it up in a fast, native editor.
 </p>
 
-<p align="center">
-  <a href="https://github.com/austinejose1516/ScreenshotXX/releases/latest"><img src="https://img.shields.io/badge/Download-for%20macOS-199EFA?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS"></a>
-</p>
+```bash
+brew install --cask austinejose1516/tap/screenshotxx
+```
 
 <p align="center">
   <a href="https://github.com/austinejose1516/ScreenshotXX/releases/latest"><img src="https://img.shields.io/github/v/release/austinejose1516/ScreenshotXX?label=release" alt="Latest release"></a>
@@ -24,13 +24,17 @@
 
 ## Install
 
-**Download.** Get the latest `ScreenshotXX-<version>.dmg` from [Releases](https://github.com/austinejose1516/ScreenshotXX/releases/latest). Open it and drag ScreenshotXX to Applications.
-
-**Homebrew.**
+ScreenshotXX installs with [Homebrew](https://brew.sh):
 
 ```bash
 brew install --cask austinejose1516/tap/screenshotxx
 ```
+
+| To | Run |
+|---|---|
+| Update to the newest version | `brew upgrade --cask screenshotxx` (or just `brew upgrade`) |
+| Uninstall | `brew uninstall --cask screenshotxx` |
+| Uninstall and remove its settings and log | `brew uninstall --zap --cask screenshotxx` |
 
 **First launch.**
 
@@ -121,8 +125,8 @@ make dmg        # Release build + build/ScreenshotXX-<version>.dmg
 ### Releasing
 
 1. Bump `MARKETING_VERSION` in `project.yml`.
-2. Push a tag such as `v0.2.0`. GitHub Actions builds and signs the DMG and publishes the release.
-3. Put the new DMG checksum into `Casks/screenshotxx.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`).
+2. Push a tag such as `v0.2.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
+3. Put the new version and DMG checksum into `Casks/screenshotxx.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`). Users then get it with `brew upgrade`.
 
 ## Contributing
 
