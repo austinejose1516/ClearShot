@@ -23,6 +23,16 @@ public enum FileSaver {
             fileManager.fileExists(atPath: folder.appending(path: candidate).path(percentEncoded: false))
         }
         let url = folder.appending(path: name)
+        try write(image, format: format, to: url)
+        return url
+    }
+
+    /// Replaces whatever is at `url` (the editor's Save).
+    public static func overwrite(_ image: CGImage, format: ImageFormat, at url: URL) throws {
+        try write(image, format: format, to: url)
+    }
+
+    private static func write(_ image: CGImage, format: ImageFormat, to url: URL) throws {
         let type: UTType = format == .png ? .png : .jpeg
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else {
             throw Failure.encodingFailed(url)
@@ -30,6 +40,5 @@ public enum FileSaver {
         let options: [CFString: Any] = format == .jpeg ? [kCGImageDestinationLossyCompressionQuality: 0.9] : [:]
         CGImageDestinationAddImage(destination, image, options as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { throw Failure.encodingFailed(url) }
-        return url
     }
 }

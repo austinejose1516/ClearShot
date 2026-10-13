@@ -1171,3 +1171,33 @@ Task test command: `make check`
 - [ ] **Step 8: Commit** — `feat: quick access card after capture`
 
 Task test command: `make check`
+
+---
+
+### Task 6: Editor core — window, canvas, select/move/resize/delete, undo/redo, line/arrow/pen/rect/ellipse, copy/save
+
+**Files:**
+- Create (Core): `.../Editor/RGBAColor.swift`, `Annotation.swift`, `AnnotationGeometry.swift`, `ArrowGeometry.swift`, `PathSmoother.swift`, `UndoStack.swift`, `DocumentState.swift`, `EditorDocument.swift`; `FileSaver.overwrite` added.
+- Test (Core): `UndoStackTests`, `EditorDocumentTests`, `AnnotationGeometryTests`, `ArrowGeometryTests`, `PathSmootherTests`, `FileSaverTests` (+overwrite)
+- Create (App): `ScreenshotXX/Editor/EditorWindowController.swift`, `EditorWindow.swift` (key equivalents), `EditorSessionStore.swift`, `EditorView.swift`, `EditorToolbar.swift`, `EditorCanvasView.swift`, `CompositionView.swift`, `AnnotationView.swift`, `SelectionHandles.swift`, `Tools/EditorTool.swift`, `Exporter.swift`, `Color+RGBA.swift`
+- Modify (App): `AppDelegate.swift` (Edit opens the editor), `QuickAccessController` unchanged.
+
+**Interfaces (Core):**
+- `RGBAColor { red, green, blue, alpha: Double; presets .red .orange .yellow .green .blue .purple .black .white }`
+- `Annotation { id; kind: Kind; style: Style; init(kind:style:); bounds; hitTest(_:tolerance:) -> Bool; mutating move(by: CGVector) }`, `Kind: .line(start:end:arrowStart:arrowEnd:) .freehand(points:) .rect(CGRect) .ellipse(CGRect)`, `Style { strokeColor = .red; strokeWidth = 6; fillColor: RGBAColor? = nil }`. All coordinates are image pixels.
+- `AnnotationGeometry.distance(from:toSegment:_:)`, `ArrowGeometry.head(from:to:length:width:) -> (left, right)`, `PathSmoother.segments(through:) -> (start, [Segment{control1, control2, end}])?` (Catmull-Rom → cubic Bézier).
+- `UndoStack<State: Equatable> { init(initial:limit: = 100); current; canUndo; canRedo; push(_:) (no-op if equal); undo() -> State?; redo() -> State? }`
+- `DocumentState: Equatable, Codable { annotations: [Annotation] }`
+- `@Observable EditorDocument { init(baseImage:); baseImage; state; selection: Set<Annotation.ID>; annotations; add(_:) (commits); update(_:) (live, no undo entry); commit(); remove(ids:); undo(); redo(); canUndo; canRedo; hitTest(_:tolerance:) -> Annotation.ID? (top-most); annotation(id:); moveSelection(by:) (live) }`
+- `FileSaver.overwrite(_ image: CGImage, format: ImageFormat, at url: URL) throws` — replaces the file in place.
+
+**Interfaces (App):**
+- `EditorSessionStore.shared.open(capture: Capture)` — one window per capture id; reopening brings the same document back.
+- `EditorWindow: NSWindow` intercepts ⌘Z, ⇧⌘Z, Delete/Backspace, ⌘C, ⌘S, ⌘A, Esc via `performKeyEquivalent`/`keyDown` and forwards to `EditorActions` closures.
+- `CompositionView(document:)` draws at 1 pt = 1 image pixel; the canvas shows it with `scaleEffect(zoom)`; `Exporter.render(document:) -> CGImage` uses `ImageRenderer` at scale 1 so the export has the source's pixel size.
+- Tools: Select, Line, Arrow, Pen, Rect, Ellipse. Select: click picks top-most, drag moves, corner handles resize rect/ellipse, endpoint handles move line ends, Delete removes. Toolbar also has colour presets, stroke width, undo/redo, Copy, Save (overwrites the capture file; Save As… when there is no file).
+
+- [ ] **Step 1: failing Core tests** (see test files) — **Step 2: run → missing types** — **Step 3: implement Core** — **Step 4: run → 41 tests pass**
+- [ ] **Step 5: App editor** — **Step 6: build** — **Step 7: Austin: Edit on a card → editor opens; draw line, arrow, pen, rect, ellipse; move; resize; delete; undo/redo; Copy and Save; the saved PNG has the drawings at the source pixel size (I check with sips).** — **Step 8: commit `feat: editor core`**
+
+Task test command: `make check`

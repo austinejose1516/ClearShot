@@ -18,6 +18,7 @@ final class QuickAccessController {
     private var screenObserver: NSObjectProtocol?
 
     var onEdit: ((Capture) -> Void)?
+    var onDelete: ((Capture) -> Void)?
 
     init(settings: AppSettings) {
         self.settings = settings
@@ -36,6 +37,10 @@ final class QuickAccessController {
             onCopy: { ClipboardService.copy(capture.image) },
             onReveal: {
                 if let url = capture.fileURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            },
+            onDelete: { [weak self] in
+                self?.onDelete?(capture)
+                self?.close(id: capture.id)
             },
             onClose: { [weak self] in self?.close(id: capture.id) },
             onHoverChange: { [weak self] inside in self?.hoverChanged(capture.id, inside: inside) })

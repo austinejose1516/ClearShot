@@ -7,6 +7,7 @@ struct QuickAccessView: View {
     let onEdit: () -> Void
     let onCopy: () -> Void
     let onReveal: () -> Void
+    let onDelete: () -> Void
     let onClose: () -> Void
     let onHoverChange: (Bool) -> Void
 
@@ -31,6 +32,8 @@ struct QuickAccessView: View {
                 tool("Reveal in Finder", "folder", action: onReveal)
                     .disabled(capture.fileURL == nil)
                 Spacer()
+                tool("Move to Trash", "trash", action: onDelete)
+                    .disabled(capture.fileURL == nil)
                 tool("Close", "xmark", action: onClose)
             }
         }

@@ -18,10 +18,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.register()
         self.hotkeys = hotkeys
 
-        // Until the editor exists (Phase 6), Edit opens the file with the default app.
         quickAccess.onEdit = { capture in
             DiagnosticLog.write("edit requested for \(capture.id)")
-            if let url = capture.fileURL { NSWorkspace.shared.open(url) }
+            EditorSessionStore.shared.open(capture: capture)
+        }
+        quickAccess.onDelete = { [weak self] capture in
+            EditorSessionStore.shared.close(captureID: capture.id)
+            self?.captureStore.remove(id: capture.id)
+            guard let url = capture.fileURL else { return }
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                DiagnosticLog.write("moved to trash: \(url.path(percentEncoded: false))")
+            } catch {
+                ErrorPresenter.show(title: "Could not move to Trash", message: error.localizedDescription)
+            }
         }
 
         if !PermissionService.hasScreenRecordingAccess {
