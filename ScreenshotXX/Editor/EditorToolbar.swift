@@ -266,8 +266,8 @@ private struct ToolButton: View {
     }
 }
 
-/// The current colour as a dot with a chevron. Click it for the palette and a custom colour picker, so the
-/// toolbar row stays short.
+/// The current colour as a dot. Click it and the palette and a custom colour picker unfold to its right, inside
+/// the same chip, so the row stays short when closed and nothing ever leaves the window.
 private struct ColourDropdown: View {
     let color: RGBAColor
     let onPick: (RGBAColor) -> Void
@@ -276,38 +276,38 @@ private struct ColourDropdown: View {
     @State private var isOpen = false
 
     var body: some View {
-        Button { isOpen.toggle() } label: {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(Color(color))
-                    .overlay(Circle().stroke(.primary.opacity(0.18), lineWidth: 0.5))
-                    .frame(width: 15, height: 15)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 5) {
+            Button { isOpen.toggle() } label: {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color(color))
+                        .overlay(Circle().stroke(.primary.opacity(0.18), lineWidth: 0.5))
+                        .frame(width: 15, height: 15)
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .chip()
-        .help("Colour")
-        .popover(isPresented: $isOpen) {
-            HStack(spacing: 5) {
+            .buttonStyle(.plain)
+            .help("Colour")
+            if isOpen {
+                Divider().frame(height: 14)
                 ForEach(RGBAColor.presets, id: \.self) { preset in
                     Swatch(color: preset, isOn: color == preset) {
                         onPick(preset)
                         isOpen = false
                     }
                 }
-                Divider().frame(height: 16)
                 ColorPicker("Custom colour", selection: Binding(
                     get: { Color(color) },
                     set: { onCustom(RGBAColor($0).withAlpha(1)) }), supportsOpacity: false)
                     .labelsHidden()
                     .help("Pick any colour")
             }
-            .padding(10)
         }
+        .chip()
+        .animation(.easeOut(duration: 0.15), value: isOpen)
     }
 }
 
