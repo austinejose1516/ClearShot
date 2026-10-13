@@ -41,6 +41,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         // The window keeps its size whatever the image is; a small screenshot must not shrink it under the toolbar.
         host.sizingOptions = []
         window.contentViewController = host
+        // Attaching a content view controller resizes the window to that view's own frame, so set the size after.
+        window.setContentSize(EditorView.defaultSize)
         window.center()
     }
 
