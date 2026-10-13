@@ -22,10 +22,21 @@ import Testing
         #expect(EditorCommand(key: "x", keyCode: 7, command: false, shift: false) == nil)
     }
 
-    @Test func whileTypingOnlyCommandReturnIsOursAndItAddsANewLine() {
+    @Test func whileTypingOnlyCommandReturnAndTheStyleKeysAreOurs() {
         #expect(EditorCommand(key: "\r", keyCode: 36, command: true, shift: false, editingText: true) == .newLine)
         #expect(EditorCommand(key: "\r", keyCode: 36, command: false, shift: false, editingText: true) == nil)
         #expect(EditorCommand(key: "z", keyCode: 6, command: true, shift: false, editingText: true) == nil)
         #expect(EditorCommand(key: "", keyCode: 51, command: false, shift: false, editingText: true) == nil)
+        #expect(EditorCommand(key: "b", keyCode: 11, command: true, shift: false, editingText: true) == .bold)
+        #expect(EditorCommand(key: "i", keyCode: 34, command: true, shift: false, editingText: true) == .italic)
+        #expect(EditorCommand(key: "u", keyCode: 32, command: true, shift: false, editingText: true) == .underline)
+    }
+
+    @Test func styleKeysWorkOutsideTypingTooButNotWithShift() {
+        #expect(EditorCommand(key: "b", keyCode: 11, command: true, shift: false) == .bold)
+        #expect(EditorCommand(key: "i", keyCode: 34, command: true, shift: false) == .italic)
+        #expect(EditorCommand(key: "u", keyCode: 32, command: true, shift: false) == .underline)
+        #expect(EditorCommand(key: "B", keyCode: 11, command: true, shift: true) == nil)
+        #expect(EditorCommand(key: "b", keyCode: 11, command: false, shift: false) == nil)
     }
 }

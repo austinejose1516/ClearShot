@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 import Testing
 @testable import ScreenshotXXCore
 
@@ -19,6 +20,21 @@ import Testing
 
     @Test func boldIsWiderThanRegular() {
         #expect(text(bold: true).size.width > text(bold: false).size.width)
+    }
+
+    @Test func italicSlantsTheFontAndUnderlineChangesNoSize() {
+        var italic = text()
+        italic.italic = true
+        #expect(CTFontGetSymbolicTraits(italic.font).contains(.italicTrait))
+        #expect(CTFontGetSymbolicTraits(text().font).contains(.italicTrait) == false)
+        var underlined = text()
+        underlined.underline = true
+        #expect(underlined.size == text().size)
+    }
+
+    @Test func textStartsPlainAtThirtyTwoPixels() {
+        let content = TextContent(text: "Hi", origin: .zero)
+        #expect(content.fontSize == 32 && content.bold == false && content.italic == false && content.underline == false)
     }
 
     @Test func boxedAddsPaddingOnEverySide() {

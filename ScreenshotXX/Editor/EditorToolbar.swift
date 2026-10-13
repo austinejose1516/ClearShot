@@ -104,17 +104,7 @@ struct EditorToolbar: View {
         let values = session.shownValues
         return HStack(spacing: 8) {
             if can.contains(.color) {
-                HStack(spacing: 5) {
-                    ForEach(RGBAColor.presets, id: \.self) { preset in
-                        Swatch(color: preset, isOn: values.color == preset) { session.apply(.color(preset)) }
-                    }
-                    ColorPicker("Custom colour", selection: Binding(
-                        get: { Color(values.color) },
-                        set: { pickCustom(RGBAColor($0).withAlpha(1)) }), supportsOpacity: false)
-                        .labelsHidden()
-                        .help("Pick any colour")
-                }
-                .chip()
+                ColourDropdown(color: values.color, onPick: { session.apply(.color($0)) }, onCustom: pickCustom)
                 labelled("Opacity") {
                     menuPicker(Binding(get: { values.opacity }, set: { session.apply(.opacity($0)) }),
                                options: StyleValues.opacities, label: { "\(Int($0 * 100)) %" })
@@ -152,11 +142,15 @@ struct EditorToolbar: View {
                 }
             }
             if can.contains(.textStyle) {
-                HStack(spacing: 10) {
-                    toggle("Bold", isOn: Binding(get: { values.bold }, set: { session.apply(.bold($0)) }))
-                    toggle("Boxed", isOn: Binding(get: { values.boxed }, set: { session.apply(.boxed($0)) }))
+                HStack(spacing: 1) {
+                    ToolButton(symbol: "bold", help: "Bold (⌘B)", isOn: values.bold) { session.apply(.bold(!values.bold)) }
+                    ToolButton(symbol: "italic", help: "Italic (⌘I)", isOn: values.italic) { session.apply(.italic(!values.italic)) }
+                    ToolButton(symbol: "underline", help: "Underline (⌘U)", isOn: values.underline) {
+                        session.apply(.underline(!values.underline))
+                    }
                 }
                 .chip()
+                toggle("Boxed", isOn: Binding(get: { values.boxed }, set: { session.apply(.boxed($0)) })).chip()
             }
             if can.contains(.stepSize) {
                 labelled("Size") {
@@ -269,6 +263,51 @@ private struct ToolButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .help(help)
+    }
+}
+
+/// The current colour as a dot with a chevron. Click it for the palette and a custom colour picker, so the
+/// toolbar row stays short.
+private struct ColourDropdown: View {
+    let color: RGBAColor
+    let onPick: (RGBAColor) -> Void
+    let onCustom: (RGBAColor) -> Void
+
+    @State private var isOpen = false
+
+    var body: some View {
+        Button { isOpen.toggle() } label: {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(Color(color))
+                    .overlay(Circle().stroke(.primary.opacity(0.18), lineWidth: 0.5))
+                    .frame(width: 15, height: 15)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .chip()
+        .help("Colour")
+        .popover(isPresented: $isOpen) {
+            HStack(spacing: 5) {
+                ForEach(RGBAColor.presets, id: \.self) { preset in
+                    Swatch(color: preset, isOn: color == preset) {
+                        onPick(preset)
+                        isOpen = false
+                    }
+                }
+                Divider().frame(height: 16)
+                ColorPicker("Custom colour", selection: Binding(
+                    get: { Color(color) },
+                    set: { onCustom(RGBAColor($0).withAlpha(1)) }), supportsOpacity: false)
+                    .labelsHidden()
+                    .help("Pick any colour")
+            }
+            .padding(10)
+        }
     }
 }
 

@@ -81,6 +81,7 @@ struct TextAnnotationView: View {
             }
             Text(content.text)
                 .font(Font(content.font))
+                .underline(content.underline)
                 .foregroundStyle(content.boxed ? Color.white : Color(color))
                 .fixedSize()
                 .shadow(color: content.boxed ? .clear : .black.opacity(0.35), radius: content.fontSize * 0.06, y: 1)

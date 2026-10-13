@@ -12,7 +12,7 @@ public struct StyleCapabilities: OptionSet, Sendable, Hashable {
     public static let fill = StyleCapabilities(rawValue: 1 << 2)
     public static let arrow = StyleCapabilities(rawValue: 1 << 3)
     public static let fontSize = StyleCapabilities(rawValue: 1 << 4)
-    /// Bold and boxed.
+    /// Bold, italic, underline and boxed.
     public static let textStyle = StyleCapabilities(rawValue: 1 << 5)
     public static let blurMode = StyleCapabilities(rawValue: 1 << 6)
     public static let stepSize = StyleCapabilities(rawValue: 1 << 7)
@@ -29,6 +29,8 @@ public enum StyleChange: Equatable, Sendable {
     case arrow(Bool)
     case fontSize(CGFloat)
     case bold(Bool)
+    case italic(Bool)
+    case underline(Bool)
     case boxed(Bool)
     case blurMode(BlurMode)
     case stepSize(CGFloat)
@@ -50,9 +52,11 @@ public struct StyleValues: Equatable, Sendable {
     public var fills = false
     /// Shown for selected lines and curves; new ones take it from the tool (Line vs Arrow).
     public var arrow = true
-    /// Screenshots are usually 2× Retina, so 32 px reads as 16 pt.
+    /// Screenshots are usually 2× Retina, so 32 px reads as 16 pt. Plain weight, like any text tool.
     public var fontSize: CGFloat = 32
-    public var bold = true
+    public var bold = false
+    public var italic = false
+    public var underline = false
     public var boxed = false
     public var blurMode: BlurMode = .pixelate
     public var stepRadius: CGFloat = 20
@@ -78,6 +82,8 @@ public struct StyleValues: Equatable, Sendable {
         case .arrow(let value): arrow = value
         case .fontSize(let value): fontSize = value
         case .bold(let value): bold = value
+        case .italic(let value): italic = value
+        case .underline(let value): underline = value
         case .boxed(let value): boxed = value
         case .blurMode(let value): blurMode = value
         case .stepSize(let value): stepRadius = value

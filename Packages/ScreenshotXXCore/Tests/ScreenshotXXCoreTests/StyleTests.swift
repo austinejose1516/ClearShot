@@ -37,14 +37,19 @@ import Testing
     }
 
     @Test func valuesShowTheAnnotationsOwnStyle() {
-        var text = Annotation(kind: .text(TextContent(text: "Hi", origin: .zero, fontSize: 20, bold: false, boxed: true)))
+        var text = Annotation(kind: .text(TextContent(text: "Hi", origin: .zero, fontSize: 20, bold: true, italic: true,
+                                                      underline: true, boxed: true)))
         text.style = Annotation.Style(strokeColor: RGBAColor.purple.withAlpha(0.75), strokeWidth: 4)
         let shown = StyleValues().reading(text)
         #expect(shown.color == .purple)
         #expect(shown.opacity == 0.75)
         #expect(shown.fontSize == 20)
-        #expect(shown.bold == false)
-        #expect(shown.boxed == true)
+        #expect(shown.bold && shown.italic && shown.underline && shown.boxed)
+    }
+
+    @Test func newTextIsPlainByDefault() {
+        let values = StyleValues()
+        #expect(values.bold == false && values.italic == false && values.underline == false && values.boxed == false)
     }
 
     @Test func newShapesGetFillOnlyWhenTheyCanBeFilled() {

@@ -28,12 +28,46 @@ import Testing
         #expect(s.document.annotations.isEmpty)
     }
 
-    @Test func aClickWithADrawingToolAddsNothing() {
+    @Test func aClickWithADrawingToolAddsNothingAndHandsBackToThePointer() {
+        for tool in [EditorTool.line, .arrow, .curve, .pen, .highlight, .rect, .ellipse, .bubble, .blur, .crop] {
+            let s = session()
+            s.tool = tool
+            drag(s, p(10, 10))
+            #expect(s.document.annotations.isEmpty, "\(tool)")
+            #expect(s.document.canUndo == false, "\(tool)")
+            #expect(s.tool == .select, "\(tool) should hand back to Select")
+            #expect(s.cropDraft == nil)
+        }
+    }
+
+    @Test func clickingAwayFromAPenStrokeDeselectsItAndHandsBackToThePointer() {
         let s = session()
-        s.tool = .rect
+        s.tool = .pen
+        drag(s, p(10, 10), p(60, 10), p(110, 10))
+        #expect(s.document.selection.count == 1 && s.tool == .pen)
+        drag(s, p(200, 200))
+        #expect(s.document.annotations.count == 1)
+        #expect(s.document.selection.isEmpty)
+        #expect(s.tool == .select)
+    }
+
+    @Test func newTextIsPlainAndTheStyleKeysFlipItWhileTyping() {
+        let s = session()
+        s.tool = .text
         drag(s, p(10, 10))
-        #expect(s.document.annotations.isEmpty)
-        #expect(s.document.canUndo == false)
+        s.editText("Hi")
+        let plain = s.document.annotations[0].textContent
+        #expect(plain?.fontSize == 32 && plain?.bold == false && plain?.italic == false && plain?.underline == false)
+        s.apply(.italic(true))
+        s.apply(.underline(true))
+        let styled = s.document.annotations[0].textContent
+        #expect(styled?.italic == true && styled?.underline == true && styled?.bold == false)
+        #expect(s.shownValues.italic && s.shownValues.underline)
+        s.finishTextEditing()
+        // The next text keeps the style.
+        s.tool = .text
+        drag(s, p(10, 100))
+        #expect(s.document.annotations[1].textContent?.italic == true)
     }
 
     @Test func pressingAShapeWithADrawingToolMovesItInsteadOfDrawing() {

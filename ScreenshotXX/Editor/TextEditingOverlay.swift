@@ -14,6 +14,7 @@ struct TextEditingOverlay: View {
             case .text(let content):
                 field(placeholder: "Type here")
                     .font(Font(content.font))
+                    .underline(content.underline)
                     .foregroundStyle(content.boxed ? Color.white : Color(annotation.style.strokeColor))
                     .padding(.horizontal, content.padding.width)
                     .padding(.vertical, content.padding.height)

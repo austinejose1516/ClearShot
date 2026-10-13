@@ -178,7 +178,10 @@ public final class EditorSession {
         case .drawing(let id, _), .scribbling(let id):
             guard let annotation = document.annotation(id: id) else { return }
             guard !annotation.isTooSmall else {
+                // A plain click draws nothing: it clears the selection and hands back to the pointer.
                 document.revert()
+                document.selection = []
+                tool = .select
                 return
             }
             document.commit()
@@ -194,7 +197,11 @@ public final class EditorSession {
             textDraft = nil
             placeText(at: start, box: box)
         case .cropping:
-            if let crop = cropDraft, !SelectionGeometry.isUsable(crop) { cropDraft = nil }
+            // A plain click (no draft) or a tiny drag picks nothing: back to the pointer.
+            if cropDraft.map(SelectionGeometry.isUsable) != true {
+                cropDraft = nil
+                tool = .select
+            }
         case .idle, nil:
             break
         }
@@ -287,8 +294,8 @@ public final class EditorSession {
             origin = box.origin
             defaults.apply(.fontSize(TextContent.fontSize(forBoxHeight: box.height, boxed: defaults.boxed)))
         }
-        let content = TextContent(text: "", origin: origin, fontSize: defaults.fontSize,
-                                  bold: defaults.bold, boxed: defaults.boxed)
+        let content = TextContent(text: "", origin: origin, fontSize: defaults.fontSize, bold: defaults.bold,
+                                  italic: defaults.italic, underline: defaults.underline, boxed: defaults.boxed)
         let annotation = Annotation(kind: .text(content), style: defaults.style(canFill: false))
         document.insert(annotation)
         document.selection = [annotation.id]

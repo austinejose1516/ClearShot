@@ -11,13 +11,18 @@ public struct TextContent: Figure {
     public var origin: CGPoint
     public var fontSize: CGFloat
     public var bold: Bool
+    public var italic: Bool
+    public var underline: Bool
     public var boxed: Bool
 
-    public init(text: String, origin: CGPoint, fontSize: CGFloat = 48, bold: Bool = true, boxed: Bool = false) {
+    public init(text: String, origin: CGPoint, fontSize: CGFloat = 32, bold: Bool = false, italic: Bool = false,
+                underline: Bool = false, boxed: Bool = false) {
         self.text = text
         self.origin = origin
         self.fontSize = fontSize
         self.bold = bold
+        self.italic = italic
+        self.underline = underline
         self.boxed = boxed
     }
 
@@ -26,8 +31,8 @@ public struct TextContent: Figure {
         max(minimumFontSize, (height / (boxed ? 1.5 : 1.2)).rounded())
     }
 
-    /// The system font at this size, bold or medium.
-    public var font: CTFont { TextMetrics.font(size: fontSize, bold: bold) }
+    /// The system font at this size: regular or bold, upright or italic. (Underline is drawn, not a font.)
+    public var font: CTFont { TextMetrics.font(size: fontSize, bold: bold, italic: italic) }
     /// Space between the text and the edge of its box; zero when not boxed.
     public var padding: CGSize { boxed ? CGSize(width: fontSize * 0.3, height: fontSize * 0.15) : .zero }
     public var cornerRadius: CGFloat { fontSize * 0.25 }
@@ -69,6 +74,8 @@ public struct TextContent: Figure {
         switch change {
         case .fontSize(let size): fontSize = size
         case .bold(let on): bold = on
+        case .italic(let on): italic = on
+        case .underline(let on): underline = on
         case .boxed(let on): boxed = on
         default: break
         }
@@ -77,6 +84,8 @@ public struct TextContent: Figure {
     public func read(into values: inout StyleValues) {
         values.fontSize = fontSize
         values.bold = bold
+        values.italic = italic
+        values.underline = underline
         values.boxed = boxed
     }
 
@@ -84,15 +93,19 @@ public struct TextContent: Figure {
 }
 
 enum TextMetrics {
-    static func font(size: CGFloat, bold: Bool) -> CTFont {
+    static func font(size: CGFloat, bold: Bool, italic: Bool) -> CTFont {
         guard let system = CTFontCreateUIFontForLanguage(.system, size, nil) else {
             return CTFontCreateWithName("Helvetica" as CFString, size, nil)
         }
-        // Weight values match NSFont.Weight.bold (0.4) and .medium (0.23).
-        let traits = [kCTFontWeightTrait as String: bold ? 0.4 : 0.23] as CFDictionary
+        // Weight values match NSFont.Weight.bold (0.4) and .regular (0).
+        let traits = [kCTFontWeightTrait as String: bold ? 0.4 : 0.0] as CFDictionary
         let attributes = [kCTFontTraitsAttribute as String: traits] as CFDictionary
         let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(system), attributes)
-        return CTFontCreateWithFontDescriptor(descriptor, size, nil)
+        let upright = CTFontCreateWithFontDescriptor(descriptor, size, nil)
+        guard italic, let slanted = CTFontCreateCopyWithSymbolicTraits(upright, size, nil, .italicTrait, .italicTrait) else {
+            return upright
+        }
+        return slanted
     }
 
     static func size(of text: String, font: CTFont) -> CGSize {

@@ -59,6 +59,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         case .save: fileURL.map(write(to:)) ?? saveAs()
         case .saveAs: saveAs()
         case .newLine: (window as? EditorWindow)?.insertNewLineInText()
+        case .bold: session.apply(.bold(!session.shownValues.bold))
+        case .italic: session.apply(.italic(!session.shownValues.italic))
+        case .underline: session.apply(.underline(!session.shownValues.underline))
         }
     }
 
