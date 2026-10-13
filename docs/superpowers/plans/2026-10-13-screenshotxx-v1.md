@@ -1114,3 +1114,33 @@ import Testing
 - [ ] **Step 8: Commit** — `git commit -m "feat: area capture with frozen-screen overlay"`
 
 Task test command: `make check`
+
+---
+
+### Task 4: Window capture — hover highlights a window, click captures it with its shadow, Space toggles area/window
+
+**Files:**
+- Create (Core): `.../Capture/WindowInfo.swift`, `.../Capture/WindowPicker.swift`, `.../Capture/ScreenCoordinates.swift`
+- Test (Core): `WindowPickerTests.swift`, `ScreenCoordinatesTests.swift`
+- Create (App): `ScreenshotXX/Capture/OverlayState.swift`, `ScreenshotXX/Capture/CaptureOverlayView.swift`, `ScreenshotXX/Capture/WindowPickOverlayView.swift`
+- Modify (App): `AreaCaptureSession.swift` → renamed `OverlayCaptureSession.swift` (mode + window outcome), `SelectionOverlayWindow.swift` (Space → `onToggleMode`), `ScreenCapturer.swift` (`windows()`, `captureWindow(_:showsCursor:includeShadow:)`), `CaptureCoordinator.swift`
+
+**Interfaces:**
+- Consumes: `SelectionOverlayView`, `SelectionOverlayWindow`, `SelectionGeometry` (Task 3); `finish(_:)` (Task 2).
+- Produces (Core): `public struct WindowInfo: Identifiable, Sendable, Equatable { id: UInt32; frame: CGRect /* Quartz: top-left origin, global */; title: String?; ownerBundleID: String?; layer: Int; isOnScreen: Bool }`
+- Produces (Core): `public enum WindowPicker { static let minimumSize: CGFloat = 50; static func candidates(_: [WindowInfo], excludingBundleID: String) -> [WindowInfo] /* keeps input order */; static func window(at: CGPoint, in: [WindowInfo]) -> WindowInfo? /* first match = front-most */ }`
+- Produces (Core): `public enum ScreenCoordinates { static func quartzPoint(fromAppKit: CGPoint, primaryHeight: CGFloat) -> CGPoint; static func quartzRect(fromAppKit: CGRect, primaryHeight: CGFloat) -> CGRect; static func viewRect(fromQuartz: CGRect, screenQuartzFrame: CGRect) -> CGRect }`
+- Produces (App): `OverlayCaptureSession.run(mode: Mode, showsCursor: Bool) async throws -> Outcome` with `enum Mode { area, window }`, `enum Outcome { area(CGImage), window(SCWindow), cancelled }`.
+- Produces (App): `ScreenCapturer.windows() async throws -> [SCWindow]` (on-screen only, SCK order kept), `ScreenCapturer.captureWindow(_: SCWindow, showsCursor: Bool, includeShadow: Bool) async throws -> CGImage` (desktop-independent window filter, `ignoreShadows = !includeShadow`).
+- Window shadow is always included in v1 (CleanShot default). A setting can come later.
+
+- [ ] **Step 1: Failing Core tests** — `WindowPickerTests`: drops own bundle, non-zero layer, off-screen and < 50 pt windows, keeps order; `window(at:)` returns the first (front-most) match or nil. `ScreenCoordinatesTests`: AppKit (100,100) with primary height 1169 → Quartz (100,1069); AppKit rect (0,0,1800,25) → Quartz (0,1144,1800,25); Quartz window (2000,300,400,200) on a screen with Quartz frame origin (1800,0) → view rect (200,300,400,200).
+- [ ] **Step 2: Run → `cannot find 'WindowPicker' / 'ScreenCoordinates'`.**
+- [ ] **Step 3: Implement the three Core types.**
+- [ ] **Step 4: Run → 23 tests pass.**
+- [ ] **Step 5: App.** `OverlayState` (@Observable: `mode`, `windows: [WindowInfo]`). `CaptureOverlayView` shows `SelectionOverlayView` in area mode and `WindowPickOverlayView` in window mode. The window view converts hover points to Quartz (`screenQuartzFrame.origin + point`), finds the window with `WindowPicker.window(at:)`, draws a highlight (white 15 % fill, 2 pt accent stroke, title pill) and reports the pick on click. Panel: Space (keyCode 49) toggles the mode. Session: builds `WindowInfo` from `SCWindow`, resolves `.window(scWindow)`, coordinator captures it live and calls `finish(Capture(kind: .window, …))`. Log the first five window titles in SCK order to confirm front-to-back.
+- [ ] **Step 6: Build.**
+- [ ] **Step 7: Verify by hand** — Austin: ⌃⇧W, move over windows (highlight follows), click → shutter; the PNG has rounded corners and a shadow. Space inside ⌃⇧A switches to window mode. I check the log and the file.
+- [ ] **Step 8: Commit** — `feat: window capture with hover highlight`
+
+Task test command: `make check`

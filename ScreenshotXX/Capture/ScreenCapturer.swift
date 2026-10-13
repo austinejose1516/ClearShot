@@ -34,6 +34,22 @@ enum ScreenCapturer {
         }
     }
 
+    /// On-screen windows in ScreenCaptureKit's order (front to back), desktop and wallpaper excluded.
+    static func windows() async throws -> [SCWindow] {
+        try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true).windows
+    }
+
+    static func captureWindow(_ window: SCWindow, showsCursor: Bool, includeShadow: Bool) async throws -> CGImage {
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let configuration = SCScreenshotConfiguration()
+        configuration.showsCursor = showsCursor
+        configuration.ignoreShadows = !includeShadow
+        configuration.dynamicRange = .sdr
+        let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter, configuration: configuration)
+        guard let image = output.sdrImage else { throw Failure.noImage }
+        return image
+    }
+
     static func captureDisplay(_ display: SCDisplay, showsCursor: Bool) async throws -> CGImage {
         let filter = SCContentFilter(display: display, excludingWindows: [])
         let configuration = SCScreenshotConfiguration()

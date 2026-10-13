@@ -5,6 +5,7 @@ import SwiftUI
 /// without activating the app, which macOS 14+ would refuse for a hotkey-woken background app.
 final class SelectionOverlayWindow: NSPanel {
     var onCancel: (() -> Void)?
+    var onToggleMode: (() -> Void)?
 
     init(screen: NSScreen) {
         super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -23,7 +24,11 @@ final class SelectionOverlayWindow: NSPanel {
     override var canBecomeKey: Bool { true }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { onCancel?() } else { super.keyDown(with: event) }
+        switch event.keyCode {
+        case 53: onCancel?()        // Esc
+        case 49: onToggleMode?()    // Space
+        default: super.keyDown(with: event)
+        }
     }
 
     override func cancelOperation(_ sender: Any?) {

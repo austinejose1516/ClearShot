@@ -1,5 +1,4 @@
 import AppKit
-import os
 import ScreenshotXXCore
 
 @Observable
@@ -8,7 +7,6 @@ final class CaptureCoordinator {
     private let store: CaptureStore
     private let onPermissionMissing: () -> Void
     private var isCapturing = false
-    @ObservationIgnored private let log = Logger(subsystem: "com.austinejose.screenshotxx", category: "capture")
 
     init(settings: AppSettings, store: CaptureStore, onPermissionMissing: @escaping () -> Void) {
         self.settings = settings
@@ -28,25 +26,29 @@ final class CaptureCoordinator {
         case .fullScreen:
             Task { await captureFullScreen() }
         case .area:
-            Task { await captureArea() }
+            Task { await captureWithOverlay(.area) }
         case .window:
-            log.notice("capture requested: \(kind.rawValue, privacy: .public) (not implemented yet)")
+            Task { await captureWithOverlay(.window) }
         }
     }
 
-    private func captureArea() async {
+    private func captureWithOverlay(_ mode: OverlayCaptureSession.Mode) async {
         isCapturing = true
         defer { isCapturing = false }
         do {
-            switch try await AreaCaptureSession.run(showsCursor: settings.showsCursor) {
-            case .selected(let image):
+            switch try await OverlayCaptureSession.run(mode: mode, showsCursor: settings.showsCursor) {
+            case .area(let image):
                 DiagnosticLog.write("area selected: \(image.width)x\(image.height) px")
                 finish(Capture(kind: .area, image: image))
+            case .window(let window):
+                let image = try await ScreenCapturer.captureWindow(window, showsCursor: settings.showsCursor, includeShadow: true)
+                DiagnosticLog.write("window captured: \(window.title ?? "?") \(image.width)x\(image.height) px")
+                finish(Capture(kind: .window, image: image))
             case .cancelled:
-                DiagnosticLog.write("area cancelled")
+                DiagnosticLog.write("overlay cancelled")
             }
         } catch {
-            DiagnosticLog.write("area capture failed: \(error)")
+            DiagnosticLog.write("overlay capture failed: \(error)")
             ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
         }
     }
