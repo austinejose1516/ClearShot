@@ -6,7 +6,7 @@ import SwiftUI
 /// SwiftUI's built-in Settings scene does not open reliably from a menu bar app.
 final class SettingsWindowController: NSWindowController {
     convenience init(settings: AppSettings, updates: UpdateChecker) {
-        let tabs = NSTabViewController()
+        let tabs = SettingsTabsController()
         tabs.tabStyle = .toolbar
         tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().environment(updates).themed(settings)))
         tabs.addTabViewItem(Self.tab("Shortcuts", symbol: "keyboard", ShortcutsSettingsTab().themed(settings)))
@@ -15,6 +15,7 @@ final class SettingsWindowController: NSWindowController {
         window.styleMask = [.titled, .closable]
         window.toolbarStyle = .preference
         window.isReleasedWhenClosed = false
+        window.title = tabs.tabViewItems.first?.label ?? "Settings"
         self.init(window: window)
         window.center()
     }
@@ -26,5 +27,13 @@ final class SettingsWindowController: NSWindowController {
         item.label = title
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
         return item
+    }
+}
+
+/// Shows the selected tab's name as the window title, like System Settings panes.
+private final class SettingsTabsController: NSTabViewController {
+    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: tabViewItem)
+        view.window?.title = tabViewItem?.label ?? "Settings"
     }
 }

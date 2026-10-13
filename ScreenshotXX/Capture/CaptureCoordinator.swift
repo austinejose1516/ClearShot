@@ -21,6 +21,7 @@ final class CaptureCoordinator {
             return
         }
         // Set before the task starts, so a fast second hotkey press cannot start a second capture.
+        // It stays set until the file is written, so the next capture never picks the same file name.
         guard !isCapturing else { return }
         isCapturing = true
         Task {
@@ -30,7 +31,7 @@ final class CaptureCoordinator {
                     DiagnosticLog.write("capture(\(kind.rawValue)) cancelled")
                     return
                 }
-                finish(capture)
+                await finish(capture)
             } catch {
                 DiagnosticLog.write("capture(\(kind.rawValue)) failed: \(error)")
                 ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
@@ -58,21 +59,34 @@ final class CaptureCoordinator {
         }
     }
 
-    /// Shared tail of every capture: clipboard first (never lost), then disk, then sound and card.
-    private func finish(_ capture: Capture) {
+    /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–150 ms,
+    /// so it runs off the main thread while the card animates in. Then the clipboard, then the file.
+    private func finish(_ capture: Capture) async {
         var capture = capture
+        let format = settings.imageFormat
+        let copies = settings.copiesToClipboard
+        let reserved = Result { try FileSaver.reserveURL(for: format, in: settings.saveFolder, date: capture.createdAt) }
+        capture.fileURL = try? reserved.get()
         CaptureFlash.flash(on: .underMouse)
-        if settings.copiesToClipboard { ClipboardService.copy(capture.image) }
+        if settings.playsSound { SoundPlayer.playShutter() }
+        quickAccess.show(capture, on: .underMouse)
+
+        let image = capture.image
+        let started = ContinuousClock.now
+        let encoded = await Task.detached { () -> (file: Result<Data, any Error>, png: Data?) in
+            let file = Result { try FileSaver.encode(image, format: format) }
+            guard copies else { return (file, nil) }
+            return (file, format == .png ? try? file.get() : try? FileSaver.encode(image, format: .png))
+        }.value
+        if let png = encoded.png { ClipboardService.copy(png: png, of: image) }
         do {
-            capture.fileURL = try FileSaver.save(capture.image, format: settings.imageFormat,
-                                                 to: settings.saveFolder, date: capture.createdAt)
-            DiagnosticLog.write("saved \(capture.kind.rawValue) \(capture.image.width)x\(capture.image.height) px")
+            let url = try reserved.get()
+            try encoded.file.get().write(to: url)
+            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
         } catch {
             DiagnosticLog.write("save failed: \(error)")
             ErrorPresenter.show(title: "Could not save the screenshot",
                                 message: "\(error.localizedDescription)\n\nIt is still on your clipboard.")
         }
-        if settings.playsSound { SoundPlayer.playShutter() }
-        quickAccess.show(capture, on: .underMouse)
     }
 }

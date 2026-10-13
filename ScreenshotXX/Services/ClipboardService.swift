@@ -1,15 +1,36 @@
 import AppKit
+import ScreenshotXXCore
 
 enum ClipboardService {
-    /// Puts the image on the general pasteboard as TIFF (what NSImage writes) plus PNG (what Slack and browsers prefer).
+    /// Encodes right away; fine for a button press (Copy on the card or in the editor).
     static func copy(_ image: CGImage) {
-        let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        guard let png = try? FileSaver.encode(image, format: .png) else { return }
+        copy(png: png, of: image)
+    }
+
+    /// Puts ready PNG bytes on the general pasteboard (what Slack and browsers read).
+    /// TIFF, for older apps, is only made if an app asks for it, so copying stays fast.
+    static func copy(png: Data, of image: CGImage) {
+        let item = NSPasteboardItem()
+        item.setData(png, forType: .png)
+        item.setDataProvider(TIFFProvider(image: image), forTypes: [.tiff])
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.writeObjects([nsImage])
-        if let tiff = nsImage.tiffRepresentation,
-           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-            pasteboard.setData(png, forType: .png)
+        pasteboard.writeObjects([item])
+    }
+}
+
+/// Makes the TIFF only when an app pastes it. AppKit calls this off the main actor.
+nonisolated private final class TIFFProvider: NSObject, NSPasteboardItemDataProvider, Sendable {
+    private let image: CGImage
+
+    init(image: CGImage) {
+        self.image = image
+    }
+
+    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
+        if let tiff = NSBitmapImageRep(cgImage: image).tiffRepresentation {
+            item.setData(tiff, forType: type)
         }
     }
 }

@@ -53,7 +53,7 @@ struct QuickAccessView: View {
         .opacity(dismissing ? 0 : (appeared ? 1 : 0))
         .offset(y: dismissing ? 18 : (appeared ? 0 : 36))
         .padding(QuickAccessLayout.panelMargin)
-        .animation(.spring(response: 0.42, dampingFraction: 0.72), value: appeared)
+        .animation(.spring(response: 0.28, dampingFraction: 0.8), value: appeared)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hovered)
         .animation(.easeIn(duration: 0.22), value: dismissing)
         .onAppear { appeared = true }
