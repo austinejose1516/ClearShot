@@ -38,12 +38,6 @@ brew install --cask austinejose1516/tap/clearshot
 | Uninstall | `brew uninstall --cask clearshot` |
 | Uninstall and remove its settings and log | `brew uninstall --zap --cask clearshot` |
 
-**No admin rights?** Install into your own Applications folder instead of `/Applications`. Add this line to `~/.zshrc` once, so installs and upgrades both go there:
-
-```bash
-export HOMEBREW_CASK_OPTS="--appdir=$HOME/Applications"
-```
-
 **Without Homebrew:** download `ClearShot-<version>.dmg` from the [latest release](https://github.com/austinejose1516/ClearShot/releases/latest), open it and drag ClearShot into Applications. **Check for Updates…** in the menu bar tells you when a newer DMG is out.
 
 **First launch.**
