@@ -5,7 +5,7 @@ import SwiftUI
 struct TextEditingOverlay: View {
     let document: EditorDocument
     let id: Annotation.ID
-    let zoom: CGFloat
+    let transform: CanvasTransform
     let onFinish: () -> Void
 
     @FocusState private var focused: Bool
@@ -13,6 +13,8 @@ struct TextEditingOverlay: View {
     var body: some View {
         if let annotation = document.annotation(id: id), case .text(let content) = annotation.kind {
             let color = Color(annotation.style.strokeColor)
+            let zoom = transform.scale
+            let origin = transform.toCanvas(content.origin)
             TextField("Text", text: binding(annotation, content), axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: content.fontSize * zoom, weight: content.bold ? .bold : .medium))
@@ -24,7 +26,7 @@ struct TextEditingOverlay: View {
                 .overlay(RoundedRectangle(cornerRadius: content.fontSize * 0.25 * zoom)
                     .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                 .fixedSize()
-                .offset(x: content.origin.x * zoom, y: content.origin.y * zoom)
+                .offset(x: origin.x, y: origin.y)
                 .focused($focused)
                 .onAppear { focused = true }
                 .onSubmit(onFinish)

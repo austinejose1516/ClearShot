@@ -16,6 +16,7 @@ final class EditorState {
     var bold = true
     var boxed = false
     var editingTextID: Annotation.ID?
+    var showsFramePanel = false
     var editingTextIsNew = false
 
     static let fontSizes: [CGFloat] = [16, 24, 32, 48, 64, 96, 128]

@@ -30,6 +30,7 @@ struct EditorCanvasView: View {
             }
             .onAppear { fit(to: proxy.size) }
             .onChange(of: proxy.size) { _, newSize in fit(to: newSize) }
+            .onChange(of: document.layout.canvasSize) { fit(to: proxy.size) }
             .overlay(alignment: .top) {
                 if let tip {
                     Text(tip)
@@ -47,22 +48,29 @@ struct EditorCanvasView: View {
         .onChange(of: state.tool) { showTip(for: state.tool) }
     }
 
+    private var transform: CanvasTransform {
+        CanvasTransform(layout: document.layout, zoom: state.zoom)
+    }
+
     private var canvas: some View {
-        let size = document.imageSize
+        let layout = document.layout
+        let size = layout.canvasSize
         let zoom = state.zoom
+        let transform = transform
         return ZStack(alignment: .topLeading) {
             CompositionView(document: document, hiddenAnnotationID: state.editingTextID)
                 .scaleEffect(zoom, anchor: .topLeading)
                 .frame(width: size.width * zoom, height: size.height * zoom, alignment: .topLeading)
                 .clipped()
                 .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
-            SelectionOverlay(document: document, zoom: zoom, hiddenID: state.editingTextID)
+            SelectionOverlay(document: document, transform: transform, hiddenID: state.editingTextID)
             if let draft = textDraft {
+                let r = transform.toCanvas(draft)
                 Rectangle()
                     .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
                     .background(Color.accentColor.opacity(0.08))
-                    .frame(width: max(1, draft.width * zoom), height: max(1, draft.height * zoom))
-                    .offset(x: draft.minX * zoom, y: draft.minY * zoom)
+                    .frame(width: max(1, r.width), height: max(1, r.height))
+                    .offset(x: r.minX, y: r.minY)
                     .allowsHitTesting(false)
             }
         }
@@ -82,19 +90,19 @@ struct EditorCanvasView: View {
         .overlay(alignment: .topLeading) {
             // Above the gesture layer, so clicks inside the field reach the field.
             if let editing = state.editingTextID {
-                TextEditingOverlay(document: document, id: editing, zoom: zoom, onFinish: finishTextEditing)
+                TextEditingOverlay(document: document, id: editing, transform: transform, onFinish: finishTextEditing)
             }
         }
         .padding(24)
     }
 
     private func imagePoint(_ local: CGPoint) -> CGPoint {
-        CGPoint(x: local.x / state.zoom, y: local.y / state.zoom)
+        transform.fromCanvas(local)
     }
 
     private func fit(to viewport: CGSize) {
         guard state.zoomIsFit else { return }
-        state.zoom = state.fitZoom(imageSize: document.imageSize, viewport: viewport)
+        state.zoom = state.fitZoom(imageSize: document.layout.canvasSize, viewport: viewport)
     }
 
     // MARK: - Gesture handling (image coordinates)
@@ -135,7 +143,7 @@ struct EditorCanvasView: View {
         case .resizing(_, let handle, let initial):
             document.update(Handles.apply(handle, to: initial, point: point))
         case .pendingTextEdit(_, let start):
-            if hypot(point.x - start.x, point.y - start.y) > 3 / state.zoom {
+            if hypot(point.x - start.x, point.y - start.y) > 3 / transform.scale {
                 document.moveSelection(by: CGVector(dx: point.x - start.x, dy: point.y - start.y))
                 gesture = .moving(last: point)
             }
@@ -147,7 +155,7 @@ struct EditorCanvasView: View {
     }
 
     private func begin(at point: CGPoint) {
-        let tolerance = 6 / state.zoom
+        let tolerance = 6 / transform.scale
         let handle = handleHit(at: point, tolerance: tolerance * 1.5)
         let hitID = document.hitTest(point, tolerance: tolerance)
         DiagnosticLog.write("canvas click tool=\(state.tool.rawValue) at=(\(Int(point.x)),\(Int(point.y))) zoom=\(String(format: "%.2f", state.zoom)) hit=\(hitID.map { String($0.uuidString.prefix(4)) } ?? "none") handle=\(handle.map { "\($0.kind)" } ?? "none") selected=\(document.selection.map { String($0.uuidString.prefix(4)) }) editing=\(state.editingTextID != nil) shapes=\(document.annotations.map { "\(shortKind($0)) \($0.bounds.integral)" })")
@@ -253,7 +261,7 @@ struct EditorCanvasView: View {
 
     /// What a press here would do, as a cursor: resize on a dot, hand on a shape, I-beam on text, else the tool's cursor.
     private func cursor(at point: CGPoint) -> NSCursor {
-        let tolerance = 6 / state.zoom
+        let tolerance = 6 / transform.scale
         if let hit = handleHit(at: point, tolerance: tolerance * 1.5) {
             switch hit.kind {
             case .topLeft: return .frameResize(position: .topLeft, directions: .all)

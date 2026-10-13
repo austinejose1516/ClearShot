@@ -15,7 +15,13 @@ struct EditorView: View {
         VStack(spacing: 0) {
             EditorToolbar(document: document, state: state, onCopy: copy, onSave: save, onSaveAs: exportAs)
             Divider()
-            EditorCanvasView(document: document, state: state)
+            HStack(spacing: 0) {
+                EditorCanvasView(document: document, state: state)
+                if state.showsFramePanel {
+                    Divider()
+                    FramePanelView(document: document)
+                }
+            }
         }
         .frame(minWidth: 1040, minHeight: 600)
         .onAppear(perform: wireShortcuts)

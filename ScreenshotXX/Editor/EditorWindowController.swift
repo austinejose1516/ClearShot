@@ -7,7 +7,7 @@ final class EditorWindowController: NSWindowController {
     let state = EditorState()
     private(set) var fileURL: URL?
 
-    init(capture: Capture) {
+    init(capture: Capture, onSaved: @escaping () -> Void) {
         editorDocument = EditorDocument(baseImage: capture.image)
         fileURL = capture.fileURL
         let window = EditorWindow(
@@ -28,6 +28,7 @@ final class EditorWindowController: NSWindowController {
                 self?.fileURL = url
                 window?.title = url.lastPathComponent
                 window?.isDocumentEdited = false
+                onSaved()
             },
             onEdited: { [weak window] edited in window?.isDocumentEdited = edited }))
         window.center()

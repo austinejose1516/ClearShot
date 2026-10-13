@@ -88,22 +88,23 @@ enum Handles {
 /// Dashed bounds and handles for the selected annotations, drawn in zoomed space so they keep a constant size.
 struct SelectionOverlay: View {
     let document: EditorDocument
-    let zoom: CGFloat
+    let transform: CanvasTransform
     var hiddenID: Annotation.ID? = nil
 
     var body: some View {
         ForEach(document.annotations.filter { document.selection.contains($0.id) && $0.id != hiddenID }) { annotation in
-            let b = annotation.bounds
+            let b = transform.toCanvas(annotation.bounds)
             Rectangle()
                 .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                .frame(width: max(1, b.width * zoom), height: max(1, b.height * zoom))
-                .offset(x: b.minX * zoom, y: b.minY * zoom)
+                .frame(width: max(1, b.width), height: max(1, b.height))
+                .offset(x: b.minX, y: b.minY)
             ForEach(Array(Handles.positions(for: annotation).enumerated()), id: \.offset) { _, handle in
+                let p = transform.toCanvas(handle.point)
                 Circle()
                     .fill(.white)
                     .stroke(Color.accentColor, lineWidth: 1.5)
                     .frame(width: 10, height: 10)
-                    .offset(x: handle.point.x * zoom - 5, y: handle.point.y * zoom - 5)
+                    .offset(x: p.x - 5, y: p.y - 5)
             }
         }
         .allowsHitTesting(false)

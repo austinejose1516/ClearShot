@@ -17,6 +17,13 @@ public final class EditorDocument {
     }
 
     public var annotations: [Annotation] { state.annotations }
+    public var frame: FrameStyle { state.frame }
+    public var layout: CanvasLayout { CanvasLayout(imageSize: imageSize, frame: state.frame) }
+
+    /// Live frame change (sliders). `commit()` records it.
+    public func setFrame(_ frame: FrameStyle) {
+        state.frame = frame
+    }
     public var canUndo: Bool { history.canUndo }
     public var canRedo: Bool { history.canRedo }
     public var imageSize: CGSize { CGSize(width: baseImage.width, height: baseImage.height) }

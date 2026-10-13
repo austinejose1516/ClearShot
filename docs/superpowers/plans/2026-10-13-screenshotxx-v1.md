@@ -1224,3 +1224,24 @@ Ruling: caption and meme bar move to Task 8 — they change the canvas size, whi
 - [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 50 tests pass** — **Step 5: App** — **Step 6: build** — **Step 7: Austin: curve with bend, text, boxed text, bold, size, scale by corner, edit again, save → PNG shows them** — **Step 8: commit `feat: text and curved line tools`**
 
 Task test command: `make check`
+
+---
+
+### Task 8: Frame — padding, inset, corner radius, shadow, backgrounds, caption, meme bar
+
+**Files:**
+- Create (Core): `.../Editor/FrameStyle.swift` (FrameStyle, Background, GradientPreset), `.../Editor/CanvasLayout.swift`; modify `DocumentState.swift` (+frame), `EditorDocument.swift` (+frame, setFrame)
+- Test (Core): `CanvasLayoutTests.swift`, `EditorDocumentTests` (+frame undo)
+- Create (App): `ScreenshotXX/Editor/FramePanelView.swift`, `BackgroundView.swift`, `CanvasTransform.swift`; modify `CompositionView.swift`, `EditorCanvasView.swift`, `SelectionHandles.swift`, `TextEditingOverlay.swift`, `EditorToolbar.swift` (Frame panel toggle), `EditorView.swift`, `EditorState.swift`, `Exporter.swift`
+
+**Interfaces (Core):**
+- `FrameStyle { padding = 0; inset = 0; cornerRadius = 0; shadow = false; background: Background = .none; caption = ""; memeTop = ""; memeBottom = "" }`
+- `Background: .none | .solid(RGBAColor) | .gradient(GradientPreset) | .image(URL)`; `GradientPreset { id, name, start, end; static let all /* 8 */ }`
+- `CanvasLayout(imageSize:frame:)`: `canvasSize`, `imageRect` (where the image is drawn, after padding, meme top bar and inset), `imageScale` (= drawn width / image width), `captionRect?`, `memeTopRect?`, `memeBottomRect?`, `captionFontSize`, `memeFontSize`, `imageToCanvas(_:)`, `canvasToImage(_:)`. Padding grows the canvas; inset shrinks the image inside the same canvas.
+- `DocumentState.frame: FrameStyle`; `EditorDocument.frame`, `setFrame(_:)` (live; `commit()` records).
+
+**Interfaces (App):** `FramePanelView` (right side, toggled from the toolbar): Background (None / colour presets / 8 gradients / Image…), Padding, Inset, Corner radius, Shadow, Caption, Meme top/bottom. `CompositionView` draws background → meme bars → image with annotations (clipped to rounded corners, shadow) → caption, at the canvas size. The canvas and overlays map image pixels through `CanvasTransform` (image scale × zoom + image origin).
+
+- [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 58 tests pass** — **Step 5: App** — **Step 6: build** — **Step 7: Austin: padding + gradient + rounded corners + shadow, inset, caption, meme bar; draw on the padded image (annotations stay on the image); Save → PNG size = 1280×880 for 1200×800 + 40 padding (I check with sips)** — **Step 8: commit `feat: frame — padding, inset, backgrounds, caption, meme bar`**
+
+Task test command: `make check`

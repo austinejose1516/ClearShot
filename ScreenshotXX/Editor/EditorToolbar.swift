@@ -58,6 +58,18 @@ struct EditorToolbar: View {
             .labelsHidden()
             .fixedSize()
             Spacer(minLength: 16)
+            Toggle(isOn: $state.showsFramePanel) {
+                Label("Frame", systemImage: "sidebar.right").labelStyle(.titleAndIcon)
+            }
+            .toggleStyle(.button)
+            .fixedSize()
+            .help("Show or hide the frame panel: background, padding, corners, shadow")
+            .onChange(of: state.showsFramePanel) { _, shown in
+                if shown, document.frame == FrameStyle() {
+                    document.setFrame(.starter)
+                    document.commit()
+                }
+            }
             Button(action: onCopy) {
                 Label("Copy", systemImage: "doc.on.doc")
                     .labelStyle(.titleAndIcon)

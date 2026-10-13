@@ -84,4 +84,16 @@ import Testing
         doc.undo()
         #expect(doc.annotations.isEmpty)
     }
+
+    @Test func frameChangesAreLiveUntilCommittedAndUndoable() {
+        let doc = EditorDocument(baseImage: pixel())
+        var frame = doc.frame
+        frame.padding = 40
+        doc.setFrame(frame)
+        #expect(doc.frame.padding == 40)
+        #expect(doc.canUndo == false)
+        doc.commit()
+        doc.undo()
+        #expect(doc.frame.padding == 0)
+    }
 }
