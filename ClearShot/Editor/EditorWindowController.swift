@@ -38,8 +38,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             onShare: { [weak self] in self?.share(from: $0) },
             onEdited: { [weak window] edited in window?.isDocumentEdited = edited })
             .themed(settings))
-        // The window keeps its size whatever the image is; a small screenshot must not shrink it under the toolbar.
-        host.sizingOptions = []
+        // A window with a content view controller takes its minimum size from that controller, so SwiftUI's
+        // minimum (the toolbar's width) must be reported; the preferred size is not, so a small screenshot never
+        // shrinks the window.
+        host.sizingOptions = .minSize
         window.contentViewController = host
         // Attaching a content view controller resizes the window to that view's own frame, so set the size after.
         window.setContentSize(EditorView.defaultSize)

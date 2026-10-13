@@ -120,6 +120,8 @@ struct EditorToolbar: View {
             .fixedSize()
             .help("Save and close (⌘S). Arrow: Save As… (⇧⌘S)")
         }
+        // On a screen too narrow for the window's minimum, overflow goes off the right edge, never both.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .frame(height: 48)
         .animation(.snappy(duration: 0.22), value: session.tool)
@@ -218,6 +220,7 @@ struct EditorToolbar: View {
                 .layoutPriority(-1)
         }
         .controlSize(.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .frame(height: 40)
     }

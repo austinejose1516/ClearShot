@@ -4,8 +4,8 @@ import SwiftUI
 
 struct EditorView: View {
     /// Wide enough for every toolbar button and the options row, with room to spare.
-    static let minimumSize = NSSize(width: 1200, height: 640)
-    static let defaultSize = NSSize(width: 1260, height: 800)
+    static let minimumSize = NSSize(width: 1240, height: 640)
+    static let defaultSize = NSSize(width: 1280, height: 800)
 
     let session: EditorSession
     let viewState: EditorViewState
