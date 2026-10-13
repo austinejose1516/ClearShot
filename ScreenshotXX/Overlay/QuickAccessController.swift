@@ -41,6 +41,16 @@ final class QuickAccessController {
             presentation: presentation,
             onEdit: { [weak self] in self?.onEdit?(capture) },
             onCopy: { ClipboardService.copy(capture.image) },
+            onShare: { anchor in
+                guard let anchor else { return }
+                do {
+                    // The saved file when it is there (it is written moments after the card appears), else a temp PNG.
+                    let file = capture.fileURL.flatMap { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) ? $0 : nil }
+                    ShareService.share([try file ?? ShareService.temporaryPNG(capture.image, date: capture.createdAt)], from: anchor)
+                } catch {
+                    ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+                }
+            },
             onReveal: {
                 if let url = capture.fileURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             },

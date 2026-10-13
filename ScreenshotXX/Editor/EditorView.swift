@@ -1,3 +1,4 @@
+import AppKit
 import ScreenshotXXCore
 import SwiftUI
 
@@ -5,11 +6,12 @@ struct EditorView: View {
     let session: EditorSession
     let viewState: EditorViewState
     let onCommand: (EditorCommand) -> Void
+    let onShare: (NSView?) -> Void
     let onEdited: (Bool) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorToolbar(session: session, viewState: viewState, onCommand: onCommand)
+            EditorToolbar(session: session, viewState: viewState, onCommand: onCommand, onShare: onShare)
             Divider()
             HStack(spacing: 0) {
                 EditorCanvasView(session: session, viewState: viewState)

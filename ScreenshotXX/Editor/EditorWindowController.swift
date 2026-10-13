@@ -33,6 +33,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             session: session,
             viewState: viewState,
             onCommand: { [weak self] in self?.perform($0) },
+            onShare: { [weak self] in self?.share(from: $0) },
             onEdited: { [weak window] edited in window?.isDocumentEdited = edited })
             .themed(settings))
         window.center()
@@ -80,6 +81,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         guard let image = renderResult() else { return }
         ClipboardService.copy(image)
         onFinished()
+    }
+
+    /// The Share menu with the result as a temp PNG. The editor stays open: the menu may be cancelled.
+    private func share(from anchor: NSView?) {
+        guard let anchor = anchor ?? window?.contentView, let image = renderResult() else { return }
+        do {
+            ShareService.share([try ShareService.temporaryPNG(image)], from: anchor)
+        } catch {
+            ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+        }
     }
 
     private func saveAs() {

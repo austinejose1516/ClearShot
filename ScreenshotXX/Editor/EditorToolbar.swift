@@ -1,3 +1,4 @@
+import AppKit
 import ScreenshotXXCore
 import SwiftUI
 
@@ -7,9 +8,12 @@ struct EditorToolbar: View {
     let session: EditorSession
     let viewState: EditorViewState
     let onCommand: (EditorCommand) -> Void
+    /// Share needs the button's AppKit view, so the Share menu can open under it.
+    let onShare: (NSView?) -> Void
 
     /// The colour panel reports every small move; this records one undo step once it settles.
     @State private var colourCommit: Task<Void, Never>?
+    @State private var shareAnchor = AnchorHolder()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,6 +79,13 @@ struct EditorToolbar: View {
                     session.document.commit()
                 }
             }
+            Button { onShare(shareAnchor.view) } label: {
+                Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
+            }
+            .buttonBorderShape(.capsule)
+            .fixedSize()
+            .background(AnchorView(holder: shareAnchor))
+            .help("Share the result (the editor stays open)")
             Button { onCommand(.copy) } label: {
                 Label("Copy", systemImage: "doc.on.doc").labelStyle(.titleAndIcon).padding(.horizontal, 2)
             }

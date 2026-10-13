@@ -14,6 +14,8 @@ struct QuickAccessView: View {
     let presentation: CardPresentation
     let onEdit: () -> Void
     let onCopy: () -> Void
+    /// Gets the Share icon's AppKit view, so the Share menu can open under it.
+    let onShare: (NSView?) -> Void
     let onReveal: () -> Void
     let onDelete: () -> Void
     let onClose: () -> Void
@@ -22,6 +24,7 @@ struct QuickAccessView: View {
     @State private var copied = false
     @State private var appeared = false
     @State private var hovered = false
+    @State private var shareAnchor = AnchorHolder()
 
     var body: some View {
         let dismissing = presentation.isDismissing
@@ -90,22 +93,16 @@ struct QuickAccessView: View {
             }
             .buttonStyle(.plain)
             .help("Edit")
-            Button {
+            BarIcon(symbol: copied ? "checkmark" : "doc.on.doc", help: "Copy to clipboard") {
                 onCopy()
                 copied = true
                 Task {
                     try? await Task.sleep(for: .seconds(1.2))
                     copied = false
                 }
-            } label: {
-                Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .frame(height: 26)
-                    .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
-            .help("Copy to clipboard")
+            BarIcon(symbol: "square.and.arrow.up", help: "Share") { onShare(shareAnchor.view) }
+                .background(AnchorView(holder: shareAnchor))
             Spacer(minLength: 0)
             BarIcon(symbol: "folder", help: "Reveal in Finder", action: onReveal)
                 .disabled(capture.fileURL == nil)
