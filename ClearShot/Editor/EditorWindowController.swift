@@ -75,19 +75,22 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     /// Sends the result to the cloud bucket and copies the link; then the editor closes, like Copy and Save.
     /// Without a cloud setup it opens Settings → Cloud instead.
     private func upload() {
-        guard !viewState.isUploading else { return }
+        guard viewState.uploadProgress == nil else { return }
         guard let uploader = R2Uploader.fromSettings(settings) else {
             UploadService.openCloudSettings()
             return
         }
         guard let image = renderResult() else { return }
         let format = settings.imageFormat
-        viewState.isUploading = true
+        let viewState = viewState
+        viewState.uploadProgress = 0
         Task {
-            defer { viewState.isUploading = false }
+            defer { viewState.uploadProgress = nil }
             do {
                 let data = try await Task.detached { try FileSaver.encode(image, format: format) }.value
-                try await UploadService.upload(data, format: format, with: uploader)
+                try await UploadService.upload(data, format: format, with: uploader) { fraction in
+                    Task { @MainActor in viewState.uploadProgress = fraction }
+                }
                 onFinished()
             } catch {
                 ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
@@ -109,6 +112,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     private func copyToClipboard() {
         guard let image = renderResult() else { return }
         ClipboardService.copy(image)
+        Toast.show("Copied")
         onFinished()
     }
 

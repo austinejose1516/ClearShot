@@ -77,21 +77,23 @@ final class QuickAccessController {
 
     /// The saved file's bytes when it is on disk, else the image encoded in the chosen format. The card stays.
     private func upload(_ capture: Capture, presentation: CardPresentation) {
-        guard !presentation.isUploading else { return }
+        guard presentation.uploadProgress == nil else { return }
         guard let uploader = R2Uploader.fromSettings(settings) else {
             UploadService.openCloudSettings()
             return
         }
         let format = capture.fileURL.flatMap(ImageFormat.init(url:)) ?? settings.imageFormat
-        presentation.isUploading = true
+        presentation.uploadProgress = 0
         Task {
-            defer { presentation.isUploading = false }
+            defer { presentation.uploadProgress = nil }
             do {
                 let data = try await Task.detached { () throws -> Data in
                     if let url = capture.fileURL, let saved = try? Data(contentsOf: url) { return saved }
                     return try FileSaver.encode(capture.image, format: format)
                 }.value
-                try await UploadService.upload(data, format: format, with: uploader)
+                presentation.uploadedLink = try await UploadService.upload(data, format: format, with: uploader) { fraction in
+                    Task { @MainActor in presentation.uploadProgress = fraction }
+                }
             } catch {
                 ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
             }

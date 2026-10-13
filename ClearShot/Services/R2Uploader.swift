@@ -21,9 +21,10 @@ struct R2Uploader {
     }
 
     /// Uploads the bytes under `key` (folder and file name, e.g. "images/k3x9p2m7qa.png") and returns the link.
-    func upload(_ data: Data, contentType: String, key: String) async throws -> URL {
+    /// `progress` gets the fraction sent so far, off the main thread.
+    func upload(_ data: Data, contentType: String, key: String, progress: (@Sendable (Double) -> Void)? = nil) async throws -> URL {
         guard let url = config.endpoint(key: key), let link = config.link(name: key) else { throw R2Failure.badSettings }
-        _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: data)
+        _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: data, progress: progress)
         return link
     }
 
@@ -44,17 +45,22 @@ struct R2Uploader {
 
     // MARK: - Requests
 
-    private func send(_ method: String, _ url: URL, headers: [String: String] = [:], body: Data = Data()) async throws -> Data {
+    private func send(_ method: String, _ url: URL, headers: [String: String] = [:], body: Data = Data(),
+                      progress: (@Sendable (Double) -> Void)? = nil) async throws -> Data {
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = method
-        request.httpBody = body
         for (name, value) in signer.headers(for: .init(method: method, url: url, headers: headers, payload: body)) {
             request.setValue(value, forHTTPHeaderField: name)
         }
         let started = ContinuousClock.now
         let data: Data, response: URLResponse
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            if let progress {
+                (data, response) = try await URLSession.shared.upload(for: request, from: body, delegate: UploadProgressDelegate(progress))
+            } else {
+                request.httpBody = body
+                (data, response) = try await URLSession.shared.data(for: request)
+            }
         } catch let error as URLError {
             DiagnosticLog.write("r2 \(method) \(url.lastPathComponent) failed: \(error.code.rawValue) \(error.localizedDescription)")
             throw Self.failure(for: error, host: url.host() ?? "")
@@ -80,5 +86,20 @@ struct R2Uploader {
         case .cannotFindHost, .dnsLookupFailed, .cannotConnectToHost, .timedOut: .unreachable(host)
         default: .server(error.localizedDescription)
         }
+    }
+}
+
+/// Reports how much of the body has gone up (0…1). URLSession calls it off the main thread.
+nonisolated private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+    private let onProgress: @Sendable (Double) -> Void
+
+    init(_ onProgress: @escaping @Sendable (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
+                    totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        guard totalBytesExpectedToSend > 0 else { return }
+        onProgress(Double(totalBytesSent) / Double(totalBytesExpectedToSend))
     }
 }

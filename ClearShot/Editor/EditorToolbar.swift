@@ -80,15 +80,15 @@ struct EditorToolbar: View {
                 }
             }
             Button { onCommand(.upload) } label: {
-                if viewState.isUploading {
-                    ProgressView().controlSize(.small).padding(.horizontal, 14)
+                if let progress = viewState.uploadProgress {
+                    ProgressView(value: progress).progressViewStyle(.linear).frame(width: 64).padding(.horizontal, 4)
                 } else {
                     Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
                 }
             }
             .buttonBorderShape(.capsule)
             .fixedSize()
-            .disabled(viewState.isUploading)
+            .disabled(viewState.uploadProgress != nil)
             .help("Upload to your cloud bucket, copy the link and close (set up in Settings → Cloud)")
             Button { onShare(shareAnchor.view) } label: {
                 Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)

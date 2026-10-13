@@ -2,11 +2,14 @@ import Observation
 import ClearShotCore
 import SwiftUI
 
-/// Lets the controller play the exit animation before the panel goes away, and show upload progress.
+/// Lets the controller play the exit animation before the panel goes away, and show the upload's state.
 @Observable
 final class CardPresentation {
     var isDismissing = false
-    var isUploading = false
+    /// 0…1 while an upload runs; nil otherwise.
+    var uploadProgress: Double?
+    /// Set once an upload worked, so the card can copy the link again.
+    var uploadedLink: URL?
 }
 
 /// The card: the screenshot fills it; on hover a glass bar slides up with the actions, plus close and size on top.
@@ -24,6 +27,7 @@ struct QuickAccessView: View {
     let onHoverChange: (Bool) -> Void
 
     @State private var copied = false
+    @State private var linkCopied = false
     @State private var appeared = false
     @State private var hovered = false
     @State private var shareAnchor = AnchorHolder()
@@ -96,8 +100,19 @@ struct QuickAccessView: View {
             }
             BarIcon(symbol: "square.and.arrow.up", help: "Share") { onShare(shareAnchor.view) }
                 .background(AnchorView(holder: shareAnchor))
-            if presentation.isUploading {
-                ProgressView().controlSize(.mini).frame(width: 28, height: 26)
+            if let progress = presentation.uploadProgress {
+                UploadRing(progress: progress)
+                    .frame(width: 28, height: 26)
+                    .help("Uploading…")
+            } else if let link = presentation.uploadedLink {
+                BarIcon(symbol: linkCopied ? "checkmark" : "link", help: "Copy the link again") {
+                    UploadService.copy(link)
+                    linkCopied = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.2))
+                        linkCopied = false
+                    }
+                }
             } else {
                 BarIcon(symbol: "icloud.and.arrow.up", help: "Upload to your cloud bucket and copy the link", action: onUpload)
             }
@@ -109,6 +124,23 @@ struct QuickAccessView: View {
         }
         .padding(3)
         .glassEffect(.regular, in: .capsule)
+    }
+}
+
+/// A small ring that fills as the upload goes up.
+private struct UploadRing: View {
+    let progress: Double
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(.primary.opacity(0.2), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: max(0.03, progress))
+                .stroke(.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 14, height: 14)
+        .animation(.linear(duration: 0.15), value: progress)
     }
 }
 
