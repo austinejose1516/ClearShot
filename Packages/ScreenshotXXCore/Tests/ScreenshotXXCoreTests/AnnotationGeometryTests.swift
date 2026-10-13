@@ -10,14 +10,14 @@ import Testing
     }
 
     @Test func lineHitsWithinStrokeAndTolerance() {
-        let line = Annotation(kind: .line(start: CGPoint(x: 0, y: 0), end: CGPoint(x: 100, y: 0), arrowStart: false, arrowEnd: false),
-                              style: .init(strokeWidth: 4))
+        let line = Annotation(kind: .line(Line(start: .zero, end: CGPoint(x: 100, y: 0))), style: .init(strokeWidth: 4))
         #expect(line.hitTest(CGPoint(x: 50, y: 3), tolerance: 2) == true)
         #expect(line.hitTest(CGPoint(x: 50, y: 10), tolerance: 2) == false)
     }
 
-    @Test func unfilledRectHitsOnlyOnItsStroke() {
-        var box = Annotation(kind: .rect(CGRect(x: 0, y: 0, width: 100, height: 100)), style: .init(strokeWidth: 2))
+    @Test func unfilledBoxHitsOnlyOnItsStroke() {
+        var box = Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 100, height: 100), form: .rectangle)),
+                             style: .init(strokeWidth: 2))
         #expect(box.hitTest(CGPoint(x: 50, y: 50), tolerance: 2) == false)
         #expect(box.hitTest(CGPoint(x: 0.5, y: 50), tolerance: 2) == true)
         box.style.fillColor = .yellow
@@ -25,7 +25,7 @@ import Testing
     }
 
     @Test func boundsAndMove() {
-        var line = Annotation(kind: .line(start: CGPoint(x: 10, y: 20), end: CGPoint(x: 5, y: 50), arrowStart: false, arrowEnd: true))
+        var line = Annotation(kind: .line(Line(start: CGPoint(x: 10, y: 20), end: CGPoint(x: 5, y: 50), arrow: true)))
         #expect(line.bounds == CGRect(x: 5, y: 20, width: 5, height: 30))
         line.move(by: CGVector(dx: 1, dy: -1))
         #expect(line.bounds.origin == CGPoint(x: 6, y: 19))

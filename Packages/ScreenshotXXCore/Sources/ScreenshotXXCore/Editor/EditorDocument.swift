@@ -46,7 +46,7 @@ public final class EditorDocument {
     /// One more than the highest step number placed so far.
     public var nextStepNumber: Int {
         let highest = state.annotations.compactMap { annotation -> Int? in
-            if case .step(let number, _, _) = annotation.kind { number } else { nil }
+            if case .step(let step) = annotation.kind { step.number } else { nil }
         }.max() ?? 0
         return highest + 1
     }

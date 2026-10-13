@@ -3,19 +3,16 @@ import Testing
 @testable import ScreenshotXXCore
 
 @Suite struct EditorDocumentTests {
-    private func pixel() -> CGImage {
-        let context = CGContext(data: nil, width: 4, height: 4, bitsPerComponent: 8, bytesPerRow: 16,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        return context.makeImage()!
+    private func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> Annotation.Kind {
+        .box(Box(rect: CGRect(x: x, y: y, width: w, height: h), form: .rectangle))
     }
 
     private func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> Annotation {
-        Annotation(kind: .rect(CGRect(x: x, y: y, width: w, height: h)))
+        Annotation(kind: box(x, y, w, h))
     }
 
     @Test func addIsOneUndoStep() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         doc.add(rect(0, 0, 10, 10))
         #expect(doc.annotations.count == 1)
         doc.undo()
@@ -25,11 +22,11 @@ import Testing
     }
 
     @Test func liveUpdatesCollapseIntoOneUndoStep() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         var shape = rect(0, 0, 10, 10)
         doc.add(shape)
         for step in 1...3 {
-            shape.kind = .rect(CGRect(x: CGFloat(step), y: 0, width: 10, height: 10))
+            shape.kind = box(CGFloat(step), 0, 10, 10)
             doc.update(shape)
         }
         doc.commit()
@@ -39,7 +36,7 @@ import Testing
     }
 
     @Test func removeDropsSelectedAnnotationsAndClearsSelection() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         let a = rect(0, 0, 10, 10), b = rect(20, 20, 10, 10)
         doc.add(a); doc.add(b)
         doc.selection = [a.id]
@@ -49,9 +46,9 @@ import Testing
     }
 
     @Test func hitTestReturnsTheTopMostAnnotation() {
-        let doc = EditorDocument(baseImage: pixel())
-        let below = Annotation(kind: .rect(CGRect(x: 0, y: 0, width: 100, height: 100)), style: .init(fillColor: .blue))
-        let above = Annotation(kind: .rect(CGRect(x: 40, y: 40, width: 20, height: 20)), style: .init(fillColor: .red))
+        let doc = EditorDocument(baseImage: blankImage())
+        let below = Annotation(kind: box(0, 0, 100, 100), style: .init(fillColor: .blue))
+        let above = Annotation(kind: box(40, 40, 20, 20), style: .init(fillColor: .red))
         doc.add(below); doc.add(above)
         #expect(doc.hitTest(CGPoint(x: 50, y: 50), tolerance: 2) == above.id)
         #expect(doc.hitTest(CGPoint(x: 10, y: 10), tolerance: 2) == below.id)
@@ -59,7 +56,7 @@ import Testing
     }
 
     @Test func moveSelectionThenCommitIsUndoable() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         let shape = rect(0, 0, 10, 10)
         doc.add(shape)
         doc.selection = [shape.id]
@@ -71,7 +68,7 @@ import Testing
     }
 
     @Test func insertIsLiveUntilCommittedAndRevertDropsIt() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         let shape = rect(0, 0, 10, 10)
         doc.insert(shape)
         #expect(doc.annotations.count == 1)
@@ -86,7 +83,7 @@ import Testing
     }
 
     @Test func frameChangesAreLiveUntilCommittedAndUndoable() {
-        let doc = EditorDocument(baseImage: pixel())
+        let doc = EditorDocument(baseImage: blankImage())
         var frame = doc.frame
         frame.padding = 40
         doc.setFrame(frame)
@@ -98,10 +95,7 @@ import Testing
     }
 
     @Test func cropShrinksTheImageShiftsAnnotationsAndIsUndoable() {
-        let context = CGContext(data: nil, width: 100, height: 80, bitsPerComponent: 8, bytesPerRow: 400,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        let doc = EditorDocument(baseImage: context.makeImage()!)
+        let doc = EditorDocument(baseImage: blankImage(width: 100, height: 80))
         let shape = rect(30, 30, 10, 10)
         doc.add(shape)
         doc.applyCrop(CGRect(x: 20.4, y: 10.6, width: 50, height: 50))

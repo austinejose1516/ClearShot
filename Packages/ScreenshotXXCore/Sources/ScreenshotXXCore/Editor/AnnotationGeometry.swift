@@ -44,3 +44,9 @@ public enum AnnotationGeometry {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 }
+
+extension CGPoint {
+    func offset(_ delta: CGVector) -> CGPoint {
+        CGPoint(x: x + delta.dx, y: y + delta.dy)
+    }
+}

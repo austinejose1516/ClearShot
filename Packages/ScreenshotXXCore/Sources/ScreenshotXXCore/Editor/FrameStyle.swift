@@ -26,10 +26,9 @@ public enum Background: Equatable, Sendable, Codable {
     case image(URL)
 }
 
-/// Everything around the image: padding grows the canvas, inset shrinks the image inside it.
+/// Everything around the image: background, padding, rounded corners, shadow.
 public struct FrameStyle: Equatable, Sendable, Codable {
     public var padding: CGFloat = 0
-    public var inset: CGFloat = 0
     public var cornerRadius: CGFloat = 0
     /// 0 = no shadow; up to 100 = big soft shadow.
     public var shadow: CGFloat = 0

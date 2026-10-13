@@ -3,40 +3,66 @@ import Testing
 @testable import ScreenshotXXCore
 
 @Suite struct TextContentTests {
-    @Test func estimatedSizeComesFromTheLongestLine() {
-        let content = TextContent(text: "Hello\nHi", origin: .zero, fontSize: 20)
-        #expect(content.estimatedSize == CGSize(width: 55, height: 48))
-        #expect(content.frame.size == content.estimatedSize)
+    private func text(_ string: String = "Hello", size: CGFloat = 20, bold: Bool = true, boxed: Bool = false) -> TextContent {
+        TextContent(text: string, origin: CGPoint(x: 100, y: 100), fontSize: size, bold: bold, boxed: boxed)
     }
 
-    @Test func measuredSizeWinsOnceTheViewReportsIt() {
-        var content = TextContent(text: "Hello", origin: CGPoint(x: 10, y: 20), fontSize: 20)
-        content.measuredSize = CGSize(width: 100, height: 40)
-        #expect(content.frame == CGRect(x: 10, y: 20, width: 100, height: 40))
+    @Test func biggerFontMeansABiggerBox() {
+        let small = text(size: 20).size, big = text(size: 40).size
+        #expect(big.width > small.width * 1.8)
+        #expect(big.height > small.height * 1.8)
     }
 
-    @Test func scalingToANewWidthScalesTheFont() {
-        var content = TextContent(text: "Hello", origin: .zero, fontSize: 20)
-        content.measuredSize = CGSize(width: 100, height: 40)
-        let bigger = content.scaled(toWidth: 200)
-        #expect(bigger.fontSize == 40)
-        #expect(bigger.measuredSize == CGSize(width: 200, height: 80))
-        #expect(content.scaled(toWidth: 5).fontSize >= TextContent.minimumFontSize)
+    @Test func twoLinesAreTallerThanOne() {
+        #expect(text("Hello\nHello").size.height > text("Hello").size.height * 1.8)
     }
 
-    @Test func textAnnotationHitsInsideItsFrameAndMoves() {
-        var content = TextContent(text: "Hi", origin: CGPoint(x: 100, y: 100), fontSize: 20)
-        content.measuredSize = CGSize(width: 60, height: 30)
-        var note = Annotation(kind: .text(content))
-        #expect(note.hitTest(CGPoint(x: 130, y: 115), tolerance: 2) == true)
-        #expect(note.hitTest(CGPoint(x: 10, y: 10), tolerance: 2) == false)
-        note.move(by: CGVector(dx: -100, dy: -100))
-        #expect(note.bounds.origin == .zero)
+    @Test func boldIsWiderThanRegular() {
+        #expect(text(bold: true).size.width > text(bold: false).size.width)
+    }
+
+    @Test func boxedAddsPaddingOnEverySide() {
+        let plain = text(boxed: false), boxed = text(boxed: true)
+        #expect(boxed.size.width == plain.size.width + 2 * boxed.padding.width)
+        #expect(boxed.size.height == plain.size.height + 2 * boxed.padding.height)
+    }
+
+    @Test func emptyTextStillHasOneLineOfHeight() {
+        #expect(text("").size.height == text("A").size.height)
+    }
+
+    @Test func frameStartsAtTheOrigin() {
+        let content = text()
+        #expect(content.frame == CGRect(origin: CGPoint(x: 100, y: 100), size: content.size))
+    }
+
+    @Test func cornerDragScalesTheFontAndKeepsTheOppositeCorner() {
+        var grow = text(size: 20)
+        let before = grow.frame
+        grow.drag(.bottomRight, to: CGPoint(x: before.minX + before.width * 2, y: before.maxY))
+        #expect(abs(grow.fontSize - 40) < 2)
+        #expect(grow.frame.origin == before.origin)
+
+        var shrink = text(size: 40)
+        let start = shrink.frame
+        shrink.drag(.topLeft, to: CGPoint(x: start.midX, y: start.midY))
+        #expect(shrink.fontSize < 25)
+        #expect(abs(shrink.frame.maxX - start.maxX) < 0.001)
+        #expect(abs(shrink.frame.maxY - start.maxY) < 0.001)
     }
 
     @Test func fontSizeFromADraggedBoxHeight() {
         #expect(TextContent.fontSize(forBoxHeight: 60, boxed: false) == 50)
         #expect(TextContent.fontSize(forBoxHeight: 60, boxed: true) == 40)
         #expect(TextContent.fontSize(forBoxHeight: 2, boxed: false) == TextContent.minimumFontSize)
+    }
+
+    @Test func textHitsInsideItsFrameAndMoves() {
+        var note = Annotation(kind: .text(text()))
+        let frame = note.bounds
+        #expect(note.hitTest(CGPoint(x: frame.midX, y: frame.midY), tolerance: 2) == true)
+        #expect(note.hitTest(CGPoint(x: 10, y: 10), tolerance: 2) == false)
+        note.move(by: CGVector(dx: -100, dy: -100))
+        #expect(note.bounds.origin == .zero)
     }
 }

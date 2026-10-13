@@ -16,7 +16,7 @@ import Testing
     }
 
     @Test func curveAnnotationHitsNearTheCurveOnly() {
-        var curve = Annotation(kind: .curve(start: start, control: control, end: end, arrowEnd: true), style: .init(strokeWidth: 4))
+        var curve = Annotation(kind: .curve(Curve(start: start, control: control, end: end, arrow: true)), style: .init(strokeWidth: 4))
         #expect(curve.hitTest(CGPoint(x: 50, y: 50), tolerance: 2) == true)
         #expect(curve.hitTest(CGPoint(x: 50, y: 90), tolerance: 2) == false)
         #expect(curve.bounds == CGRect(x: 0, y: 0, width: 100, height: 50))
