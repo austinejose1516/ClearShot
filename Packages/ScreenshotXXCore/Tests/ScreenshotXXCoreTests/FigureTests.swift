@@ -20,31 +20,34 @@ import Testing
         #expect(box.rect == CGRect(x: -10, y: -10, width: 10, height: 10))
     }
 
-    @Test func aNewCurveIsStraightAndItsMiddleDotBendsItToEitherSide() {
+    @Test func aNewCurveIsStraightAndItsMiddleDotGoesWhereverItIsDragged() {
         var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), arrow: true)
         #expect(curve.handles.map(\.kind) == [.start, .middle, .end])
         #expect(curve.middle == CGPoint(x: 50, y: 0))
         #expect(curve.control == CGPoint(x: 50, y: 0))
 
         curve.drag(.middle, to: CGPoint(x: 50, y: 40))
-        #expect(curve.bend == 40)
+        #expect(curve.bend == 40 && curve.lean == 0)
         #expect(curve.middle == CGPoint(x: 50, y: 40))     // the dot stays on the curve…
         #expect(curve.control == CGPoint(x: 50, y: 80))    // …so the control point is twice as far out
         #expect(CurveGeometry.point(start: curve.start, control: curve.control, end: curve.end, t: 0.5) == curve.middle)
         #expect(curve.bounds.maxY == 40)
 
-        // The other side; movement along the line is ignored, so the dot stays in the middle.
+        // The other side, and off-centre: the dot lands under the pointer and the curve leans with it.
         curve.drag(.middle, to: CGPoint(x: 70, y: -40))
-        #expect(curve.middle == CGPoint(x: 50, y: -40))
+        #expect(curve.bend == -40 && curve.lean == 20)
+        #expect(curve.middle == CGPoint(x: 70, y: -40))
+        #expect(curve.control == CGPoint(x: 90, y: -80))
+        #expect(CurveGeometry.point(start: curve.start, control: curve.control, end: curve.end, t: 0.5) == curve.middle)
     }
 
-    @Test func movingACurvesEndKeepsItsBend() {
-        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, arrow: true)
-        curve.drag(.end, to: CGPoint(x: 0, y: 100))
-        #expect(curve.bend == 30)
-        #expect(abs(hypot(curve.middle.x, curve.middle.y - 50) - 30) < 0.001)
+    @Test func movingACurvesEndKeepsItsShape() {
+        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, lean: 10, arrow: true)
+        curve.drag(.end, to: CGPoint(x: 0, y: 100))      // the line turns 90°, so the dot turns with it
+        #expect(curve.bend == 30 && curve.lean == 10)
+        #expect(abs(curve.middle.x - -30) < 0.001 && abs(curve.middle.y - 60) < 0.001)
         curve.move(by: CGVector(dx: 10, dy: 10))
-        #expect(curve.bend == 30)
+        #expect(curve.bend == 30 && curve.lean == 10)
         #expect(curve.start == CGPoint(x: 10, y: 10))
     }
 

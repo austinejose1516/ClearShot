@@ -46,43 +46,47 @@ public struct Line: Figure {
     }
 }
 
-/// A curved line (quadratic Bézier). It is drawn straight; its middle dot, which sits on the curve, bends it to
-/// either side.
+/// A curved line (quadratic Bézier). It is drawn straight; its middle dot, which sits on the curve, goes
+/// wherever it is dragged and the curve follows.
 public struct Curve: Figure {
     public var start: CGPoint
     public var end: CGPoint
-    /// How far the middle of the curve sits from the straight line between the ends, in pixels. 0 is straight;
-    /// the sign picks the side. Moving an end keeps it, so the shape stays.
+    /// Where the middle dot sits, measured from the midpoint of the straight line between the ends, in pixels:
+    /// `bend` at right angles to that line (0 is straight; the sign picks the side) and `lean` along it (towards
+    /// the end when positive). Both are kept when an end moves, so the shape turns with the line.
     public var bend: CGFloat
+    public var lean: CGFloat
     public var arrow: Bool
 
-    public init(start: CGPoint, end: CGPoint, bend: CGFloat = 0, arrow: Bool) {
+    public init(start: CGPoint, end: CGPoint, bend: CGFloat = 0, lean: CGFloat = 0, arrow: Bool) {
         self.start = start
         self.end = end
         self.bend = bend
+        self.lean = lean
         self.arrow = arrow
     }
 
-    /// The straight line between the ends: its midpoint and a unit vector at right angles to it.
-    private var chord: (mid: CGPoint, normal: CGVector) {
+    /// The straight line between the ends: its midpoint, a unit vector along it and one at right angles to it.
+    private var chord: (mid: CGPoint, along: CGVector, across: CGVector) {
         let dx = end.x - start.x, dy = end.y - start.y
         let length = hypot(dx, dy)
-        let normal = length > 0 ? CGVector(dx: -dy / length, dy: dx / length) : .zero
-        return (CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2), normal)
+        let along = length > 0 ? CGVector(dx: dx / length, dy: dy / length) : .zero
+        return (CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2), along, CGVector(dx: -along.dy, dy: along.dx))
     }
 
-    /// The point `distance` out from the chord's midpoint, at right angles to the chord.
-    private func offChord(_ distance: CGFloat) -> CGPoint {
-        let (mid, normal) = chord
-        return CGPoint(x: mid.x + normal.dx * distance, y: mid.y + normal.dy * distance)
+    /// The point `factor` times the bend and lean away from the chord's midpoint.
+    private func offChord(_ factor: CGFloat) -> CGPoint {
+        let (mid, along, across) = chord
+        return CGPoint(x: mid.x + (along.dx * lean + across.dx * bend) * factor,
+                       y: mid.y + (along.dy * lean + across.dy * bend) * factor)
     }
 
     /// The point on the curve halfway along: where the middle dot sits.
-    public var middle: CGPoint { offChord(bend) }
+    public var middle: CGPoint { offChord(1) }
 
     /// The Bézier control point. The curve's midpoint is ¼ start + ½ control + ¼ end, so the control sits twice
     /// as far out as the middle dot.
-    public var control: CGPoint { offChord(2 * bend) }
+    public var control: CGPoint { offChord(2) }
 
     private var samples: [CGPoint] { CurveGeometry.samples(start: start, control: control, end: end) }
 
@@ -106,9 +110,10 @@ public struct Curve: Figure {
         case .start: start = point
         case .end: end = point
         case .middle:
-            // Only the distance across the chord counts, so the dot slides along the curve's centre line.
-            let (mid, normal) = chord
-            bend = (point.x - mid.x) * normal.dx + (point.y - mid.y) * normal.dy
+            // The dot lands exactly under the pointer, split into its along and across parts.
+            let (mid, along, across) = chord
+            lean = (point.x - mid.x) * along.dx + (point.y - mid.y) * along.dy
+            bend = (point.x - mid.x) * across.dx + (point.y - mid.y) * across.dy
         default: break
         }
     }

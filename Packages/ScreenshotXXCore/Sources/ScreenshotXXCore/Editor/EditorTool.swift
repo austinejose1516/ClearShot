@@ -56,7 +56,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .select: "Click to select · drag to move · drag a dot to resize · Delete removes"
         case .line, .arrow: "Drag to draw"
-        case .curve: "Drag to draw a straight arrow, then drag the middle dot to bend it to either side"
+        case .curve: "Drag to draw a straight arrow, then drag the middle dot anywhere to bend it"
         case .pen: "Drag to draw freehand"
         case .highlight: "Drag over the text to mark it"
         case .rect: "Drag to draw · Fill makes it solid · Corners rounds it"

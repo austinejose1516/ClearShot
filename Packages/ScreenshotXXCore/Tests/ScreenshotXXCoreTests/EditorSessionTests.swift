@@ -107,14 +107,14 @@ import Testing
         s.tool = .curve
         drag(s, p(0, 100), p(120, 60), p(200, 100))
         #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
-        // Still selected, so the middle dot is live; pulling it up bends the curve.
-        drag(s, p(100, 100), p(100, 40))
+        // Still selected, so the middle dot is live; it follows the pointer in both directions.
+        drag(s, p(100, 100), p(100, 40), p(130, 40))
         guard case .curve(let curve) = s.document.annotations[0].kind else {
             Issue.record("no curve")
             return
         }
-        #expect(curve.bend == -60)
-        #expect(curve.middle == p(100, 40))
+        #expect(curve.bend == -60 && curve.lean == 30)
+        #expect(curve.middle == p(130, 40))
         s.document.undo()
         #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
     }
