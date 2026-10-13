@@ -51,8 +51,14 @@ final class CaptureCoordinator {
             case .area(let image):
                 return Capture(kind: .area, image: image)
             case .window(let window):
-                let image = try await ScreenCapturer.captureWindow(window, showsCursor: settings.showsCursor, includeShadow: true)
-                return Capture(kind: .window, image: image)
+                // Both at once: the shadowed one is saved, the plain one is what the editor starts from.
+                let showsCursor = settings.showsCursor
+                let started = ContinuousClock.now
+                let plain = Task { try? await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: false) }
+                let image = try await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: true)
+                let windowImage = await plain.value
+                DiagnosticLog.write("window captured twice in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+                return Capture(kind: .window, image: image, windowImage: windowImage)
             case .cancelled:
                 return nil
             }

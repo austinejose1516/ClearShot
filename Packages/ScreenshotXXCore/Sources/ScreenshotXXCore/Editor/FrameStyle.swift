@@ -36,6 +36,29 @@ public struct FrameStyle: Equatable, Sendable, Codable {
 
     public init() {}
 
+    private var shadowStrength: CGFloat { max(0, min(shadow, 100)) / 100 }
+
+    /// Blur radius: the slider's end is 6 % of the shorter canvas side.
+    public func shadowRadius(canvasSize: CGSize) -> CGFloat {
+        shadowStrength * min(canvasSize.width, canvasSize.height) * 0.06
+    }
+
+    /// 0.2…0.6 while there is a shadow.
+    public var shadowOpacity: Double {
+        shadowStrength > 0 ? 0.2 + 0.4 * shadowStrength : 0
+    }
+
+    /// The frame a window capture starts with: the window alone, plus a shadow drawn by the frame in place of
+    /// the system one, so a plain Save still looks like the capture. `margin` is the system shadow's width in pixels.
+    public static func windowShadow(margin: CGFloat, imageSize: CGSize) -> FrameStyle {
+        var frame = FrameStyle()
+        frame.padding = margin
+        // Inverse of `shadowRadius`: a radius of a third of the margin keeps the blur inside the padding.
+        let shortSide = min(imageSize.width, imageSize.height) + 2 * margin
+        frame.shadow = shortSide > 0 ? min(100, max(0, margin / 3 / (shortSide * 0.06) * 100)) : 0
+        return frame
+    }
+
     /// What the Frame panel applies when it is opened on an untouched frame, so every control shows an effect.
     public static var starter: FrameStyle {
         var frame = FrameStyle()

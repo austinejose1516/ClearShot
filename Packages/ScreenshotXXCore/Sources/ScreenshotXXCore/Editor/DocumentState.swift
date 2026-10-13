@@ -6,8 +6,9 @@ public struct DocumentState: Equatable, Sendable {
     public var annotations: [Annotation] = []
     public var frame = FrameStyle()
 
-    public init(baseImage: CGImage) {
+    public init(baseImage: CGImage, frame: FrameStyle = FrameStyle()) {
         self.baseImage = baseImage
+        self.frame = frame
     }
 
     public static func == (lhs: DocumentState, rhs: DocumentState) -> Bool {

@@ -12,9 +12,7 @@ struct CompositionView: View {
     var body: some View {
         let layout = document.layout
         let frame = document.frame
-        // Shadow 0…100 → radius up to ~6 % of the canvas, opacity 0.2…0.6.
-        let strength = max(0, min(frame.shadow, 100)) / 100
-        let shadowRadius = strength * min(layout.canvasSize.width, layout.canvasSize.height) * 0.06
+        let shadowRadius = frame.shadowRadius(canvasSize: layout.canvasSize)
         ZStack(alignment: .topLeading) {
             BackgroundView(background: frame.background)
                 .frame(width: layout.canvasSize.width, height: layout.canvasSize.height)
@@ -22,7 +20,7 @@ struct CompositionView: View {
                 .resizable()
                 .frame(width: layout.imageSize.width, height: layout.imageSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: frame.cornerRadius))
-                .shadow(color: .black.opacity(strength > 0 ? 0.2 + 0.4 * strength : 0), radius: shadowRadius, y: shadowRadius / 3)
+                .shadow(color: .black.opacity(frame.shadowOpacity), radius: shadowRadius, y: shadowRadius / 3)
                 .offset(x: layout.imageRect.minX, y: layout.imageRect.minY)
             // Annotations use image coordinates; negative ones land in the padding. Not clipped to the image.
             ZStack(alignment: .topLeading) {

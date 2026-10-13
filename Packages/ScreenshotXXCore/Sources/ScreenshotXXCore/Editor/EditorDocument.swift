@@ -9,11 +9,14 @@ public final class EditorDocument {
     public private(set) var state: DocumentState
     public var selection: Set<Annotation.ID> = []
     private var history: UndoStack<DocumentState>
+    /// The frame the document opened with; the Frame panel's starter applies while it is still this.
+    public let initialFrame: FrameStyle
 
-    public init(baseImage: CGImage) {
-        let initial = DocumentState(baseImage: baseImage)
+    public init(baseImage: CGImage, frame: FrameStyle = FrameStyle()) {
+        let initial = DocumentState(baseImage: baseImage, frame: frame)
         state = initial
         history = UndoStack(initial: initial)
+        initialFrame = frame
     }
 
     public var baseImage: CGImage { state.baseImage }

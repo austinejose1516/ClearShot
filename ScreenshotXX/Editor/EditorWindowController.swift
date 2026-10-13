@@ -14,7 +14,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     var editorDocument: EditorDocument { session.document }
 
     init(capture: Capture, settings: AppSettings, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
-        session = EditorSession(document: EditorDocument(baseImage: capture.image))
+        session = EditorSession(document: EditorDocument(baseImage: capture.editorImage, frame: capture.editorFrame))
         fileURL = capture.fileURL
         self.onFinished = onFinished
         self.onWindowClosed = onWindowClosed

@@ -45,17 +45,20 @@ struct EditorToolbar: View {
                     .disabled(session.document.selection.isEmpty)
             }
             .grouped()
-            Picker("Zoom", selection: Binding(
-                get: { viewState.zoomIsFit ? 0 : viewState.zoom },
-                set: { value in
-                    if value == 0 { viewState.zoomIsFit = true } else { viewState.zoomIsFit = false; viewState.zoom = value }
-                })) {
-                Text("Fit").tag(CGFloat(0))
-                Text("50 %").tag(CGFloat(0.5))
-                Text("100 %").tag(CGFloat(1))
-                Text("200 %").tag(CGFloat(2))
+            Menu {
+                Picker("Zoom", selection: $viewState.canvasZoom.mode) {
+                    Text("Fit").tag(CanvasZoom.Mode.fit)
+                    Text("50 %").tag(CanvasZoom.Mode.scale(0.5))
+                    Text("100 %").tag(CanvasZoom.Mode.scale(1))
+                    Text("200 %").tag(CanvasZoom.Mode.scale(2))
+                }
+                .pickerStyle(.inline)
+                Divider()
+                Button("Zoom In") { onCommand(.zoomIn) }
+                Button("Zoom Out") { onCommand(.zoomOut) }
+            } label: {
+                Text(viewState.canvasZoom.label).monospacedDigit()
             }
-            .labelsHidden()
             .fixedSize()
             .help("Zoom (⌘+ / ⌘−)")
             Spacer(minLength: 12)
@@ -67,7 +70,7 @@ struct EditorToolbar: View {
             .fixedSize()
             .help("Background, padding, corners and shadow")
             .onChange(of: viewState.showsFramePanel) { _, shown in
-                if shown, session.document.frame == FrameStyle() {
+                if shown, session.document.frame == session.document.initialFrame {
                     session.document.setFrame(.starter)
                     session.document.commit()
                 }

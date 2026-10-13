@@ -6,6 +6,8 @@ import SwiftUI
 struct EditorCanvasView: View {
     let session: EditorSession
     let viewState: EditorViewState
+    /// The zoom when a pinch started; the pinch scales from there.
+    @State private var pinchStart: CGFloat?
 
     /// How near counts as a hit: 6 screen points, in image pixels.
     private var tolerance: CGFloat { 6 / viewState.zoom }
@@ -19,9 +21,18 @@ struct EditorCanvasView: View {
             ScrollView([.horizontal, .vertical]) {
                 canvas.frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
             }
-            .onAppear { viewState.fit(canvas: session.document.layout.canvasSize, in: proxy.size) }
-            .onChange(of: proxy.size) { _, size in viewState.fit(canvas: session.document.layout.canvasSize, in: size) }
-            .onChange(of: session.document.layout.canvasSize) { _, canvas in viewState.fit(canvas: canvas, in: proxy.size) }
+            .onAppear { viewState.layoutChanged(canvas: session.document.layout.canvasSize, viewport: proxy.size) }
+            .onChange(of: proxy.size) { _, size in viewState.layoutChanged(canvas: session.document.layout.canvasSize, viewport: size) }
+            .onChange(of: session.document.layout.canvasSize) { _, canvas in viewState.layoutChanged(canvas: canvas, viewport: proxy.size) }
+            .gesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        let start = pinchStart ?? viewState.zoom
+                        pinchStart = start
+                        viewState.canvasZoom.set(scale: start * value.magnification)
+                    }
+                    .onEnded { _ in pinchStart = nil }
+            )
             .overlay(alignment: .top) { tipBanner }
         }
         .background(DotGrid())
