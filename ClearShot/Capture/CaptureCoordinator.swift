@@ -71,6 +71,7 @@ final class CaptureCoordinator {
         var capture = capture
         let format = settings.imageFormat
         let copies = settings.copiesToClipboard
+        let smaller = settings.smallerPNG
         let reserved = Result { try FileSaver.reserveURL(for: format, in: settings.saveFolder, date: capture.createdAt) }
         capture.fileURL = try? reserved.get()
         CaptureFlash.flash(on: .underMouse)
@@ -80,15 +81,20 @@ final class CaptureCoordinator {
         let image = capture.image
         let started = ContinuousClock.now
         let encoded = await Task.detached { () -> (file: Result<Data, any Error>, png: Data?) in
-            let file = Result { try FileSaver.encode(image, format: format) }
+            // The clipboard always gets the full PNG; the file may be the 256-colour one (Settings → Smaller PNG files).
+            let standard = Result { try FileSaver.encode(image, format: format) }
+            let file = standard.map { data in
+                smaller && format == .png ? FileSaver.smallerPNG(image, standard: data) ?? data : data
+            }
             guard copies else { return (file, nil) }
-            return (file, format == .png ? try? file.get() : try? FileSaver.encode(image, format: .png))
+            return (file, format == .png ? try? standard.get() : try? FileSaver.encode(image, format: .png))
         }.value
         if let png = encoded.png { ClipboardService.copy(png: png, of: image) }
         do {
             let url = try reserved.get()
-            try encoded.file.get().write(to: url)
-            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+            let file = try encoded.file.get()
+            try file.write(to: url)
+            DiagnosticLog.write("saved \(capture.kind.rawValue) \(image.width)x\(image.height) px, \(file.count / 1024) KB, encoded in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
         } catch {
             DiagnosticLog.write("save failed: \(error)")
             ErrorPresenter.show(title: "Could not save the screenshot",

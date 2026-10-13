@@ -91,7 +91,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         Task {
             defer { viewState.uploadProgress = nil }
             do {
-                let data = try await Task.detached { try FileSaver.encode(image, format: format) }.value
+                let smaller = settings.smallerPNG
+                let data = try await Task.detached { try FileSaver.encode(image, format: format, smaller: smaller) }.value
                 try await UploadService.upload(data, format: format, with: uploader) { fraction in
                     Task { @MainActor in viewState.uploadProgress = fraction }
                 }
@@ -123,10 +124,13 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     /// The Share menu with the result as a temp PNG. The editor stays open: the menu may be cancelled.
     private func share(from anchor: NSView?) {
         guard let anchor = anchor ?? window?.contentView, let image = renderResult() else { return }
-        do {
-            ShareService.share([try ShareService.temporaryPNG(image)], from: anchor)
-        } catch {
-            ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+        let smaller = settings.smallerPNG
+        Task {
+            do {
+                ShareService.share([try await ShareService.temporaryPNG(image, smaller: smaller)], from: anchor)
+            } catch {
+                ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+            }
         }
     }
 
@@ -139,15 +143,20 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         write(to: url)
     }
 
+    /// Encodes off the main thread (the smaller PNG takes a moment), then closes like Copy.
     private func write(to url: URL) {
         guard let image = renderResult() else { return }
-        do {
-            try FileSaver.overwrite(image, format: ImageFormat(url: url) ?? .png, at: url)
-            DiagnosticLog.write("editor saved \(image.width)x\(image.height) px to \(url.path(percentEncoded: false))")
-            window?.isDocumentEdited = false
-            onFinished()
-        } catch {
-            ErrorPresenter.show(title: "Could not save", message: error.localizedDescription)
+        let format = ImageFormat(url: url) ?? .png
+        let smaller = settings.smallerPNG
+        Task {
+            do {
+                try await Task.detached { try FileSaver.overwrite(image, format: format, smaller: smaller, at: url) }.value
+                DiagnosticLog.write("editor saved \(image.width)x\(image.height) px to \(url.path(percentEncoded: false))")
+                window?.isDocumentEdited = false
+                onFinished()
+            } catch {
+                ErrorPresenter.show(title: "Could not save", message: error.localizedDescription)
+            }
         }
     }
 }

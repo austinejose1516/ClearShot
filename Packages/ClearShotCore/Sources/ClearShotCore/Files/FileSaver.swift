@@ -26,6 +26,21 @@ public enum FileSaver {
         return folder.appending(path: name)
     }
 
+    /// The file's bytes. Safe off the main thread; a Retina screen takes 50–150 ms. With `smaller`, a PNG is
+    /// written with 256 colours when that looks the same and is smaller (Settings → Smaller PNG files).
+    public static func encode(_ image: CGImage, format: ImageFormat, smaller: Bool) throws -> Data {
+        let standard = try encode(image, format: format)
+        guard smaller, format == .png, let small = smallerPNG(image, standard: standard) else { return standard }
+        return small
+    }
+
+    /// The palette version of a PNG, or nil when it would lose too much (a photo) or would not be smaller.
+    public static func smallerPNG(_ image: CGImage, standard: Data) -> Data? {
+        guard let quantized = PaletteQuantizer.quantize(image), quantized.error <= PaletteQuantizer.maxError,
+              let palette = PalettePNG.encode(quantized), palette.count < standard.count else { return nil }
+        return palette
+    }
+
     /// The file's bytes. Safe off the main thread; a Retina screen takes 50–150 ms.
     public static func encode(_ image: CGImage, format: ImageFormat) throws -> Data {
         let data = NSMutableData()
@@ -40,7 +55,7 @@ public enum FileSaver {
     }
 
     /// Replaces whatever is at `url` (the editor's Save).
-    public static func overwrite(_ image: CGImage, format: ImageFormat, at url: URL) throws {
-        try encode(image, format: format).write(to: url, options: .atomic)
+    public static func overwrite(_ image: CGImage, format: ImageFormat, smaller: Bool = false, at url: URL) throws {
+        try encode(image, format: format, smaller: smaller).write(to: url, options: .atomic)
     }
 }

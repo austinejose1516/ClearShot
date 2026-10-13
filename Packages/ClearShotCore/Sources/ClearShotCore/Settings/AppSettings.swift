@@ -40,6 +40,7 @@ public final class AppSettings {
     private enum Key {
         static let saveFolder = "saveFolderPath"
         static let imageFormat = "imageFormat"
+        static let smallerPNG = "smallerPNG"
         static let copiesToClipboard = "copiesToClipboard"
         static let showsCursor = "showsCursor"
         static let playsSound = "playsSound"
@@ -59,6 +60,8 @@ public final class AppSettings {
 
     public var saveFolder: URL { didSet { defaults.set(saveFolder.path(), forKey: Key.saveFolder) } }
     public var imageFormat: ImageFormat { didSet { defaults.set(imageFormat.rawValue, forKey: Key.imageFormat) } }
+    /// Save PNGs with 256 colours when that looks the same: about half the size. The clipboard always gets the full PNG.
+    public var smallerPNG: Bool { didSet { defaults.set(smallerPNG, forKey: Key.smallerPNG) } }
     public var copiesToClipboard: Bool { didSet { defaults.set(copiesToClipboard, forKey: Key.copiesToClipboard) } }
     public var showsCursor: Bool { didSet { defaults.set(showsCursor, forKey: Key.showsCursor) } }
     public var playsSound: Bool { didSet { defaults.set(playsSound, forKey: Key.playsSound) } }
@@ -90,6 +93,7 @@ public final class AppSettings {
         saveFolder = defaults.string(forKey: Key.saveFolder)
             .map { URL(filePath: $0, directoryHint: .isDirectory) } ?? Self.defaultSaveFolder
         imageFormat = defaults.string(forKey: Key.imageFormat).flatMap(ImageFormat.init(rawValue:)) ?? .png
+        smallerPNG = defaults.object(forKey: Key.smallerPNG) as? Bool ?? true
         copiesToClipboard = defaults.object(forKey: Key.copiesToClipboard) as? Bool ?? true
         showsCursor = defaults.object(forKey: Key.showsCursor) as? Bool ?? false
         playsSound = defaults.object(forKey: Key.playsSound) as? Bool ?? true

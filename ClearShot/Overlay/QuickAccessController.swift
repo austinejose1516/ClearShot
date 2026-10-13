@@ -41,14 +41,22 @@ final class QuickAccessController {
             presentation: presentation,
             onEdit: { [weak self] in self?.onEdit?(capture) },
             onCopy: { ClipboardService.copy(capture.image) },
-            onShare: { anchor in
+            onShare: { [settings] anchor in
                 guard let anchor else { return }
-                do {
-                    // The saved file when it is there (it is written moments after the card appears), else a temp PNG.
-                    let file = capture.fileURL.flatMap { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) ? $0 : nil }
-                    ShareService.share([try file ?? ShareService.temporaryPNG(capture.image, date: capture.createdAt)], from: anchor)
-                } catch {
-                    ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+                Task {
+                    do {
+                        // The saved file when it is there (it is written moments after the card appears), else a temp PNG.
+                        let file = capture.fileURL.flatMap { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) ? $0 : nil }
+                        let item: URL
+                        if let file {
+                            item = file
+                        } else {
+                            item = try await ShareService.temporaryPNG(capture.image, smaller: settings.smallerPNG, date: capture.createdAt)
+                        }
+                        ShareService.share([item], from: anchor)
+                    } catch {
+                        ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+                    }
                 }
             },
             onUpload: { [weak self] in self?.upload(capture, presentation: presentation) },
@@ -83,13 +91,14 @@ final class QuickAccessController {
             return
         }
         let format = capture.fileURL.flatMap(ImageFormat.init(url:)) ?? settings.imageFormat
+        let smaller = settings.smallerPNG
         presentation.uploadProgress = 0
         Task {
             defer { presentation.uploadProgress = nil }
             do {
                 let data = try await Task.detached { () throws -> Data in
                     if let url = capture.fileURL, let saved = try? Data(contentsOf: url) { return saved }
-                    return try FileSaver.encode(capture.image, format: format)
+                    return try FileSaver.encode(capture.image, format: format, smaller: smaller)
                 }.value
                 presentation.uploadedLink = try await UploadService.upload(data, format: format, with: uploader) { fraction in
                     Task { @MainActor in presentation.uploadProgress = fraction }

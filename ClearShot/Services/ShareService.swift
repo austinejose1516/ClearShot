@@ -15,11 +15,12 @@ enum ShareService {
     }
 
     /// A PNG in the temp folder, named like a saved screenshot, for sharing something that is not on disk.
-    static func temporaryPNG(_ image: CGImage, date: Date = .now) throws -> URL {
+    /// Encodes off the main thread.
+    static func temporaryPNG(_ image: CGImage, smaller: Bool, date: Date = .now) async throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appending(path: "ClearShot", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appending(path: FileNamer.fileName(date: date, format: .png))
-        try FileSaver.encode(image, format: .png).write(to: url, options: .atomic)
+        try await Task.detached { try FileSaver.encode(image, format: .png, smaller: smaller).write(to: url, options: .atomic) }.value
         return url
     }
 }

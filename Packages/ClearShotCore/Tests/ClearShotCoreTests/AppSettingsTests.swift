@@ -18,6 +18,7 @@ import Testing
         #expect(settings.saveFolder == AppSettings.defaultSaveFolder)
         #expect(settings.saveFolder.path().hasSuffix("/Desktop/"))
         #expect(settings.imageFormat == .png)
+        #expect(settings.smallerPNG == true)
         #expect(settings.copiesToClipboard == true)
         #expect(settings.showsCursor == false)
         #expect(settings.playsSound == true)
@@ -52,6 +53,7 @@ import Testing
 
         let first = AppSettings(defaults: defaults)
         first.imageFormat = .jpeg
+        first.smallerPNG = false
         first.copiesToClipboard = false
         first.showsCursor = true
         first.playsSound = false
@@ -64,6 +66,7 @@ import Testing
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
+        #expect(second.smallerPNG == false)
         #expect(second.copiesToClipboard == false)
         #expect(second.showsCursor == true)
         #expect(second.playsSound == false)
