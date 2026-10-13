@@ -13,6 +13,8 @@
 brew install --cask austinejose1516/tap/clearshot
 ```
 
+Or [download the latest DMG](https://github.com/austinejose1516/ClearShot/releases/latest).
+
 <p align="center">
   <a href="https://github.com/austinejose1516/ClearShot/releases/latest"><img src="https://img.shields.io/github/v/release/austinejose1516/ClearShot?label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple" alt="macOS 26 or later">
@@ -42,13 +44,15 @@ brew install --cask austinejose1516/tap/clearshot
 export HOMEBREW_CASK_OPTS="--appdir=$HOME/Applications"
 ```
 
+**Without Homebrew:** download `ClearShot-<version>.dmg` from the [latest release](https://github.com/austinejose1516/ClearShot/releases/latest), open it and drag ClearShot into Applications. **Check for Updates…** in the menu bar tells you when a newer DMG is out.
+
 **First launch.**
 
 1. The app is not notarized yet, so the first time right-click ClearShot in Applications and choose **Open**.
 2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ClearShot on in System Settings.
 3. Quit ClearShot from the menu bar and open it again. Press **⌃⇧A** to capture.
 
-Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. The only thing it sends over the network is a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away).
+Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. It only talks to the network for a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away), and for **Upload**, which sends to your own cloud bucket and only when you press it.
 
 ## Features
 
@@ -57,11 +61,16 @@ Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no acco
 - **Area** — the screen freezes and dims; drag a box and see its size as you go. Press **Space** to switch to window mode, **Esc** to cancel.
 - **Window** — hover to highlight a window, click to capture it with its shadow and rounded corners.
 - **Full screen** — the display under the mouse.
-- Every capture flashes the screen, plays the shutter sound, goes to the clipboard and is saved as PNG or JPEG.
+- Every capture flashes the screen, plays the shutter sound, goes to the clipboard and is saved to the Desktop as PNG or JPEG (change the folder and format in Settings).
 
 ### Quick Access card
 
-A card slides up at the bottom-left after each capture. Hover it for a glass bar with **Edit**, **Copy**, **Reveal in Finder** and **Move to Trash**, plus close and the image size. Drag the thumbnail straight into Finder, Slack or any app. Cards can close themselves after a few seconds (Settings).
+A card slides up at the bottom-left after each capture. Hover it for a glass bar with **Edit**, **Copy**, **Share**, **Upload**, **Reveal in Finder** and **Move to Trash**, plus close and the image size. Drag the thumbnail straight into Finder, Slack or any app. Cards can close themselves after a few seconds (Settings).
+
+### Share and upload
+
+- **Share** (editor and card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
+- **Upload** (editor and card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png`, and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
 
 ### Editor
 
@@ -69,25 +78,27 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 |---|---|
 | Select | Click to select (inside rectangles and ellipses too), drag to move, drag a dot to resize |
 | Line, Arrow | Straight lines, with or without an arrowhead |
-| Curved arrow | Drag, then bend it with the middle dot; the head follows the curve |
+| Curved arrow | Drag a straight arrow, then drag the middle dot anywhere to bend it; the head follows the curve |
 | Pen | Freehand, smoothed |
+| Highlighter | A wide, see-through marker that keeps the text under it crisp; remembers its own colour and width |
 | Rectangle, Ellipse | Outline or filled; rectangles can have rounded corners |
-| Text | Drag a box to set the size, or click; type; **Enter** finishes, **⌘Enter** adds a line; bold and boxed styles |
+| Text | Drag a box to set the size, or click; type; **Enter** finishes, **⌘Enter** adds a line; bold, italic, underline and boxed styles |
 | Speech bubble | Draw the bubble, type, drag its tail |
 | Step number | Click to place 1, 2, 3…; pick the size or drag a corner dot |
 | Blur | Pixelate or blur anything private |
 | Crop | Drag the part to keep, then **Crop** or **Enter** |
 
-- The toolbar only shows the settings that apply: colour (presets or any custom colour), opacity, width slider, fill, corners, arrowhead, text size, bold, boxed, step size, blur mode.
-- Shape and text tools hand back to the pointer after one use, so you can adjust right away. Pen, Step and Blur stay on.
-- Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot.
+- The toolbar only shows the settings that apply: colour (a dropdown with presets and any custom colour), opacity, width slider, fill, corners, arrowhead, text size, bold / italic / underline, boxed, step size, blur mode.
+- Shape and text tools hand back to the pointer after one use, so you can adjust right away. Pen, Highlighter, Step and Blur stay on; a plain click with any tool goes back to the pointer.
+- Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot. Zoom with ⌘+ / ⌘−, the zoom menu or a trackpad pinch.
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider.
-- **Save** writes back into the screenshot file and closes the editor; **Save As…** writes a new PNG or JPEG; **Copy** puts the result on the clipboard and closes.
+- **Save** writes back into the screenshot file and closes the editor; **Save As…** writes a new PNG or JPEG; **Copy** puts the result on the clipboard and closes; **Share** opens the Share menu and keeps the editor open; **Upload** sends it to your bucket, copies the link and closes.
 
 ### Themes and settings
 
 - **Appearance**: System, Light or Dark, and an accent colour: Ocean, Violet, Sunset, Forest or Graphite.
 - Save folder, file format, clipboard, shutter sound, mouse pointer in captures, card duration, launch at login.
+- **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect.
 - Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 
 ## Keyboard shortcuts
@@ -105,6 +116,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Editor | ⌘+ / ⌘− | Zoom in / out |
 | Editor | Enter | Apply the crop |
 | Editor | Esc | Clear the selection and go back to the pointer |
+| Editor, typing text | ⌘B / ⌘I / ⌘U | Bold / italic / underline |
 | Typing text | Enter / ⌘Enter | Finish / new line |
 
 ## Build from source
@@ -131,7 +143,7 @@ make dmg        # Release build + build/ClearShot-<version>.dmg
 ### Releasing
 
 1. Bump `MARKETING_VERSION` in `project.yml`.
-2. Push a tag such as `v0.2.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
+2. Push a tag such as `v0.5.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
 3. Put the new version and DMG checksum into `Casks/clearshot.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`). Users then get it with `brew upgrade`.
 
 ## Contributing
