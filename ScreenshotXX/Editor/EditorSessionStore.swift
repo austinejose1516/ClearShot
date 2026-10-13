@@ -6,12 +6,12 @@ import ScreenshotXXCore
 final class EditorSessionStore {
     static let shared = EditorSessionStore()
     private var controllers: [Capture.ID: EditorWindowController] = [:]
-    /// Called after a successful save, once the editor window is closed (the card closes too).
-    var onSaved: ((Capture.ID) -> Void)?
+    /// Called after Save or Copy, once the editor window is closed (the card closes too).
+    var onFinished: ((Capture.ID) -> Void)?
 
-    func didSave(captureID: Capture.ID) {
+    func didFinish(captureID: Capture.ID) {
         close(captureID: captureID)
-        onSaved?(captureID)
+        onFinished?(captureID)
     }
 
     func close(captureID: Capture.ID) {
@@ -20,7 +20,7 @@ final class EditorSessionStore {
 
     func open(capture: Capture) {
         let controller = controllers[capture.id] ?? EditorWindowController(capture: capture) { [weak self] in
-            self?.didSave(captureID: capture.id)
+            self?.didFinish(captureID: capture.id)
         }
         controllers[capture.id] = controller
         NSApp.activate()

@@ -30,4 +30,11 @@ import Testing
         #expect(WindowPicker.window(at: CGPoint(x: 900, y: 900), in: candidates)?.id == 1)
         #expect(WindowPicker.window(at: CGPoint(x: 1500, y: 1500), in: candidates) == nil)
     }
+
+    @Test func windowsOutsideEveryScreenAreDropped() {
+        let screens = [CGRect(x: 0, y: 0, width: 1800, height: 1169)]
+        let windows = [window(1, 100, 100, 800, 600), window(2, -269, 697, 193, 173), window(3, 1700, 1100, 300, 300)]
+        let kept = WindowPicker.candidates(windows, excludingBundleID: "x", screens: screens)
+        #expect(kept.map(\.id) == [1, 3])
+    }
 }

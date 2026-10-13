@@ -14,6 +14,7 @@ struct EditorCanvasView: View {
         case pendingTextEdit(Annotation.ID, start: CGPoint)
         /// Text tool on empty space: drag out the box the text should fill.
         case sizingText(start: CGPoint)
+        case cropping(start: CGPoint)
         case idle
     }
 
@@ -73,6 +74,15 @@ struct EditorCanvasView: View {
                     .offset(x: r.minX, y: r.minY)
                     .allowsHitTesting(false)
             }
+            if let crop = state.cropDraft {
+                let r = transform.toCanvas(crop)
+                DimLayer(size: CGSize(width: size.width * zoom, height: size.height * zoom), hole: r)
+                Rectangle()
+                    .stroke(.white, lineWidth: 1.5)
+                    .frame(width: max(1, r.width), height: max(1, r.height))
+                    .offset(x: r.minX, y: r.minY)
+                    .allowsHitTesting(false)
+            }
         }
         .frame(width: size.width * zoom, height: size.height * zoom, alignment: .topLeading)
         .contentShape(Rectangle())
@@ -91,6 +101,23 @@ struct EditorCanvasView: View {
             // Above the gesture layer, so clicks inside the field reach the field.
             if let editing = state.editingTextID {
                 TextEditingOverlay(document: document, id: editing, transform: transform, onFinish: finishTextEditing)
+            }
+            if let crop = state.cropDraft, gesture == nil {
+                let r = transform.toCanvas(crop)
+                HStack(spacing: 8) {
+                    Button("Cancel") { state.cropDraft = nil }
+                        .keyboardShortcut(.cancelAction)
+                    Button("Crop") {
+                        document.applyCrop(crop)
+                        state.cropDraft = nil
+                        state.tool = .select
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(8)
+                .glassEffect(.regular, in: .rect(cornerRadius: 10))
+                .fixedSize()
+                .offset(x: r.minX, y: min(r.maxY + 8, size.height * zoom - 44))
             }
         }
         .padding(24)
@@ -155,6 +182,8 @@ struct EditorCanvasView: View {
             }
         case .sizingText(let start):
             textDraft = SelectionGeometry.normalizedRect(from: start, to: point)
+        case .cropping(let start):
+            state.cropDraft = SelectionGeometry.normalizedRect(from: start, to: point)
         case .idle, nil:
             break
         }
@@ -173,6 +202,20 @@ struct EditorCanvasView: View {
         // A visible handle wins over every tool.
         if let hit = handle, let initial = document.annotation(id: hit.id) {
             gesture = .resizing(hit.id, hit.kind, initial: initial)
+            return
+        }
+        // Pressing on an existing shape selects it with any tool except Pen and Crop; start outside it to draw on top.
+        if state.tool != .select, state.tool != .pen, state.tool != .crop,
+           let id = hitID, let hit = document.annotation(id: id) {
+            if hit.hasEditableText, document.selection == [id] {
+                gesture = .pendingTextEdit(id, start: point)
+                return
+            }
+            if !document.selection.contains(id) {
+                document.selection = [id]
+                state.adopt(hit)
+            }
+            gesture = .moving(last: point)
             return
         }
         switch state.tool {
@@ -228,6 +271,9 @@ struct EditorCanvasView: View {
                                         style: state.style)
             document.insert(annotation)
             gesture = .drawing(annotation.id, start: point)
+        case .crop:
+            state.cropDraft = nil
+            gesture = .cropping(start: point)
         case .step:
             let annotation = Annotation(kind: .step(number: document.nextStepNumber, center: point, radius: state.stepRadius),
                                         style: state.style)
@@ -261,6 +307,8 @@ struct EditorCanvasView: View {
             let draft = textDraft
             textDraft = nil
             placeText(at: start, box: draft)
+        case .cropping:
+            if let crop = state.cropDraft, !SelectionGeometry.isUsable(crop) { state.cropDraft = nil }
         case .idle, nil:
             break
         }
@@ -294,10 +342,10 @@ struct EditorCanvasView: View {
             case .lineStart, .lineEnd, .curveControl, .bubbleTail: return .crosshair
             }
         }
-        if state.tool == .select || state.tool == .text,
+        if state.tool != .pen, state.tool != .crop,
            let id = document.hitTest(point, tolerance: tolerance), let hit = document.annotation(id: id) {
-            if hit.hasEditableText { return document.selection.contains(id) ? .iBeam : .openHand }
-            return state.tool == .select ? .openHand : .iBeam
+            if hit.hasEditableText, document.selection.contains(id) { return .iBeam }
+            return .openHand
         }
         switch state.tool {
         case .select: return .arrow
@@ -319,6 +367,7 @@ struct EditorCanvasView: View {
         case .bubble: text = "Drag to draw the bubble, type, then drag its tail"
         case .step: text = "Click to place the next number"
         case .blur: text = "Drag over the part to hide · Pixelate or Blur below"
+        case .crop: text = "Drag the part to keep, then press Crop or Enter"
         }
         tipTask?.cancel()
         withAnimation(.easeOut(duration: 0.2)) { tip = text }

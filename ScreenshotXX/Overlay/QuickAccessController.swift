@@ -8,6 +8,7 @@ final class QuickAccessController {
     private struct Entry {
         let id: Capture.ID
         let panel: QuickAccessPanel
+        let presentation: CardPresentation
         let displayID: CGDirectDisplayID?
     }
 
@@ -30,9 +31,12 @@ final class QuickAccessController {
     }
 
     func show(_ capture: Capture, on screen: NSScreen?) {
-        let panel = QuickAccessPanel(frame: CGRect(origin: .zero, size: QuickAccessLayout.cardSize))
+        let margin = QuickAccessLayout.panelMargin
+        let panel = QuickAccessPanel(frame: CGRect(origin: .zero, size: QuickAccessLayout.cardSize).insetBy(dx: -margin, dy: -margin))
+        let presentation = CardPresentation()
         let view = QuickAccessView(
             capture: capture,
+            presentation: presentation,
             onEdit: { [weak self] in self?.onEdit?(capture) },
             onCopy: { ClipboardService.copy(capture.image) },
             onReveal: {
@@ -45,7 +49,8 @@ final class QuickAccessController {
             onClose: { [weak self] in self?.close(id: capture.id) },
             onHoverChange: { [weak self] inside in self?.hoverChanged(capture.id, inside: inside) })
         panel.contentView = FirstMouseHostingView(rootView: view)
-        entries.insert(Entry(id: capture.id, panel: panel, displayID: (screen ?? NSScreen.main)?.displayID), at: 0)
+        entries.insert(Entry(id: capture.id, panel: panel, presentation: presentation,
+                             displayID: (screen ?? NSScreen.main)?.displayID), at: 0)
         layout(animated: true, appearing: capture.id)
         scheduleAutoClose(capture.id)
     }
@@ -73,20 +78,17 @@ final class QuickAccessController {
         overflow.forEach(dismiss(id:))
     }
 
-    private func place(_ panel: QuickAccessPanel, at frame: CGRect, animated: Bool, appearing: Bool) {
+    private func place(_ panel: QuickAccessPanel, at cardFrame: CGRect, animated: Bool, appearing: Bool) {
+        let margin = QuickAccessLayout.panelMargin
+        let frame = cardFrame.insetBy(dx: -margin, dy: -margin)
         if appearing {
-            panel.setFrame(frame.offsetBy(dx: 0, dy: -24), display: false)
-            panel.alphaValue = 0
+            // The SwiftUI card plays its own spring entrance; the panel just needs to be there.
+            panel.setFrame(frame, display: false)
             panel.orderFrontRegardless()
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.28
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                panel.animator().setFrame(frame, display: true)
-                panel.animator().alphaValue = 1
-            }
         } else if animated {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
+                context.duration = 0.32
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)
                 panel.animator().setFrame(frame, display: true)
             }
         } else {
@@ -96,19 +98,15 @@ final class QuickAccessController {
 
     private func dismiss(id: Capture.ID) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
-        let panel = entries.remove(at: index).panel
+        let entry = entries.remove(at: index)
         autoCloseTasks.removeValue(forKey: id)?.cancel()
         hovered.remove(id)
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
-            panel.animator().alphaValue = 0
-            panel.animator().setFrame(panel.frame.offsetBy(dx: 0, dy: -16), display: true)
-        }, completionHandler: {
-            MainActor.assumeIsolated {
-                panel.orderOut(nil)
-                panel.contentView = nil
-            }
-        })
+        entry.presentation.isDismissing = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(260))
+            entry.panel.orderOut(nil)
+            entry.panel.contentView = nil
+        }
     }
 
     // MARK: - Auto-close

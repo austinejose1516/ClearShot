@@ -35,8 +35,11 @@ final class OverlayCaptureSession {
 
         let scWindows = try await ScreenCapturer.windows()
         windowsByID = Dictionary(scWindows.map { ($0.windowID, $0) }, uniquingKeysWith: { first, _ in first })
+        let primaryHeightForFilter = NSScreen.screens.first?.frame.height ?? 0
+        let screenRects = NSScreen.screens.map { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: primaryHeightForFilter) }
         state.windows = WindowPicker.candidates(scWindows.map(WindowInfo.init),
-                                                excludingBundleID: Bundle.main.bundleIdentifier ?? "")
+                                                excludingBundleID: Bundle.main.bundleIdentifier ?? "",
+                                                screens: screenRects)
         DiagnosticLog.write("windows front→back: " + state.windows.prefix(5).map { "\($0.title ?? "?") \($0.frame)" }.joined(separator: " | "))
 
         var frozen: [(screen: NSScreen, image: CGImage)] = []
@@ -80,8 +83,15 @@ final class OverlayCaptureSession {
 
         NSCursor.crosshair.push()
         let mouse = NSEvent.mouseLocation
-        for panel in panels { panel.orderFrontRegardless() }
+        for panel in panels {
+            panel.alphaValue = 0
+            panel.orderFrontRegardless()
+        }
         (panels.first { $0.frame.contains(mouse) } ?? panels.first)?.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.14
+            for panel in panels { panel.animator().alphaValue = 1 }
+        }, completionHandler: nil)
 
         return await withCheckedContinuation { continuation = $0 }
     }
@@ -90,11 +100,19 @@ final class OverlayCaptureSession {
         guard let continuation else { return }
         self.continuation = nil
         NSCursor.pop()
-        for panel in panels {
-            panel.orderOut(nil)
-            panel.contentView = nil
-        }
+        let closing = panels
         panels.removeAll()
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            for panel in closing { panel.animator().alphaValue = 0 }
+        }, completionHandler: {
+            MainActor.assumeIsolated {
+                for panel in closing {
+                    panel.orderOut(nil)
+                    panel.contentView = nil
+                }
+            }
+        })
         continuation.resume(returning: outcome)
     }
 }

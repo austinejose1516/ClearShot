@@ -76,7 +76,7 @@ struct EditorToolbar: View {
                     .padding(.horizontal, 4)
             }
             .fixedSize()
-            .help("Copy to clipboard (⌘C)")
+            .help("Copy the result to the clipboard and close (⌘C)")
             Menu {
                 Button("Save As…", action: onSaveAs)
             } label: {
@@ -187,6 +187,7 @@ struct EditorToolbar: View {
         case .bubble: "Drag to draw the bubble, type, then drag its tail"
         case .step: "Click to place the next number"
         case .blur: "Drag over the part to hide"
+        case .crop: "Drag the part to keep · Enter crops · Esc cancels"
         }
     }
 

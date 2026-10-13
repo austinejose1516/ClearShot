@@ -1,5 +1,5 @@
 enum EditorTool: String, CaseIterable, Identifiable {
-    case select, line, arrow, curve, pen, rect, ellipse, text, bubble, step, blur
+    case select, line, arrow, curve, pen, rect, ellipse, text, bubble, step, blur, crop
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .bubble: "Speech bubble"
         case .step: "Step number"
         case .blur: "Blur / pixelate"
+        case .crop: "Crop"
         }
     }
 
@@ -24,7 +25,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .select: "cursorarrow"
         case .line: "line.diagonal"
         case .arrow: "arrow.up.right"
-        case .curve: "arrow.turn.up.right"
+        case .curve: "point.topleft.down.to.point.bottomright.curvepath"
         case .pen: "scribble"
         case .rect: "rectangle"
         case .ellipse: "circle"
@@ -32,6 +33,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .bubble: "bubble.left"
         case .step: "1.circle"
         case .blur: "eye.slash"
+        case .crop: "crop"
         }
     }
 

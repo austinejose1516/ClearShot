@@ -6,12 +6,20 @@ public enum DiagnosticLog {
         .homeDirectoryForCurrentUser
         .appending(path: "Library/Logs/ScreenshotXX.log")
 
-    public static func write(_ message: String, to file: URL = defaultFile) {
+    public static let defaultMaxBytes = 2_000_000
+
+    /// Appends a line; when the file is bigger than `maxBytes` it starts over.
+    public static func write(_ message: String, to file: URL = defaultFile, maxBytes: Int = defaultMaxBytes) {
         let stamp = ISO8601DateFormatter().string(from: .now)
         let line = "\(stamp) \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
         let manager = FileManager.default
         try? manager.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let size = (try? manager.attributesOfItem(atPath: file.path(percentEncoded: false))[.size] as? Int) ?? 0
+        if size > maxBytes {
+            try? data.write(to: file)
+            return
+        }
         if let handle = try? FileHandle(forWritingTo: file) {
             defer { try? handle.close() }
             _ = try? handle.seekToEnd()

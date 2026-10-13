@@ -6,14 +6,29 @@ import Observation
 /// Live edits (dragging) change `state` without an undo entry; `commit()` records one.
 @Observable
 public final class EditorDocument {
-    public let baseImage: CGImage
-    public private(set) var state = DocumentState()
+    public private(set) var state: DocumentState
     public var selection: Set<Annotation.ID> = []
     private var history: UndoStack<DocumentState>
 
     public init(baseImage: CGImage) {
-        self.baseImage = baseImage
-        history = UndoStack(initial: DocumentState())
+        let initial = DocumentState(baseImage: baseImage)
+        state = initial
+        history = UndoStack(initial: initial)
+    }
+
+    public var baseImage: CGImage { state.baseImage }
+
+    /// Crop to whole pixels inside the image; annotations move with the picture. Undoable.
+    public func applyCrop(_ rect: CGRect) {
+        let bounds = CGRect(origin: .zero, size: imageSize)
+        let target = rect.standardized.integral.intersection(bounds)
+        guard target.width >= 1, target.height >= 1, target != bounds,
+              let cropped = state.baseImage.cropping(to: target) else { return }
+        state.baseImage = cropped
+        for index in state.annotations.indices {
+            state.annotations[index].move(by: CGVector(dx: -target.minX, dy: -target.minY))
+        }
+        commit()
     }
 
     public var annotations: [Annotation] { state.annotations }

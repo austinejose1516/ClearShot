@@ -1,6 +1,7 @@
 import AppKit
 import KeyboardShortcuts
 import ScreenshotXXCore
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
@@ -40,6 +41,20 @@ private struct GeneralSettingsTab: View {
                 Text(settings.cardAutoCloseSeconds == 0
                      ? "Keep card until closed"
                      : "Close card after \(settings.cardAutoCloseSeconds) s")
+            }
+            Toggle("Launch at login", isOn: Binding(
+                get: { SMAppService.mainApp.status == .enabled },
+                set: { on in
+                    do {
+                        if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                    } catch {
+                        ErrorPresenter.show(title: "Could not change login item", message: error.localizedDescription)
+                    }
+                }))
+            LabeledContent("Diagnostics") {
+                Button("Show Log in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([DiagnosticLog.defaultFile])
+                }
             }
         }
     }

@@ -1,9 +1,17 @@
+import Observation
 import ScreenshotXXCore
 import SwiftUI
+
+/// Lets the controller play the exit animation before the panel goes away.
+@Observable
+final class CardPresentation {
+    var isDismissing = false
+}
 
 /// The card: thumbnail you can drag out, size caption, and Edit / Copy / Reveal / Close.
 struct QuickAccessView: View {
     let capture: Capture
+    let presentation: CardPresentation
     let onEdit: () -> Void
     let onCopy: () -> Void
     let onReveal: () -> Void
@@ -12,8 +20,11 @@ struct QuickAccessView: View {
     let onHoverChange: (Bool) -> Void
 
     @State private var copied = false
+    @State private var appeared = false
+    @State private var hovered = false
 
     var body: some View {
+        let dismissing = presentation.isDismissing
         VStack(spacing: 8) {
             thumbnail
             Text("\(capture.image.width) × \(capture.image.height)")
@@ -40,7 +51,18 @@ struct QuickAccessView: View {
         .padding(10)
         .frame(width: QuickAccessLayout.cardSize.width, height: QuickAccessLayout.cardSize.height)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
-        .onHover(perform: onHoverChange)
+        .scaleEffect(dismissing ? 0.88 : (appeared ? (hovered ? 1.03 : 1) : 0.8))
+        .opacity(dismissing ? 0 : (appeared ? 1 : 0))
+        .offset(y: dismissing ? 18 : (appeared ? 0 : 36))
+        .padding(QuickAccessLayout.panelMargin)
+        .animation(.spring(response: 0.42, dampingFraction: 0.72), value: appeared)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hovered)
+        .animation(.easeIn(duration: 0.22), value: dismissing)
+        .onAppear { appeared = true }
+        .onHover { inside in
+            hovered = inside
+            onHoverChange(inside)
+        }
     }
 
     private var thumbnail: some View {

@@ -11,6 +11,7 @@ final class EditorActions {
     var deselect: (() -> Void)?
     var zoomIn: (() -> Void)?
     var zoomOut: (() -> Void)?
+    var confirm: (() -> Void)?
 }
 
 /// A menu-bar app has no Edit menu, so the window handles the usual shortcuts itself.
@@ -43,6 +44,7 @@ final class EditorWindow: NSWindow {
         switch event.keyCode {
         case 51, 117: actions.delete?()     // Backspace, Forward delete
         case 53: actions.deselect?()        // Esc
+        case 36, 76: actions.confirm?()     // Return, Enter
         default: super.keyDown(with: event)
         }
     }

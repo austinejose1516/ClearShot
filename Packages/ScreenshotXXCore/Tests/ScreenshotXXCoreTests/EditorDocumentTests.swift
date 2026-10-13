@@ -96,4 +96,19 @@ import Testing
         doc.undo()
         #expect(doc.frame.padding == 0)
     }
+
+    @Test func cropShrinksTheImageShiftsAnnotationsAndIsUndoable() {
+        let context = CGContext(data: nil, width: 100, height: 80, bitsPerComponent: 8, bytesPerRow: 400,
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let doc = EditorDocument(baseImage: context.makeImage()!)
+        let shape = rect(30, 30, 10, 10)
+        doc.add(shape)
+        doc.applyCrop(CGRect(x: 20.4, y: 10.6, width: 50, height: 50))
+        #expect(doc.imageSize == CGSize(width: 51, height: 51))
+        #expect(doc.annotation(id: shape.id)?.bounds.origin == CGPoint(x: 10, y: 20))
+        doc.undo()
+        #expect(doc.imageSize == CGSize(width: 100, height: 80))
+        #expect(doc.annotation(id: shape.id)?.bounds.origin == CGPoint(x: 30, y: 30))
+    }
 }

@@ -1264,3 +1264,22 @@ Task test command: `make check`
 - [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 62 tests pass** — **Step 5: App (two commits: blur + steps, then emoji + bubbles)** — **Step 6: build** — **Step 7: Austin: pixelate a region, blur one, three steps, two emojis, a bubble with text and a dragged tail; Save; PNG shows all** — **Step 8: commit**
 
 Task test command: `make check`
+
+---
+
+### Task 10: Polish — app icon, crop tool, launch at login, log rotation, off-screen window filter, README
+
+**Files:**
+- Modify (Core): `DocumentState.swift` (base image becomes part of the state; Codable dropped — never persisted), `EditorDocument.swift` (+ `applyCrop`), `WindowPicker.swift` (+ `screens:`), `DiagnosticLog.swift` (+ `maxBytes` rotation)
+- Test (Core): `EditorDocumentTests` (+crop), `WindowPickerTests` (+screens), `DiagnosticLogTests` (+rotation)
+- Create (App): `ScreenshotXX/Resources/AppIcon.icns` (made by `scripts/make-icon.swift`), `README.md`
+- Modify (App): `EditorTool` (+crop), `EditorCanvasView` (crop drag + Apply/Cancel), `EditorToolbar`, `SettingsView` (launch at login, show log), `OverlayCaptureSession` (screen filter), `project.yml` (`CFBundleIconFile`)
+
+**Interfaces (Core):**
+- `DocumentState { baseImage: CGImage; annotations; frame }` (Equatable by reference for the image); `EditorDocument.applyCrop(_ rect: CGRect)` — crops the base image to whole pixels inside the image, shifts annotations by −origin, commits (undoable).
+- `WindowPicker.candidates(_:excludingBundleID:screens: [CGRect] = [])` — with screens given, drops windows that touch none of them.
+- `DiagnosticLog.write(_:to:maxBytes: = 2 MB)` — when the file is bigger than `maxBytes`, it starts over.
+
+- [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 61 tests pass** — **Step 5: App** — **Step 6: build** — **Step 7: Austin: app icon in Finder/Dock switcher; crop in the editor then undo; Launch at login toggle in Settings** — **Step 8: commit `feat: polish — icon, crop, launch at login`**
+
+Task test command: `make check`

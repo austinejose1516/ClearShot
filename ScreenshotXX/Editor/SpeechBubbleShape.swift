@@ -1,39 +1,46 @@
 import SwiftUI
 
-/// Rounded box with a tail that points at `tail`, as one outline.
+/// Rounded box with a tail that points at `tail`, drawn as one continuous outline
+/// (no path union, so it cannot flicker while the tail is dragged).
 struct SpeechBubbleShape: Shape {
     let box: CGRect
     let tail: CGPoint
 
     nonisolated func path(in rect: CGRect) -> Path {
         let b = box.standardized
-        let radius = min(24, min(b.width, b.height) * 0.2)
-        let body = Path(roundedRect: b, cornerRadius: radius)
-        guard !b.insetBy(dx: -2, dy: -2).contains(tail) else { return body }
+        let r = min(24, min(b.width, b.height) * 0.2)
+        var path = Path()
 
-        // The tail leaves from the edge nearest to its point.
-        let baseWidth = max(12, min(b.width, b.height) * 0.28)
-        let half = baseWidth / 2
-        let distances: [(CGFloat, Int)] = [
-            (abs(tail.y - b.minY), 0), (abs(tail.x - b.maxX), 1), (abs(tail.y - b.maxY), 2), (abs(tail.x - b.minX), 3),
-        ]
-        let edge = distances.min { $0.0 < $1.0 }!.1
-        let a: CGPoint, c: CGPoint
-        switch edge {
-        case 0, 2:
-            let y = edge == 0 ? b.minY : b.maxY
-            let x = min(max(tail.x, b.minX + radius + half), b.maxX - radius - half)
-            a = CGPoint(x: x - half, y: y); c = CGPoint(x: x + half, y: y)
-        default:
-            let x = edge == 1 ? b.maxX : b.minX
-            let y = min(max(tail.y, b.minY + radius + half), b.maxY - radius - half)
-            a = CGPoint(x: x, y: y - half); c = CGPoint(x: x, y: y + half)
+        // Which edge the tail leaves from: the one it is furthest beyond. Inside the box → no tail.
+        let beyondX = tail.x < b.minX ? b.minX - tail.x : (tail.x > b.maxX ? tail.x - b.maxX : 0)
+        let beyondY = tail.y < b.minY ? b.minY - tail.y : (tail.y > b.maxY ? tail.y - b.maxY : 0)
+        let edge: Int? = (beyondX <= 0 && beyondY <= 0) ? nil : (beyondX > beyondY ? (tail.x < b.minX ? 3 : 1) : (tail.y < b.minY ? 0 : 2))
+        let half = max(6, min(min(b.width, b.height) * 0.14, (min(b.width, b.height) - 2 * r) / 2 - 1))
+        let baseX = min(max(tail.x, b.minX + r + half), b.maxX - r - half)
+        let baseY = min(max(tail.y, b.minY + r + half), b.maxY - r - half)
+
+        path.move(to: CGPoint(x: b.minX + r, y: b.minY))
+        if edge == 0 {
+            path.addLine(to: CGPoint(x: baseX - half, y: b.minY)); path.addLine(to: tail); path.addLine(to: CGPoint(x: baseX + half, y: b.minY))
         }
-        var triangle = Path()
-        triangle.move(to: a)
-        triangle.addLine(to: tail)
-        triangle.addLine(to: c)
-        triangle.closeSubpath()
-        return body.union(triangle)
+        path.addLine(to: CGPoint(x: b.maxX - r, y: b.minY))
+        path.addQuadCurve(to: CGPoint(x: b.maxX, y: b.minY + r), control: CGPoint(x: b.maxX, y: b.minY))
+        if edge == 1 {
+            path.addLine(to: CGPoint(x: b.maxX, y: baseY - half)); path.addLine(to: tail); path.addLine(to: CGPoint(x: b.maxX, y: baseY + half))
+        }
+        path.addLine(to: CGPoint(x: b.maxX, y: b.maxY - r))
+        path.addQuadCurve(to: CGPoint(x: b.maxX - r, y: b.maxY), control: CGPoint(x: b.maxX, y: b.maxY))
+        if edge == 2 {
+            path.addLine(to: CGPoint(x: baseX + half, y: b.maxY)); path.addLine(to: tail); path.addLine(to: CGPoint(x: baseX - half, y: b.maxY))
+        }
+        path.addLine(to: CGPoint(x: b.minX + r, y: b.maxY))
+        path.addQuadCurve(to: CGPoint(x: b.minX, y: b.maxY - r), control: CGPoint(x: b.minX, y: b.maxY))
+        if edge == 3 {
+            path.addLine(to: CGPoint(x: b.minX, y: baseY + half)); path.addLine(to: tail); path.addLine(to: CGPoint(x: b.minX, y: baseY - half))
+        }
+        path.addLine(to: CGPoint(x: b.minX, y: b.minY + r))
+        path.addQuadCurve(to: CGPoint(x: b.minX + r, y: b.minY), control: CGPoint(x: b.minX, y: b.minY))
+        path.closeSubpath()
+        return path
     }
 }

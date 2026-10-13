@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DiagnosticLog.write("edit requested for \(capture.id)")
             EditorSessionStore.shared.open(capture: capture)
         }
-        EditorSessionStore.shared.onSaved = { [weak self] captureID in
+        EditorSessionStore.shared.onFinished = { [weak self] captureID in
             self?.quickAccess.close(id: captureID)
         }
         quickAccess.onDelete = { [weak self] capture in

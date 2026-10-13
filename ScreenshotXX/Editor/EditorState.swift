@@ -18,6 +18,7 @@ final class EditorState {
     var editingTextID: Annotation.ID?
     var showsFramePanel = false
     var blurMode: BlurMode = .pixelate
+    var cropDraft: CGRect?
     var stepRadius: CGFloat = 36
     var editingTextIsNew = false
 

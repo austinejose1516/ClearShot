@@ -37,6 +37,7 @@ targets:
       path: ScreenshotXX/Info.plist
       properties:
         CFBundleDisplayName: ScreenshotXX
+        CFBundleIconFile: AppIcon
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "© 2026 Austine Jose"

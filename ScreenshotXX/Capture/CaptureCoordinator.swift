@@ -74,6 +74,7 @@ final class CaptureCoordinator {
     /// Shared tail of every capture: clipboard first (never lost), then disk, then sound and store.
     private func finish(_ capture: Capture) {
         var capture = capture
+        CaptureFlash.flash(on: .underMouse)
         if settings.copiesToClipboard { ClipboardService.copy(capture.image) }
         do {
             capture.fileURL = try FileSaver.save(capture.image, format: settings.imageFormat,

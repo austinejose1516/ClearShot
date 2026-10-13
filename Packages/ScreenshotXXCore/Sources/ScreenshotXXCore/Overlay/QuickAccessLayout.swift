@@ -5,6 +5,8 @@ public enum QuickAccessLayout {
     public static let cardSize = CGSize(width: 232, height: 212)
     public static let margin: CGFloat = 16
     public static let gap: CGFloat = 8
+    /// Transparent room around the card inside its panel, so entrance and hover animations are not clipped.
+    public static let panelMargin: CGFloat = 24
 
     public static func maxVisible(in visibleFrame: CGRect) -> Int {
         max(0, Int((visibleFrame.width - margin + gap) / (cardSize.width + gap)))

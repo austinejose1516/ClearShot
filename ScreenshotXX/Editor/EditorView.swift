@@ -9,6 +9,7 @@ struct EditorView: View {
     let actions: EditorActions
     let fileURL: URL?
     let onSaved: (URL) -> Void
+    let onCopied: () -> Void
     let onEdited: (Bool) -> Void
 
     var body: some View {
@@ -35,14 +36,23 @@ struct EditorView: View {
         actions.copy = copy
         actions.save = save
         actions.selectAll = { document.selection = Set(document.annotations.map(\.id)) }
-        actions.deselect = { document.selection = []; state.tool = .select }
+        actions.deselect = { document.selection = []; state.cropDraft = nil; state.tool = .select }
+        actions.confirm = { applyCrop() }
         actions.zoomIn = { state.zoomIsFit = false; state.zoom = min(8, state.zoom * 1.25) }
         actions.zoomOut = { state.zoomIsFit = false; state.zoom = max(0.05, state.zoom / 1.25) }
+    }
+
+    private func applyCrop() {
+        guard let draft = state.cropDraft else { return }
+        document.applyCrop(draft)
+        state.cropDraft = nil
+        state.tool = .select
     }
 
     private func copy() {
         guard let image = Exporter.render(document) else { return }
         ClipboardService.copy(image)
+        onCopied()
     }
 
     private func save() {
