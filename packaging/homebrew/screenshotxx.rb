@@ -2,7 +2,7 @@
 # Update `version` and `sha256` (from the .dmg.sha256 file) on each release.
 cask "screenshotxx" do
   version "0.1.0"
-  sha256 "74abc19767a0861a174355b02901037739942a0cca2733570fd13928bc675521"
+  sha256 "739951da68bd09245532e83123326d0f386b5163b463f83f7e3940cfdf1526f3"
 
   url "https://github.com/austinejose1516/ScreenshotXX/releases/download/v#{version}/ScreenshotXX-#{version}.dmg"
   name "ScreenshotXX"
