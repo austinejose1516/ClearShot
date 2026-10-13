@@ -22,4 +22,13 @@ public struct RGBAColor: Equatable, Hashable, Sendable, Codable {
     public static let white = RGBAColor(red: 1, green: 1, blue: 1)
 
     public static let presets: [RGBAColor] = [.red, .orange, .yellow, .green, .blue, .purple, .black, .white]
+
+    public func withAlpha(_ alpha: Double) -> RGBAColor {
+        RGBAColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+    /// Same hue, ignoring alpha.
+    public func sameColor(as other: RGBAColor) -> Bool {
+        red == other.red && green == other.green && blue == other.blue
+    }
 }

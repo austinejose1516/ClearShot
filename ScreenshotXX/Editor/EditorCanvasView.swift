@@ -19,6 +19,8 @@ struct EditorCanvasView: View {
 
     @State private var gesture: Gesture?
     @State private var textDraft: CGRect?
+    @State private var tip: String?
+    @State private var tipTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { proxy in
@@ -28,8 +30,21 @@ struct EditorCanvasView: View {
             }
             .onAppear { fit(to: proxy.size) }
             .onChange(of: proxy.size) { _, newSize in fit(to: newSize) }
+            .overlay(alignment: .top) {
+                if let tip {
+                    Text(tip)
+                        .font(.callout)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .glassEffect(.regular, in: .capsule)
+                        .padding(.top, 14)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
         }
         .background(Color(nsColor: .underPageBackgroundColor))
+        .onChange(of: state.tool) { showTip(for: state.tool) }
     }
 
     private var canvas: some View {
@@ -55,11 +70,10 @@ struct EditorCanvasView: View {
         .contentShape(Rectangle())
         .onContinuousHover { phase in
             switch phase {
-            case .active: cursor(for: state.tool).set()
+            case .active(let location): cursor(at: imagePoint(location)).set()
             case .ended: NSCursor.arrow.set()
             }
         }
-        .onChange(of: state.tool) { cursor(for: state.tool).set() }
         .highPriorityGesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in changed(at: imagePoint(value.location)) }
@@ -86,7 +100,11 @@ struct EditorCanvasView: View {
     // MARK: - Gesture handling (image coordinates)
 
     private func changed(at point: CGPoint) {
-        if gesture == nil { begin(at: point); return }
+        if gesture == nil {
+            dismissTip()
+            begin(at: point)
+            return
+        }
         switch gesture {
         case .drawing(let id, let start):
             guard var annotation = document.annotation(id: id) else { return }
@@ -113,6 +131,7 @@ struct EditorCanvasView: View {
         case .moving(let last):
             document.moveSelection(by: CGVector(dx: point.x - last.x, dy: point.y - last.y))
             gesture = .moving(last: point)
+            NSCursor.closedHand.set()
         case .resizing(_, let handle, let initial):
             document.update(Handles.apply(handle, to: initial, point: point))
         case .pendingTextEdit(_, let start):
@@ -230,12 +249,55 @@ struct EditorCanvasView: View {
         startTextEditing(annotation.id, isNew: true)
     }
 
-    private func cursor(for tool: EditorTool) -> NSCursor {
-        switch tool {
-        case .select: .arrow
-        case .text: .iBeam
-        default: .crosshair
+    // MARK: - Cursor and tip
+
+    /// What a press here would do, as a cursor: resize on a dot, hand on a shape, I-beam on text, else the tool's cursor.
+    private func cursor(at point: CGPoint) -> NSCursor {
+        let tolerance = 6 / state.zoom
+        if let hit = handleHit(at: point, tolerance: tolerance * 1.5) {
+            switch hit.kind {
+            case .topLeft: return .frameResize(position: .topLeft, directions: .all)
+            case .topRight: return .frameResize(position: .topRight, directions: .all)
+            case .bottomLeft: return .frameResize(position: .bottomLeft, directions: .all)
+            case .bottomRight: return .frameResize(position: .bottomRight, directions: .all)
+            case .lineStart, .lineEnd, .curveControl: return .crosshair
+            }
         }
+        if state.tool == .select || state.tool == .text,
+           let id = document.hitTest(point, tolerance: tolerance), let hit = document.annotation(id: id) {
+            if case .text = hit.kind { return document.selection.contains(id) ? .iBeam : .openHand }
+            return state.tool == .select ? .openHand : .iBeam
+        }
+        switch state.tool {
+        case .select: return .arrow
+        case .text: return .iBeam
+        default: return .crosshair
+        }
+    }
+
+    private func showTip(for tool: EditorTool) {
+        let text: String
+        switch tool {
+        case .select: text = "Click to select · drag to move · drag a dot to resize"
+        case .line, .arrow: text = "Drag to draw"
+        case .curve: text = "Drag to draw, then drag the middle dot to bend"
+        case .pen: text = "Drag to draw freehand"
+        case .rect, .ellipse: text = "Drag to draw · Fill makes it solid"
+        case .text: text = "Drag to draw a text box, then type · click existing text to edit"
+        }
+        tipTask?.cancel()
+        withAnimation(.easeOut(duration: 0.2)) { tip = text }
+        tipTask = Task {
+            try? await Task.sleep(for: .seconds(3.5))
+            guard !Task.isCancelled else { return }
+            dismissTip()
+        }
+    }
+
+    private func dismissTip() {
+        tipTask?.cancel()
+        guard tip != nil else { return }
+        withAnimation(.easeIn(duration: 0.2)) { tip = nil }
     }
 
     private func shortKind(_ annotation: Annotation) -> String {

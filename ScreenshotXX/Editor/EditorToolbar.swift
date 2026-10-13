@@ -95,8 +95,8 @@ struct EditorToolbar: View {
                     } label: {
                         Circle()
                             .fill(Color(preset))
-                            .stroke(.primary.opacity(state.strokeColor == preset ? 0.9 : 0.25),
-                                    lineWidth: state.strokeColor == preset ? 2 : 1)
+                            .stroke(.primary.opacity(state.strokeColor.sameColor(as: preset) ? 0.9 : 0.25),
+                                    lineWidth: state.strokeColor.sameColor(as: preset) ? 2 : 1)
                             .frame(width: 16, height: 16)
                     }
                     .buttonStyle(.plain)
@@ -108,6 +108,11 @@ struct EditorToolbar: View {
             }
             .fixedSize()
             .onChange(of: state.strokeWidth) { state.applyStyle(to: document) }
+            Picker("Opacity", selection: $state.opacity) {
+                ForEach(EditorState.opacities, id: \.self) { Text("\(Int($0 * 100)) %").tag($0) }
+            }
+            .fixedSize()
+            .onChange(of: state.opacity) { state.applyStyle(to: document) }
             if state.tool.usesFill || selectionHasShape {
                 Toggle("Fill", isOn: $state.fills)
                     .toggleStyle(.checkbox)
