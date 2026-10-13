@@ -20,7 +20,7 @@
 - No App Sandbox. Signing: ad-hoc (`CODE_SIGN_IDENTITY = -`) until `Local.xcconfig` sets a Personal Team.
 - Default hotkeys: ⌃⇧A area, ⌃⇧W window, ⌃⇧F full screen.
 - Default save folder `~/Pictures/ScreenshotXX/`, default format PNG, copy to clipboard on.
-- Core package must not import AppKit, SwiftUI or ScreenCaptureKit (Foundation + CoreGraphics only).
+- Core package must not import AppKit, SwiftUI or ScreenCaptureKit (Foundation, CoreGraphics, ImageIO and UniformTypeIdentifiers only).
 - Every `xcodebuild` call uses `-derivedDataPath build/DerivedData -quiet`.
 - Commit after every task with the `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` trailer.
 
@@ -619,6 +619,424 @@ Expected: a line containing `capture requested: fullScreen`.
 ```bash
 git add -A
 git commit -m "feat: project skeleton — menu bar app, settings, onboarding, hotkeys"
+```
+
+Task test command: `make check`
+
+---
+
+### Task 2: Full-screen capture → PNG on disk, clipboard, shutter sound
+
+**Files:**
+- Create (Core): `Packages/ScreenshotXXCore/Sources/ScreenshotXXCore/Capture/Capture.swift`, `.../Capture/CaptureStore.swift`, `.../Files/FileNamer.swift`
+- Test (Core): `Packages/ScreenshotXXCore/Tests/ScreenshotXXCoreTests/FileNamerTests.swift`, `.../CaptureStoreTests.swift`
+- Create (App): `ScreenshotXX/Capture/ScreenCapturer.swift`, `ScreenshotXX/Services/FileSaver.swift`, `ScreenshotXX/Services/ClipboardService.swift`, `ScreenshotXX/Services/SoundPlayer.swift`, `ScreenshotXX/Services/ErrorPresenter.swift`
+- Modify (App): `ScreenshotXX/Capture/CaptureCoordinator.swift` (replace the stub), `ScreenshotXX/App/AppDelegate.swift` (own a `CaptureStore`, pass it and the onboarding callback)
+
+**Interfaces:**
+- Consumes: `AppSettings` (Task 1), `CaptureKind` (Task 1), `PermissionService` (Task 1).
+- Produces (Core): `public struct Capture: Identifiable, Sendable { public let id: UUID; public let kind: CaptureKind; public let createdAt: Date; public let image: CGImage; public var fileURL: URL?; public init(kind: CaptureKind, image: CGImage, createdAt: Date = .now, fileURL: URL? = nil) }`
+- Produces (Core): `@Observable public final class CaptureStore { public init(limit: Int = 20); public private(set) var captures: [Capture] /* newest first */; public func add(_:); public func remove(id: Capture.ID); public func capture(id: Capture.ID) -> Capture?; public func update(_:) }`
+- Produces (Core): `public enum FileNamer { static func fileName(date: Date, format: ImageFormat, timeZone: TimeZone = .current) -> String /* "ScreenshotXX 2026-10-13 at 09.41.12.png" */; static func uniqueFileName(_ name: String, exists: (String) -> Bool) -> String /* "name (2).png" */ }`
+- Produces (App): `enum ScreenCapturer { static func display(under point: CGPoint) async throws -> SCDisplay; static func captureDisplay(_ display: SCDisplay, showsCursor: Bool) async throws -> CGImage }`
+- Produces (App): `enum FileSaver { static func save(_ image: CGImage, format: ImageFormat, to folder: URL, date: Date) throws -> URL }` — creates the folder if missing, never overwrites (uses `FileNamer.uniqueFileName`).
+- Produces (App): `enum ClipboardService { static func copy(_ image: CGImage) }` (PNG + TIFF on the general pasteboard)
+- Produces (App): `enum SoundPlayer { static func playShutter() }`
+- Produces (App): `enum ErrorPresenter { static func show(title: String, message: String) }` (NSAlert, brings the app forward)
+- Produces (App): `CaptureCoordinator.init(settings: AppSettings, store: CaptureStore, onPermissionMissing: @escaping () -> Void)`; `.capture(.fullScreen)` runs the whole pipeline; `.area` / `.window` still log only (Tasks 3 and 4).
+
+- [ ] **Step 1: Write the failing Core tests**
+
+`FileNamerTests.swift`:
+
+```swift
+import Foundation
+import Testing
+@testable import ScreenshotXXCore
+
+@Suite struct FileNamerTests {
+    private let dublin = TimeZone(identifier: "Europe/Dublin")!
+
+    private func date(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int, _ s: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = dublin
+        return calendar.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi, second: s))!
+    }
+
+    @Test func nameUsesDateThenTimeWithDots() {
+        let at = date(2026, 10, 13, 9, 41, 12)
+        #expect(FileNamer.fileName(date: at, format: .png, timeZone: dublin) == "ScreenshotXX 2026-10-13 at 09.41.12.png")
+        #expect(FileNamer.fileName(date: at, format: .jpeg, timeZone: dublin) == "ScreenshotXX 2026-10-13 at 09.41.12.jpg")
+    }
+
+    @Test func uniqueNameAddsCounterOnlyWhenTaken() {
+        let taken: Set<String> = ["shot.png", "shot (2).png"]
+        #expect(FileNamer.uniqueFileName("shot.png", exists: { taken.contains($0) }) == "shot (3).png")
+        #expect(FileNamer.uniqueFileName("other.png", exists: { taken.contains($0) }) == "other.png")
+    }
+}
+```
+
+`CaptureStoreTests.swift`:
+
+```swift
+import CoreGraphics
+import Foundation
+import Testing
+@testable import ScreenshotXXCore
+
+@Suite struct CaptureStoreTests {
+    private func pixel() -> CGImage {
+        let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        return context.makeImage()!
+    }
+
+    @Test func addKeepsNewestFirstAndRespectsLimit() {
+        let store = CaptureStore(limit: 2)
+        let first = Capture(kind: .fullScreen, image: pixel())
+        let second = Capture(kind: .fullScreen, image: pixel())
+        let third = Capture(kind: .fullScreen, image: pixel())
+        store.add(first); store.add(second); store.add(third)
+        #expect(store.captures.map(\.id) == [third.id, second.id])
+    }
+
+    @Test func removeDropsOnlyThatCapture() {
+        let store = CaptureStore()
+        let a = Capture(kind: .area, image: pixel())
+        let b = Capture(kind: .area, image: pixel())
+        store.add(a); store.add(b)
+        store.remove(id: a.id)
+        #expect(store.captures.map(\.id) == [b.id])
+    }
+
+    @Test func updateReplacesTheStoredCopy() {
+        let store = CaptureStore()
+        var a = Capture(kind: .window, image: pixel())
+        store.add(a)
+        a.fileURL = URL(filePath: "/tmp/a.png")
+        store.update(a)
+        #expect(store.capture(id: a.id)?.fileURL?.path() == "/tmp/a.png")
+    }
+}
+```
+
+- [ ] **Step 2: Run to verify they fail**
+
+Run: `swift test --package-path Packages/ScreenshotXXCore`
+Expected: compile errors `cannot find 'FileNamer' in scope`, `cannot find 'CaptureStore' in scope`, `cannot find 'Capture' in scope`.
+
+- [ ] **Step 3: Implement Capture, CaptureStore, FileNamer**
+
+`Capture.swift`:
+
+```swift
+import CoreGraphics
+import Foundation
+
+public struct Capture: Identifiable, Sendable {
+    public let id: UUID
+    public let kind: CaptureKind
+    public let createdAt: Date
+    public let image: CGImage
+    public var fileURL: URL?
+
+    public init(kind: CaptureKind, image: CGImage, createdAt: Date = .now, fileURL: URL? = nil) {
+        self.id = UUID()
+        self.kind = kind
+        self.createdAt = createdAt
+        self.image = image
+        self.fileURL = fileURL
+    }
+}
+```
+
+`CaptureStore.swift`:
+
+```swift
+import Foundation
+import Observation
+
+/// Recent captures, newest first. In memory only; files on disk are the real history.
+@Observable
+public final class CaptureStore {
+    public private(set) var captures: [Capture] = []
+    public let limit: Int
+
+    public init(limit: Int = 20) {
+        self.limit = limit
+    }
+
+    public func add(_ capture: Capture) {
+        captures.insert(capture, at: 0)
+        if captures.count > limit { captures.removeLast(captures.count - limit) }
+    }
+
+    public func remove(id: Capture.ID) {
+        captures.removeAll { $0.id == id }
+    }
+
+    public func capture(id: Capture.ID) -> Capture? {
+        captures.first { $0.id == id }
+    }
+
+    public func update(_ capture: Capture) {
+        guard let index = captures.firstIndex(where: { $0.id == capture.id }) else { return }
+        captures[index] = capture
+    }
+}
+```
+
+`FileNamer.swift`:
+
+```swift
+import Foundation
+
+public enum FileNamer {
+    /// "ScreenshotXX 2026-10-13 at 09.41.12.png" — same shape as macOS's own screenshots.
+    public static func fileName(date: Date, format: ImageFormat, timeZone: TimeZone = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        return "ScreenshotXX \(formatter.string(from: date)).\(format.fileExtension)"
+    }
+
+    /// Adds " (2)", " (3)", … before the extension until `exists` says the name is free.
+    public static func uniqueFileName(_ name: String, exists: (String) -> Bool) -> String {
+        guard exists(name) else { return name }
+        let url = URL(filePath: name)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        var counter = 2
+        while true {
+            let candidate = "\(stem) (\(counter)).\(ext)"
+            if !exists(candidate) { return candidate }
+            counter += 1
+        }
+    }
+}
+```
+
+- [ ] **Step 4: Run to verify they pass**
+
+Run: `swift test --package-path Packages/ScreenshotXXCore`
+Expected: `Test run with 8 tests in 3 suites passed`.
+
+- [ ] **Step 5: App services and capture pipeline**
+
+`ScreenCapturer.swift`:
+
+```swift
+import AppKit
+import ScreenCaptureKit
+
+enum ScreenCapturer {
+    enum Failure: LocalizedError {
+        case noDisplay
+        case noImage
+
+        var errorDescription: String? {
+            switch self {
+            case .noDisplay: "No display found to capture."
+            case .noImage: "The system returned no image."
+            }
+        }
+    }
+
+    /// The SCDisplay for the screen that contains `point` (AppKit screen coordinates). Falls back to the main display.
+    static func display(under point: CGPoint) async throws -> SCDisplay {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        let wantedID = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        if let match = content.displays.first(where: { $0.displayID == wantedID }) { return match }
+        guard let first = content.displays.first else { throw Failure.noDisplay }
+        return first
+    }
+
+    static func captureDisplay(_ display: SCDisplay, showsCursor: Bool) async throws -> CGImage {
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let configuration = SCScreenshotConfiguration()
+        configuration.showsCursor = showsCursor
+        configuration.dynamicRange = .sdr
+        let output = try await SCScreenshotManager.captureScreenshot(contentFilter: filter, configuration: configuration)
+        guard let image = output.sdrImage else { throw Failure.noImage }
+        return image
+    }
+}
+```
+
+`FileSaver.swift`:
+
+```swift
+import CoreGraphics
+import Foundation
+import ImageIO
+import ScreenshotXXCore
+import UniformTypeIdentifiers
+
+enum FileSaver {
+    enum Failure: LocalizedError {
+        case encodingFailed(URL)
+        var errorDescription: String? {
+            switch self {
+            case .encodingFailed(let url): "Could not write the image to \(url.path())."
+            }
+        }
+    }
+
+    static func save(_ image: CGImage, format: ImageFormat, to folder: URL, date: Date = .now) throws -> URL {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+        let name = FileNamer.uniqueFileName(FileNamer.fileName(date: date, format: format)) { candidate in
+            fileManager.fileExists(atPath: folder.appending(path: candidate).path())
+        }
+        let url = folder.appending(path: name)
+        let type: UTType = format == .png ? .png : .jpeg
+        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else {
+            throw Failure.encodingFailed(url)
+        }
+        let options: [CFString: Any] = format == .jpeg ? [kCGImageDestinationLossyCompressionQuality: 0.9] : [:]
+        CGImageDestinationAddImage(destination, image, options as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { throw Failure.encodingFailed(url) }
+        return url
+    }
+}
+```
+
+`ClipboardService.swift`:
+
+```swift
+import AppKit
+
+enum ClipboardService {
+    static func copy(_ image: CGImage) {
+        let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([nsImage])
+        if let tiff = nsImage.tiffRepresentation,
+           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            pasteboard.setData(png, forType: .png)
+        }
+    }
+}
+```
+
+`SoundPlayer.swift` (uses the system screenshot sound when present, else a short system click):
+
+```swift
+import AppKit
+
+enum SoundPlayer {
+    private static let shutterCandidates = [
+        "/System/Library/Components/CoreAudio.component/Contents/SharedSupport/SystemSounds/system/Grab.aif",
+    ]
+
+    static func playShutter() {
+        let sound = shutterCandidates.lazy.compactMap { NSSound(contentsOfFile: $0, byReference: true) }.first
+            ?? NSSound(named: "Pop")
+        sound?.play()
+    }
+}
+```
+
+`ErrorPresenter.swift`:
+
+```swift
+import AppKit
+
+enum ErrorPresenter {
+    static func show(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        NSApp.activate()
+        alert.runModal()
+    }
+}
+```
+
+`CaptureCoordinator.swift` (full replacement):
+
+```swift
+import AppKit
+import os
+import ScreenshotXXCore
+
+@Observable
+final class CaptureCoordinator {
+    private let settings: AppSettings
+    private let store: CaptureStore
+    private let onPermissionMissing: () -> Void
+    @ObservationIgnored private let log = Logger(subsystem: "com.austinejose.screenshotxx", category: "capture")
+
+    init(settings: AppSettings, store: CaptureStore, onPermissionMissing: @escaping () -> Void) {
+        self.settings = settings
+        self.store = store
+        self.onPermissionMissing = onPermissionMissing
+    }
+
+    func capture(_ kind: CaptureKind) {
+        guard PermissionService.hasScreenRecordingAccess else {
+            onPermissionMissing()
+            return
+        }
+        switch kind {
+        case .fullScreen:
+            Task { await captureFullScreen() }
+        case .area, .window:
+            log.notice("capture requested: \(kind.rawValue, privacy: .public) (not implemented yet)")
+        }
+    }
+
+    private func captureFullScreen() async {
+        do {
+            let display = try await ScreenCapturer.display(under: NSEvent.mouseLocation)
+            let image = try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor)
+            finish(Capture(kind: .fullScreen, image: image))
+        } catch {
+            ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
+        }
+    }
+
+    /// Shared tail of every capture: clipboard first (never lost), then disk, then sound and store.
+    private func finish(_ capture: Capture) {
+        var capture = capture
+        if settings.copiesToClipboard { ClipboardService.copy(capture.image) }
+        do {
+            capture.fileURL = try FileSaver.save(capture.image, format: settings.imageFormat, to: settings.saveFolder, date: capture.createdAt)
+        } catch {
+            ErrorPresenter.show(title: "Could not save the screenshot",
+                                message: "\(error.localizedDescription)\n\nIt is still on your clipboard.")
+        }
+        if settings.playsSound { SoundPlayer.playShutter() }
+        store.add(capture)
+    }
+}
+```
+
+`AppDelegate.swift` changes: add `let captureStore = CaptureStore()` and build the coordinator as
+`CaptureCoordinator(settings: settings, store: captureStore) { [weak self] in self?.showOnboarding() }`.
+
+- [ ] **Step 6: Build**
+
+Run: `make build`
+Expected: exit 0, no warnings.
+
+- [ ] **Step 7: Verify by hand (Austin launches; I check the file)**
+
+Austin: `! open ~/Development/Personal/screenshotxx/build/DerivedData/Build/Products/Debug/ScreenshotXX.app`, then press ⌃⇧F. First time macOS asks for Screen Recording; allow it, quit and reopen, press ⌃⇧F again.
+Run: `ls -la ~/Pictures/ScreenshotXX/ && sips -g pixelWidth -g pixelHeight ~/Pictures/ScreenshotXX/*.png`
+Expected: one PNG named `ScreenshotXX <date> at <time>.png`; pixel size equals the display's pixel size (Retina: 2× the point size).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A
+git commit -m "feat: full-screen capture to PNG, clipboard and shutter sound"
 ```
 
 Task test command: `make check`

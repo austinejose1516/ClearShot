@@ -3,11 +3,15 @@ import ScreenshotXXCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = AppSettings()
-    private(set) lazy var captureCoordinator = CaptureCoordinator(settings: settings)
+    let captureStore = CaptureStore()
+    private(set) lazy var captureCoordinator = CaptureCoordinator(settings: settings, store: captureStore) { [weak self] in
+        self?.showOnboarding()
+    }
     private var hotkeys: HotkeyService?
     private var onboarding: PermissionOnboardingWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
         let hotkeys = HotkeyService(coordinator: captureCoordinator)
         hotkeys.register()
         self.hotkeys = hotkeys

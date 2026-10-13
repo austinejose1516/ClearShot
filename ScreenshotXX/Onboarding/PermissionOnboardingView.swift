@@ -14,9 +14,11 @@ struct PermissionOnboardingView: View {
             Text("ScreenshotXX needs Screen Recording access")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text("macOS asks for this once. Without it, every capture comes back black.\nAfter you allow it, quit and reopen ScreenshotXX.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Open System Settings") { PermissionService.openScreenRecordingSettings() }
                 Button("Allow Access") { PermissionService.requestScreenRecordingAccess() }
