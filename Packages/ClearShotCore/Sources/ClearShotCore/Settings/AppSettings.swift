@@ -51,6 +51,7 @@ public final class AppSettings {
         static let cloudAccessKeyID = "cloudAccessKeyID"
         static let cloudBucket = "cloudBucket"
         static let cloudPublicURL = "cloudPublicURL"
+        static let cloudConnected = "cloudConnected"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -76,6 +77,8 @@ public final class AppSettings {
     public var cloudAccessKeyID: String { didSet { defaults.set(cloudAccessKeyID, forKey: Key.cloudAccessKeyID) } }
     public var cloudBucket: String { didSet { defaults.set(cloudBucket, forKey: Key.cloudBucket) } }
     public var cloudPublicURL: String { didSet { defaults.set(cloudPublicURL, forKey: Key.cloudPublicURL) } }
+    /// Set by Connect in Settings → Cloud once a test upload worked; Disconnect clears it. Upload needs it.
+    public var cloudConnected: Bool { didSet { defaults.set(cloudConnected, forKey: Key.cloudConnected) } }
 
     public var cloud: R2Config {
         R2Config(accountID: cloudAccountID, accessKeyID: cloudAccessKeyID, bucket: cloudBucket, publicURL: cloudPublicURL)
@@ -98,5 +101,6 @@ public final class AppSettings {
         cloudAccessKeyID = defaults.string(forKey: Key.cloudAccessKeyID) ?? ""
         cloudBucket = defaults.string(forKey: Key.cloudBucket) ?? ""
         cloudPublicURL = defaults.string(forKey: Key.cloudPublicURL) ?? ""
+        cloudConnected = defaults.object(forKey: Key.cloudConnected) as? Bool ?? false
     }
 }

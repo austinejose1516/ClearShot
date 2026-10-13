@@ -28,6 +28,7 @@ import Testing
         #expect(settings.lastUpdateCheck == nil)
         #expect(settings.cloud == R2Config())
         #expect(settings.cloud.isComplete == false)
+        #expect(settings.cloudConnected == false)
     }
 
     @Test func cloudSettingsPersistWithoutTheSecret() {
@@ -38,9 +39,11 @@ import Testing
         first.cloudAccessKeyID = "key"
         first.cloudBucket = "shots"
         first.cloudPublicURL = "https://pub-abc.r2.dev"
+        first.cloudConnected = true
         let second = AppSettings(defaults: defaults)
         #expect(second.cloud == R2Config(accountID: "abc123", accessKeyID: "key", bucket: "shots", publicURL: "https://pub-abc.r2.dev"))
         #expect(second.cloud.isComplete)
+        #expect(second.cloudConnected)
     }
 
     @Test func changesPersistAcrossInstances() {

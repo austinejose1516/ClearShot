@@ -14,9 +14,10 @@ struct R2Uploader {
                              secretAccessKey: secretAccessKey, region: R2Config.region, service: R2Config.service)
     }
 
-    /// What the editor and the card use: `nil` means "open Settings → Cloud first".
+    /// What the editor and the card use: `nil` means "open Settings → Cloud first" (not connected there yet).
     static func fromSettings(_ settings: AppSettings) -> R2Uploader? {
-        R2Uploader(config: settings.cloud, secretAccessKey: KeychainStore.read(KeychainStore.r2Secret))
+        guard settings.cloudConnected else { return nil }
+        return R2Uploader(config: settings.cloud, secretAccessKey: KeychainStore.read(KeychainStore.r2Secret))
     }
 
     /// Uploads the bytes under `name` and returns the link people can open.
