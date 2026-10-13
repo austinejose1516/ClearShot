@@ -4,7 +4,7 @@ Goal: an open-source app people install with one command and use instead of the 
 
 ## 1. Open source
 
-- Public GitHub repo `austinejose/screenshotxx`, MIT licence, this README.
+- Public GitHub repo `austinejose1516/ScreenshotXX`, MIT licence, this README.
 - Keep `Local.xcconfig` private (already git-ignored); document the signing steps (they are in the file `make gen` creates).
 
 ## 2. Release build and GitHub Releases
@@ -14,8 +14,8 @@ Goal: an open-source app people install with one command and use instead of the 
 
 ## 3. Homebrew
 
-- A tap `austinejose/homebrew-tap` with a cask `screenshotxx` that points at the release zip and its sha256.
-- Install: `brew install --cask austinejose/tap/screenshotxx`.
+- A tap `austinejose1516/homebrew-tap` with a cask `screenshotxx` that points at the release zip and its sha256.
+- Install: `brew install --cask austinejose1516/tap/screenshotxx`.
 - Without Apple notarization macOS shows "cannot verify the developer"; the user right-clicks → Open once, or the cask uses `--no-quarantine`. With the Apple Developer Program (99 USD / year) add Developer ID signing + `notarytool` in the workflow and the warning goes away.
 
 ## 4. Replace the macOS screenshot shortcuts

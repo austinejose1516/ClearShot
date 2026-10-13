@@ -17,7 +17,7 @@ In the editor: ⌘Z / ⇧⌘Z undo and redo, Delete removes, ⌘C copies the res
 ## Install
 
 - **DMG:** download `ScreenshotXX-<version>.dmg` from the Releases page, open it, drag ScreenshotXX to Applications. The first time, right-click the app → Open (the build is not notarized yet).
-- **Homebrew:** `brew install --cask austinejose/tap/screenshotxx` (tap: `austinejose/homebrew-tap`).
+- **Homebrew:** `brew install --cask austinejose1516/tap/screenshotxx` (tap: `austinejose1516/homebrew-tap`).
 
 ## Build
 
