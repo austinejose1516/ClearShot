@@ -2,7 +2,7 @@ import ScreenshotXXCore
 import SwiftUI
 
 enum HandleKind: Equatable {
-    case lineStart, lineEnd
+    case lineStart, lineEnd, curveControl
     case topLeft, topRight, bottomLeft, bottomRight
 }
 
@@ -14,6 +14,12 @@ enum Handles {
             return [(.lineStart, start), (.lineEnd, end)]
         case .rect(let r), .ellipse(let r):
             let b = r.standardized
+            return [(.topLeft, CGPoint(x: b.minX, y: b.minY)), (.topRight, CGPoint(x: b.maxX, y: b.minY)),
+                    (.bottomLeft, CGPoint(x: b.minX, y: b.maxY)), (.bottomRight, CGPoint(x: b.maxX, y: b.maxY))]
+        case .curve(let start, let control, let end, _):
+            return [(.lineStart, start), (.curveControl, control), (.lineEnd, end)]
+        case .text(let content):
+            let b = content.frame
             return [(.topLeft, CGPoint(x: b.minX, y: b.minY)), (.topRight, CGPoint(x: b.maxX, y: b.minY)),
                     (.bottomLeft, CGPoint(x: b.minX, y: b.maxY)), (.bottomRight, CGPoint(x: b.maxX, y: b.maxY))]
         case .freehand:
@@ -33,10 +39,36 @@ enum Handles {
             result.kind = .rect(resized(r, handle, point))
         case (.ellipse(let r), _):
             result.kind = .ellipse(resized(r, handle, point))
+        case (.curve(_, let c, let e, let a), .lineStart):
+            result.kind = .curve(start: point, control: c, end: e, arrowEnd: a)
+        case (.curve(let s, _, let e, let a), .curveControl):
+            result.kind = .curve(start: s, control: point, end: e, arrowEnd: a)
+        case (.curve(let s, let c, _, let a), .lineEnd):
+            result.kind = .curve(start: s, control: c, end: point, arrowEnd: a)
+        case (.text(let content), _):
+            result.kind = .text(scaledText(content, handle, point))
         default:
             break
         }
         return result
+    }
+
+    /// Corner drag scales the font; the opposite corner stays where it is.
+    private static func scaledText(_ content: TextContent, _ handle: HandleKind, _ point: CGPoint) -> TextContent {
+        let b = content.frame
+        let anchor: CGPoint
+        switch handle {
+        case .topLeft: anchor = CGPoint(x: b.maxX, y: b.maxY)
+        case .topRight: anchor = CGPoint(x: b.minX, y: b.maxY)
+        case .bottomLeft: anchor = CGPoint(x: b.maxX, y: b.minY)
+        case .bottomRight: anchor = CGPoint(x: b.minX, y: b.minY)
+        default: return content
+        }
+        var scaled = content.scaled(toWidth: abs(point.x - anchor.x))
+        let size = scaled.frame.size
+        scaled.origin = CGPoint(x: handle == .topRight || handle == .bottomRight ? anchor.x : anchor.x - size.width,
+                                y: handle == .bottomLeft || handle == .bottomRight ? anchor.y : anchor.y - size.height)
+        return scaled
     }
 
     private static func resized(_ rect: CGRect, _ handle: HandleKind, _ point: CGPoint) -> CGRect {
@@ -57,9 +89,10 @@ enum Handles {
 struct SelectionOverlay: View {
     let document: EditorDocument
     let zoom: CGFloat
+    var hiddenID: Annotation.ID? = nil
 
     var body: some View {
-        ForEach(document.annotations.filter { document.selection.contains($0.id) }) { annotation in
+        ForEach(document.annotations.filter { document.selection.contains($0.id) && $0.id != hiddenID }) { annotation in
             let b = annotation.bounds
             Rectangle()
                 .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))

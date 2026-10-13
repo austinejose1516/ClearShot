@@ -1,16 +1,27 @@
 import ScreenshotXXCore
 import SwiftUI
 
+/// Two rows: tools and file actions on top, style options for the current tool or selection below.
 struct EditorToolbar: View {
     let document: EditorDocument
     let state: EditorState
     let onCopy: () -> Void
     let onSave: () -> Void
-    let onExportAs: () -> Void
+    let onSaveAs: () -> Void
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainRow
+            Divider()
+            optionsRow
+        }
+    }
+
+    // MARK: - Row 1
+
+    private var mainRow: some View {
         @Bindable var state = state
-        HStack(spacing: 10) {
+        return HStack(spacing: 10) {
             HStack(spacing: 2) {
                 ForEach(EditorTool.allCases) { tool in
                     Button {
@@ -26,32 +37,6 @@ struct EditorToolbar: View {
                     .help(tool.title)
                 }
             }
-            Divider().frame(height: 20)
-            HStack(spacing: 4) {
-                ForEach(RGBAColor.presets, id: \.self) { preset in
-                    Button {
-                        state.strokeColor = preset
-                        state.applyStyle(to: document)
-                    } label: {
-                        Circle()
-                            .fill(Color(preset))
-                            .stroke(.primary.opacity(state.strokeColor == preset ? 0.9 : 0.25),
-                                    lineWidth: state.strokeColor == preset ? 2 : 1)
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            Picker("Width", selection: $state.strokeWidth) {
-                ForEach(EditorState.widths, id: \.self) { Text("\(Int($0)) px").tag($0) }
-            }
-            .labelsHidden()
-            .frame(width: 80)
-            .onChange(of: state.strokeWidth) { state.applyStyle(to: document) }
-            Toggle("Fill", isOn: $state.fills)
-                .toggleStyle(.checkbox)
-                .disabled(!state.tool.usesFill && document.selection.isEmpty)
-                .onChange(of: state.fills) { state.applyStyle(to: document) }
             Divider().frame(height: 20)
             Button { document.undo() } label: { Image(systemName: "arrow.uturn.backward") }
                 .disabled(!document.canUndo).help("Undo (⌘Z)")
@@ -71,7 +56,7 @@ struct EditorToolbar: View {
                 Text("200 %").tag(CGFloat(2))
             }
             .labelsHidden()
-            .frame(width: 80)
+            .fixedSize()
             Spacer(minLength: 16)
             Button(action: onCopy) {
                 Label("Copy", systemImage: "doc.on.doc")
@@ -80,24 +65,122 @@ struct EditorToolbar: View {
             }
             .fixedSize()
             .help("Copy to clipboard (⌘C)")
-            Button(action: onSave) {
+            Menu {
+                Button("Save As…", action: onSaveAs)
+            } label: {
                 Label("Save", systemImage: "square.and.arrow.down")
                     .labelStyle(.titleAndIcon)
                     .padding(.horizontal, 4)
+            } primaryAction: {
+                onSave()
             }
             .buttonStyle(.borderedProminent)
             .fixedSize()
-            .help("Save into the screenshot file (⌘S)")
-            Menu {
-                Button("Export As…", action: onExportAs)
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .help("More")
+            .help("Save into the screenshot file (⌘S). Arrow: Save As…")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    // MARK: - Row 2
+
+    private var optionsRow: some View {
+        @Bindable var state = state
+        return HStack(spacing: 12) {
+            HStack(spacing: 4) {
+                ForEach(RGBAColor.presets, id: \.self) { preset in
+                    Button {
+                        state.strokeColor = preset
+                        state.applyStyle(to: document)
+                    } label: {
+                        Circle()
+                            .fill(Color(preset))
+                            .stroke(.primary.opacity(state.strokeColor == preset ? 0.9 : 0.25),
+                                    lineWidth: state.strokeColor == preset ? 2 : 1)
+                            .frame(width: 16, height: 16)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Divider().frame(height: 18)
+            Picker("Width", selection: $state.strokeWidth) {
+                ForEach(EditorState.widths, id: \.self) { Text("\(Int($0)) px").tag($0) }
+            }
+            .fixedSize()
+            .onChange(of: state.strokeWidth) { state.applyStyle(to: document) }
+            if state.tool.usesFill || selectionHasShape {
+                Toggle("Fill", isOn: $state.fills)
+                    .toggleStyle(.checkbox)
+                    .fixedSize()
+                    .onChange(of: state.fills) { state.applyStyle(to: document) }
+            }
+            if selectionHasArrowable {
+                Toggle("Arrowhead", isOn: Binding(
+                    get: { selectedArrowhead },
+                    set: { state.applyArrowhead($0, to: document) }))
+                    .toggleStyle(.checkbox)
+                    .fixedSize()
+            }
+            if state.tool == .text || selectionHasText {
+                Divider().frame(height: 18)
+                Picker("Size", selection: $state.fontSize) {
+                    ForEach(EditorState.fontSizes, id: \.self) { Text("\(Int($0))").tag($0) }
+                }
+                .fixedSize()
+                .onChange(of: state.fontSize) { state.applyStyle(to: document) }
+                Toggle("Bold", isOn: $state.bold)
+                    .toggleStyle(.checkbox)
+                    .fixedSize()
+                    .onChange(of: state.bold) { state.applyStyle(to: document) }
+                Toggle("Boxed", isOn: $state.boxed)
+                    .toggleStyle(.checkbox)
+                    .fixedSize()
+                    .onChange(of: state.boxed) { state.applyStyle(to: document) }
+            }
+            Spacer(minLength: 0)
+            Text(hint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
+    }
+
+    private var hint: String {
+        switch state.tool {
+        case .select: "Click to select · drag to move · drag a handle to resize · Delete removes"
+        case .line, .arrow: "Drag to draw"
+        case .curve: "Drag to draw, then drag the middle handle to bend"
+        case .pen: "Drag to draw freehand"
+        case .rect, .ellipse: "Drag to draw · Fill for a solid shape"
+        case .text: "Click to place text · Enter or Esc to finish · click again to edit"
+        }
+    }
+
+    private var selected: [Annotation] {
+        document.annotations.filter { document.selection.contains($0.id) }
+    }
+
+    private var selectionHasShape: Bool {
+        selected.contains { if case .rect = $0.kind { true } else if case .ellipse = $0.kind { true } else { false } }
+    }
+
+    private var selectionHasText: Bool {
+        selected.contains { if case .text = $0.kind { true } else { false } }
+    }
+
+    private var selectionHasArrowable: Bool {
+        selected.contains { if case .line = $0.kind { true } else if case .curve = $0.kind { true } else { false } }
+    }
+
+    private var selectedArrowhead: Bool {
+        selected.contains {
+            switch $0.kind {
+            case .line(_, _, _, let end), .curve(_, _, _, let end): end
+            default: false
+            }
+        }
     }
 }

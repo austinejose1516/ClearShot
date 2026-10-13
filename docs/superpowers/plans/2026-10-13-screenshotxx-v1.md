@@ -1201,3 +1201,26 @@ Task test command: `make check`
 - [ ] **Step 5: App editor** — **Step 6: build** — **Step 7: Austin: Edit on a card → editor opens; draw line, arrow, pen, rect, ellipse; move; resize; delete; undo/redo; Copy and Save; the saved PNG has the drawings at the source pixel size (I check with sips).** — **Step 8: commit `feat: editor core`**
 
 Task test command: `make check`
+
+---
+
+### Task 7: Text (plain and boxed, bold, size, scale by handles) and a curved line
+
+Ruling: caption and meme bar move to Task 8 — they change the canvas size, which the frame layout in Task 8 owns.
+
+**Files:**
+- Modify (Core): `Annotation.swift` (+ `.curve`, `.text`), create `TextContent.swift`, `CurveGeometry.swift`
+- Test (Core): `CurveGeometryTests.swift`, `TextContentTests.swift`, additions to `AnnotationGeometryTests.swift`
+- Modify (App): `EditorTool.swift` (+ curve, text), `AnnotationView.swift`, `SelectionHandles.swift`, `EditorCanvasView.swift` (text tool, inline editing), create `TextEditingOverlay.swift`, `EditorToolbar.swift` (arrowhead, font size, bold, boxed), `EditorState.swift`, `EditorWindow.swift` (Esc while editing goes to the field)
+
+**Interfaces (Core):**
+- `Kind.curve(start: CGPoint, control: CGPoint, end: CGPoint, arrowEnd: Bool)` — quadratic Bézier; control starts at the midpoint.
+- `Kind.text(TextContent)`; `TextContent { text; origin (top-left); fontSize = 48; bold = true; boxed = false; measuredSize = .zero /* whole box, set by the view */; estimatedSize; frame; scaled(toWidth:) }`. Boxed text draws white text on a box of the stroke colour; plain text uses the stroke colour.
+- `CurveGeometry.point(start:control:end:t:)`, `CurveGeometry.samples(start:control:end:count:)`.
+
+**Interfaces (App):**
+- Tools `curve` and `text`. Curve: drag start→end, then a middle handle bends it. Text: click places "Text" and starts editing; clicking an already-selected text edits it; Esc or clicking elsewhere ends editing; empty text is removed. Corner handles on text scale the font. Toolbar shows Arrowhead for line/curve, and Size / Bold / Boxed for text.
+
+- [ ] **Step 1: failing Core tests** — **Step 2: run** — **Step 3: implement** — **Step 4: run → 50 tests pass** — **Step 5: App** — **Step 6: build** — **Step 7: Austin: curve with bend, text, boxed text, bold, size, scale by corner, edit again, save → PNG shows them** — **Step 8: commit `feat: text and curved line tools`**
+
+Task test command: `make check`

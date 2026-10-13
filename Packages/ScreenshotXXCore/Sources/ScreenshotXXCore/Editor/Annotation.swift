@@ -8,6 +8,8 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case freehand(points: [CGPoint])
         case rect(CGRect)
         case ellipse(CGRect)
+        case curve(start: CGPoint, control: CGPoint, end: CGPoint, arrowEnd: Bool)
+        case text(TextContent)
     }
 
     public struct Style: Equatable, Sendable, Codable {
@@ -38,6 +40,9 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case .line(let start, let end, _, _): AnnotationGeometry.bounds(of: [start, end])
         case .freehand(let points): AnnotationGeometry.bounds(of: points)
         case .rect(let rect), .ellipse(let rect): rect.standardized
+        case .curve(let start, let control, let end, _):
+            AnnotationGeometry.bounds(of: CurveGeometry.samples(start: start, control: control, end: end))
+        case .text(let content): content.frame
         }
     }
 
@@ -57,6 +62,11 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
         case .ellipse(let rect):
             if style.fillColor != nil, AnnotationGeometry.isInsideEllipse(point, rect) { return true }
             return AnnotationGeometry.distance(from: point, toEllipseEdge: rect) <= reach
+        case .curve(let start, let control, let end, _):
+            let samples = CurveGeometry.samples(start: start, control: control, end: end)
+            return zip(samples, samples.dropFirst()).contains { AnnotationGeometry.distance(from: point, toSegment: $0, $1) <= reach }
+        case .text(let content):
+            return content.frame.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
         }
     }
 
@@ -70,6 +80,11 @@ public struct Annotation: Identifiable, Equatable, Sendable, Codable {
             kind = .rect(rect.offsetBy(dx: delta.dx, dy: delta.dy))
         case .ellipse(let rect):
             kind = .ellipse(rect.offsetBy(dx: delta.dx, dy: delta.dy))
+        case .curve(let start, let control, let end, let arrowEnd):
+            kind = .curve(start: start.offset(delta), control: control.offset(delta), end: end.offset(delta), arrowEnd: arrowEnd)
+        case .text(var content):
+            content.origin = content.origin.offset(delta)
+            kind = .text(content)
         }
     }
 }

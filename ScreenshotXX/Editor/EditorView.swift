@@ -13,7 +13,7 @@ struct EditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorToolbar(document: document, state: state, onCopy: copy, onSave: save, onExportAs: exportAs)
+            EditorToolbar(document: document, state: state, onCopy: copy, onSave: save, onSaveAs: exportAs)
             Divider()
             EditorCanvasView(document: document, state: state)
         }
