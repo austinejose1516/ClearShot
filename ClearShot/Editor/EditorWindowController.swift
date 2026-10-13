@@ -21,23 +21,26 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         self.onFinished = onFinished
         self.onWindowClosed = onWindowClosed
         let window = EditorWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
+            contentRect: NSRect(x: 0, y: 0, width: EditorView.defaultSize.width, height: EditorView.defaultSize.height),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false)
         window.title = capture.fileURL?.lastPathComponent ?? "Screenshot"
-        window.minSize = NSSize(width: 1040, height: 600)
+        window.minSize = EditorView.minimumSize
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.delegate = self
         window.onCommand = { [weak self] in self?.perform($0) }
-        window.contentViewController = NSHostingController(rootView: EditorView(
+        let host = NSHostingController(rootView: EditorView(
             session: session,
             viewState: viewState,
             onCommand: { [weak self] in self?.perform($0) },
             onShare: { [weak self] in self?.share(from: $0) },
             onEdited: { [weak window] edited in window?.isDocumentEdited = edited })
             .themed(settings))
+        // The window keeps its size whatever the image is; a small screenshot must not shrink it under the toolbar.
+        host.sizingOptions = []
+        window.contentViewController = host
         window.center()
     }
 

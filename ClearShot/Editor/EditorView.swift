@@ -3,6 +3,10 @@ import ClearShotCore
 import SwiftUI
 
 struct EditorView: View {
+    /// Wide enough for every toolbar button and the options row, with room to spare.
+    static let minimumSize = NSSize(width: 1200, height: 640)
+    static let defaultSize = NSSize(width: 1260, height: 800)
+
     let session: EditorSession
     let viewState: EditorViewState
     let onCommand: (EditorCommand) -> Void
@@ -21,7 +25,7 @@ struct EditorView: View {
                 }
             }
         }
-        .frame(minWidth: 1040, minHeight: 600)
+        .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height)
         .onChange(of: session.document.canUndo) { _, edited in onEdited(edited) }
     }
 }
