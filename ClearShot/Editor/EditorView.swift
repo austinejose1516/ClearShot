@@ -22,8 +22,10 @@ struct EditorView: View {
                 if viewState.showsFramePanel {
                     Divider()
                     FramePanelView(document: session.document)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
+            .animation(.snappy(duration: 0.25), value: viewState.showsFramePanel)
         }
         .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height)
         .onChange(of: session.document.canUndo) { _, edited in onEdited(edited) }

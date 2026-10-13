@@ -14,6 +14,8 @@ struct EditorToolbar: View {
     /// The colour panel reports every small move; this records one undo step once it settles.
     @State private var colourCommit: Task<Void, Never>?
     @State private var shareAnchor = AnchorHolder()
+    /// The accent chip behind the active tool slides from button to button.
+    @Namespace private var toolHighlight
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,7 +34,7 @@ struct EditorToolbar: View {
             ForEach(Array(EditorTool.groups.enumerated()), id: \.offset) { _, group in
                 Group {
                     ForEach(group) { tool in
-                        ToolButton(symbol: tool.symbol, help: tool.title, isOn: session.tool == tool) {
+                        ToolButton(symbol: tool.symbol, help: tool.title, isOn: session.tool == tool, highlight: toolHighlight) {
                             session.tool = tool
                             viewState.showTip(tool.hint)
                         }
@@ -50,7 +52,7 @@ struct EditorToolbar: View {
             }
             .grouped()
             Menu {
-                Picker("Zoom", selection: $viewState.canvasZoom.mode) {
+                Picker("Zoom", selection: Binding(get: { viewState.canvasZoom.mode }, set: { viewState.setZoomMode($0) })) {
                     Text("Fit").tag(CanvasZoom.Mode.fit)
                     Text("50 %").tag(CanvasZoom.Mode.scale(0.5))
                     Text("100 %").tag(CanvasZoom.Mode.scale(1))
@@ -82,13 +84,16 @@ struct EditorToolbar: View {
             Button { onCommand(.upload) } label: {
                 if let progress = viewState.uploadProgress {
                     ProgressView(value: progress).progressViewStyle(.linear).frame(width: 64).padding(.horizontal, 4)
+                        .transition(.opacity)
                 } else {
                     Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
+                        .transition(.opacity)
                 }
             }
             .buttonBorderShape(.capsule)
             .fixedSize()
             .disabled(viewState.uploadProgress != nil)
+            .animation(.snappy(duration: 0.2), value: viewState.uploadProgress == nil)
             .help("Upload to your cloud bucket, copy the link and close (set up in Settings → Cloud)")
             Button { onShare(shareAnchor.view) } label: {
                 Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
@@ -117,6 +122,7 @@ struct EditorToolbar: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 48)
+        .animation(.snappy(duration: 0.22), value: session.tool)
     }
 
     // MARK: - Row 2: settings for the tool or selection
@@ -256,11 +262,13 @@ struct EditorToolbar: View {
     }
 }
 
-/// A tool or action icon: plain, or a filled accent chip with a white icon when on.
+/// A tool or action icon: plain, or a filled accent chip with a white icon when on. With `highlight`, the chip
+/// is shared across the buttons in that namespace and slides to whichever is on.
 private struct ToolButton: View {
     let symbol: String
     let help: String
     var isOn = false
+    var highlight: Namespace.ID?
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
@@ -274,7 +282,12 @@ private struct ToolButton: View {
                 .foregroundStyle(isOn ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 .background {
                     if isOn {
-                        RoundedRectangle(cornerRadius: 7).fill(.tint)
+                        if let highlight {
+                            RoundedRectangle(cornerRadius: 7).fill(.tint)
+                                .matchedGeometryEffect(id: "activeTool", in: highlight)
+                        } else {
+                            RoundedRectangle(cornerRadius: 7).fill(.tint)
+                        }
                     } else if hovering && isEnabled {
                         RoundedRectangle(cornerRadius: 7).fill(.primary.opacity(0.08))
                     }
@@ -285,6 +298,7 @@ private struct ToolButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .help(help)
+        .animation(.easeOut(duration: 0.15), value: isOn)
     }
 }
 

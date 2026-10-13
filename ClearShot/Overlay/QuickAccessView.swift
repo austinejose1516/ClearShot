@@ -92,30 +92,31 @@ struct QuickAccessView: View {
             BarIcon(symbol: "pencil", help: "Edit", prominent: true, action: onEdit)
             BarIcon(symbol: copied ? "checkmark" : "doc.on.doc", help: "Copy to clipboard") {
                 onCopy()
-                copied = true
-                Task {
-                    try? await Task.sleep(for: .seconds(1.2))
-                    copied = false
-                }
+                flash($copied)
             }
+            .symbolEffect(.bounce, value: copied)
             BarIcon(symbol: "square.and.arrow.up", help: "Share") { onShare(shareAnchor.view) }
                 .background(AnchorView(holder: shareAnchor))
-            if let progress = presentation.uploadProgress {
-                UploadRing(progress: progress)
-                    .frame(width: 28, height: 26)
-                    .help("Uploading…")
-            } else if let link = presentation.uploadedLink {
-                BarIcon(symbol: linkCopied ? "checkmark" : "link", help: "Copy the link again") {
-                    UploadService.copy(link)
-                    linkCopied = true
-                    Task {
-                        try? await Task.sleep(for: .seconds(1.2))
-                        linkCopied = false
+            ZStack {
+                if let progress = presentation.uploadProgress {
+                    UploadRing(progress: progress)
+                        .frame(width: 28, height: 26)
+                        .help("Uploading…")
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                } else if let link = presentation.uploadedLink {
+                    BarIcon(symbol: linkCopied ? "checkmark" : "link", help: "Copy the link again") {
+                        UploadService.copy(link)
+                        flash($linkCopied)
                     }
+                    .symbolEffect(.bounce, value: linkCopied)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                } else {
+                    BarIcon(symbol: "icloud.and.arrow.up", help: "Upload to your cloud bucket and copy the link", action: onUpload)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
-            } else {
-                BarIcon(symbol: "icloud.and.arrow.up", help: "Upload to your cloud bucket and copy the link", action: onUpload)
             }
+            .animation(.snappy(duration: 0.25), value: presentation.uploadProgress == nil)
+            .animation(.snappy(duration: 0.25), value: presentation.uploadedLink)
             Spacer(minLength: 0)
             BarIcon(symbol: "folder", help: "Reveal in Finder", action: onReveal)
                 .disabled(capture.fileURL == nil)
@@ -124,6 +125,15 @@ struct QuickAccessView: View {
         }
         .padding(3)
         .glassEffect(.regular, in: .capsule)
+    }
+
+    /// Turns a "done" flag on with a bounce, then off again a moment later.
+    private func flash(_ flag: Binding<Bool>) {
+        withAnimation(.snappy(duration: 0.2)) { flag.wrappedValue = true }
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            withAnimation(.easeOut(duration: 0.2)) { flag.wrappedValue = false }
+        }
     }
 }
 
@@ -173,6 +183,7 @@ private struct BarIcon: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
+                .contentTransition(.symbolEffect(.replace))
                 .font(.system(size: 12, weight: prominent ? .semibold : .medium))
                 .foregroundStyle(prominent ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 .frame(width: 28, height: 26)

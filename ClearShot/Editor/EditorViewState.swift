@@ -37,7 +37,13 @@ final class EditorViewState {
         canvasZoom.viewportSize = viewport
     }
 
+    /// ⌘+ / ⌘−: a short ease, so the canvas glides rather than jumps. (A pinch sets the zoom directly.)
     func zoom(by factor: CGFloat) {
-        canvasZoom.zoom(by: factor)
+        withAnimation(.easeOut(duration: 0.2)) { canvasZoom.zoom(by: factor) }
+    }
+
+    /// The zoom menu: Fit, 50 %, 100 %, 200 %.
+    func setZoomMode(_ mode: CanvasZoom.Mode) {
+        withAnimation(.easeOut(duration: 0.2)) { canvasZoom.mode = mode }
     }
 }
