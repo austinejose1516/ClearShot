@@ -9,7 +9,7 @@ cask "screenshotxx" do
   desc "Screenshot tool with a floating card and an annotation editor"
   homepage "https://github.com/austinejose1516/ScreenshotXX"
 
-  depends_on macos: ">= :tahoe"
+  depends_on macos: :tahoe
 
   app "ScreenshotXX.app"
 
