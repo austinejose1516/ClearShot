@@ -14,6 +14,11 @@ Shortcuts, save folder, format, clipboard, sound, card auto-close and launch at 
 
 In the editor: ⌘Z / ⇧⌘Z undo and redo, Delete removes, ⌘C copies the result, ⌘S saves into the capture file, Enter applies a crop, Esc cancels.
 
+## Install
+
+- **DMG:** download `ScreenshotXX-<version>.dmg` from the Releases page, open it, drag ScreenshotXX to Applications. The first time, right-click the app → Open (the build is not notarized yet).
+- **Homebrew:** `brew install --cask austinejose/tap/screenshotxx` (tap: `austinejose/homebrew-tap`).
+
 ## Build
 
 Requires Xcode 26+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
@@ -23,6 +28,7 @@ make build      # generates the project and builds Debug
 make run        # builds and launches
 make core-test  # Swift Testing suite for the Core package
 make check      # tests + build
+make dmg        # Release build + build/ScreenshotXX-<version>.dmg
 ```
 
 `Local.xcconfig` (git-ignored, created by `make gen`) holds the per-machine signing settings. Follow the comments inside it once; a stable signature keeps the Screen Recording permission across rebuilds.

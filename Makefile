@@ -4,7 +4,7 @@ DERIVED := build/DerivedData
 APP     := $(DERIVED)/Build/Products/Debug/ScreenshotXX.app
 CORE    := Packages/ScreenshotXXCore
 
-.PHONY: gen build run stop core-test check clean
+.PHONY: gen build run stop core-test check clean release dmg
 
 Local.xcconfig:
 	@printf '%s\n' \
@@ -33,6 +33,12 @@ stop:
 
 run: build stop
 	open $(APP)
+
+release: gen
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release -derivedDataPath build/Release -quiet build
+
+dmg: release
+	scripts/make-dmg.sh
 
 clean:
 	rm -rf build $(CORE)/.build $(PROJECT)

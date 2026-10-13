@@ -1,0 +1,20 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    # Needs Xcode 26+; check the runner image list if this job fails to find the SDK.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build DMG (ad-hoc signed unless a certificate is configured)
+        run: make dmg
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/ScreenshotXX-*.dmg build/ScreenshotXX-*.dmg.sha256 --title "ScreenshotXX $GITHUB_REF_NAME" --generate-notes
