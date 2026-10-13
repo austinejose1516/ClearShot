@@ -7,14 +7,9 @@ struct ScreenshotXXApp: App {
 
     var body: some Scene {
         MenuBarExtra("ScreenshotXX", systemImage: "camera.viewfinder") {
-            MenuBarMenu()
+            MenuBarMenu(onAbout: appDelegate.showAbout, onSettings: appDelegate.showSettings)
                 .environment(appDelegate.captureCoordinator)
         }
         .menuBarExtraStyle(.menu)
-
-        Settings {
-            SettingsView()
-                .environment(appDelegate.settings)
-        }
     }
 }

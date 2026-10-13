@@ -17,9 +17,7 @@ final class EditorSessionStore {
             onFinished: { [weak self] in self?.didFinish(captureID: capture.id) },
             onWindowClosed: { [weak self] in self?.releaseIfDone(capture.id, windowIsOpen: false) })
         controllers[capture.id] = controller
-        NSApp.activate()
-        controller.showWindow(nil)
-        controller.window?.makeKeyAndOrderFront(nil)
+        controller.window.map(WindowPresenter.show)
     }
 
     /// Closes and frees the editor now (Save, Copy, Move to Trash).

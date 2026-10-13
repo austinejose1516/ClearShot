@@ -23,7 +23,7 @@ enum AppInfo {
         credits.append(NSAttributedString(
             string: "github.com/austinejose1516/ScreenshotXX",
             attributes: [.font: NSFont.systemFont(ofSize: 11), .link: repository]))
-        NSApp.activate()
+        WindowPresenter.becomeRegularApp()
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 }

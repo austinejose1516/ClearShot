@@ -6,7 +6,8 @@ enum ErrorPresenter {
         alert.messageText = title
         alert.informativeText = message
         alert.alertStyle = .warning
-        NSApp.activate()
+        WindowPresenter.becomeRegularApp()
         alert.runModal()
+        WindowPresenter.returnToMenuBarIfNoWindows()
     }
 }

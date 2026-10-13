@@ -4,23 +4,9 @@ import ScreenshotXXCore
 import ServiceManagement
 import SwiftUI
 
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            GeneralSettingsTab()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            ShortcutsSettingsTab()
-                .tabItem { Label("Shortcuts", systemImage: "keyboard") }
-            AboutSettingsTab()
-                .tabItem { Label("About", systemImage: "info.circle") }
-        }
-        .frame(width: 540, height: 520)
-    }
-}
-
 // MARK: - General
 
-private struct GeneralSettingsTab: View {
+struct GeneralSettingsTab: View {
     @Environment(AppSettings.self) private var settings
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -79,6 +65,7 @@ private struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .frame(width: 540, height: 560)
     }
 
     private func chooseFolder() {
@@ -105,7 +92,7 @@ private struct GeneralSettingsTab: View {
 
 // MARK: - Shortcuts
 
-private struct ShortcutsSettingsTab: View {
+struct ShortcutsSettingsTab: View {
     var body: some View {
         Form {
             Section {
@@ -125,6 +112,7 @@ private struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+        .frame(width: 540, height: 330)
     }
 
     private func useSystemShortcuts() {
@@ -139,7 +127,7 @@ private struct ShortcutsSettingsTab: View {
 
 // MARK: - About
 
-private struct AboutSettingsTab: View {
+struct AboutSettingsTab: View {
     var body: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 8)
@@ -178,6 +166,6 @@ private struct AboutSettingsTab: View {
             Text("© 2026 Austine Jose · MIT licence").font(.caption).foregroundStyle(.tertiary)
         }
         .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: 540, height: 470)
     }
 }

@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var hotkeys: HotkeyService?
     private var onboarding: PermissionOnboardingWindowController?
+    private lazy var settingsWindow = SettingsWindowController(settings: settings)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
@@ -45,7 +46,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showOnboarding() {
         let controller = onboarding ?? PermissionOnboardingWindowController()
         onboarding = controller
-        controller.showWindow(nil)
-        NSApp.activate()
+        controller.window.map(WindowPresenter.show)
+    }
+
+    func showSettings() {
+        settingsWindow.window.map(WindowPresenter.show)
+    }
+
+    func showAbout() {
+        AppInfo.showAboutPanel()
     }
 }
