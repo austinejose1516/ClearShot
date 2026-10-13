@@ -14,7 +14,7 @@ struct SettingsView: View {
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 520, height: 440)
+        .frame(width: 540, height: 520)
     }
 }
 
@@ -27,6 +27,15 @@ private struct GeneralSettingsTab: View {
     var body: some View {
         @Bindable var settings = settings
         Form {
+            Section {
+                HStack {
+                    BrandHeader(iconSize: 44, subtitle: AppInfo.version)
+                    Spacer()
+                    Badge(text: "Free")
+                    Badge(text: "Open source")
+                }
+            }
+
             Section("Saving") {
                 LabeledContent("Folder") {
                     HStack(spacing: 8) {
@@ -131,23 +140,42 @@ private struct ShortcutsSettingsTab: View {
 // MARK: - About
 
 private struct AboutSettingsTab: View {
-    private var version: String {
-        let info = Bundle.main.infoDictionary
-        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "Version \(short) (\(build))"
-    }
-
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
+            Spacer(minLength: 8)
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
-                .frame(width: 96, height: 96)
-            Text("ScreenshotXX").font(.title2.bold())
-            Text(version).foregroundStyle(.secondary)
-            Text("Capture, annotate, share.").foregroundStyle(.secondary)
+                .frame(width: 112, height: 112)
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+            VStack(spacing: 4) {
+                Text(AppInfo.name).font(.largeTitle.bold())
+                Text(AppInfo.version).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
+                Badge(text: "Free")
+                Badge(text: "Open source")
+                Badge(text: "MIT licence")
+            }
+            Text("Capture, annotate and share screenshots. Free forever: the code is public on GitHub, and ideas, issues and pull requests are welcome.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: 380)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button {
+                    NSWorkspace.shared.open(AppInfo.repository)
+                } label: {
+                    Label("View on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                }
+                .buttonStyle(.borderedProminent)
+                Button {
+                    NSWorkspace.shared.open(AppInfo.issues)
+                } label: {
+                    Label("Report an issue", systemImage: "exclamationmark.bubble")
+                }
+            }
             Spacer()
-            Text("© 2026 Austine Jose").font(.caption).foregroundStyle(.tertiary)
+            Text("© 2026 Austine Jose · MIT licence").font(.caption).foregroundStyle(.tertiary)
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -9,6 +9,7 @@ struct MenuBarMenu: View {
         Button("Capture Window") { coordinator.capture(.window) }
         Button("Capture Full Screen") { coordinator.capture(.fullScreen) }
         Divider()
+        Button("About ScreenshotXX") { AppInfo.showAboutPanel() }
         SettingsLink { Text("Settings…") }
             .keyboardShortcut(",")
         Divider()

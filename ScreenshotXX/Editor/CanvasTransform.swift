@@ -1,13 +1,13 @@
 import ScreenshotXXCore
 import SwiftUI
 
-/// Image pixels → zoomed canvas points (what the user sees), and back.
+/// Image pixels ↔ zoomed canvas points (what the user sees).
 struct CanvasTransform {
     let scale: CGFloat
     let offset: CGPoint
 
     init(layout: CanvasLayout, zoom: CGFloat) {
-        scale = layout.imageScale * zoom
+        scale = zoom
         offset = CGPoint(x: layout.imageRect.minX * zoom, y: layout.imageRect.minY * zoom)
     }
 

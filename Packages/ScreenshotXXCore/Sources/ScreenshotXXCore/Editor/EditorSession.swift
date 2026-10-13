@@ -47,6 +47,11 @@ public final class EditorSession {
         self.document = document
     }
 
+    /// True while a drag moves the selection (the view shows a closed hand).
+    public var isMovingSelection: Bool {
+        if case .moving = gesture { true } else { false }
+    }
+
     // MARK: - Toolbar
 
     public var selected: [Annotation] {

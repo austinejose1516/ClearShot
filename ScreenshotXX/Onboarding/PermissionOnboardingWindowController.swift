@@ -9,7 +9,7 @@ final class PermissionOnboardingWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Welcome to ScreenshotXX"
+        window.title = "Welcome"
         window.isReleasedWhenClosed = false
         self.init(window: window)
         window.contentViewController = NSHostingController(

@@ -30,25 +30,23 @@ final class OverlayCaptureSession {
     }
 
     private func start(showsCursor: Bool) async throws -> Outcome {
-        let pairs = try await ScreenCapturer.screenDisplays()
+        let content = try await ScreenCapturer.content()
+        let pairs = ScreenCapturer.screenDisplays(in: content)
         guard !pairs.isEmpty else { throw ScreenCapturer.Failure.noDisplay }
 
-        let scWindows = try await ScreenCapturer.windows()
-        windowsByID = Dictionary(scWindows.map { ($0.windowID, $0) }, uniquingKeysWith: { first, _ in first })
-        let primaryHeightForFilter = NSScreen.screens.first?.frame.height ?? 0
-        let screenRects = NSScreen.screens.map { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: primaryHeightForFilter) }
-        state.windows = WindowPicker.candidates(scWindows.map(WindowInfo.init),
-                                                excludingBundleID: Bundle.main.bundleIdentifier ?? "",
-                                                screens: screenRects)
-        DiagnosticLog.write("windows front→back: " + state.windows.prefix(5).map { "\($0.title ?? "?") \($0.frame)" }.joined(separator: " | "))
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        windowsByID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { first, _ in first })
+        state.windows = WindowPicker.candidates(
+            content.windows.map(WindowInfo.init),
+            excludingBundleID: Bundle.main.bundleIdentifier ?? "",
+            screens: NSScreen.screens.map { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: primaryHeight) })
 
+        // One display at a time: ScreenCaptureKit's display objects are not marked safe to share between tasks.
         var frozen: [(screen: NSScreen, image: CGImage)] = []
         for pair in pairs {
-            let image = try await ScreenCapturer.captureDisplay(pair.display, showsCursor: showsCursor)
-            frozen.append((pair.screen, image))
+            frozen.append((pair.screen, try await ScreenCapturer.captureDisplay(pair.display, showsCursor: showsCursor)))
         }
 
-        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
         for (screen, image) in frozen {
             let panel = SelectionOverlayWindow(screen: screen)
             panel.onCancel = { [weak self] in self?.resolve(.cancelled) }
@@ -63,18 +61,10 @@ final class OverlayCaptureSession {
                         viewRect: rect,
                         viewSize: screen.frame.size,
                         imageSize: CGSize(width: image.width, height: image.height))
-                    if let cropped = image.cropping(to: pixelRect) {
-                        self?.resolve(.area(cropped))
-                    } else {
-                        self?.resolve(.cancelled)
-                    }
+                    self?.resolve(image.cropping(to: pixelRect).map(Outcome.area) ?? .cancelled)
                 },
                 onPickWindow: { [weak self] info in
-                    if let window = self?.windowsByID[info.id] {
-                        self?.resolve(.window(window))
-                    } else {
-                        self?.resolve(.cancelled)
-                    }
+                    self?.resolve(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled)
                 },
                 onCancel: { [weak self] in self?.resolve(.cancelled) })
             panel.contentView = FirstMouseHostingView(rootView: view)

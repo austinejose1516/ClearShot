@@ -15,56 +15,46 @@ final class CaptureCoordinator {
     }
 
     func capture(_ kind: CaptureKind) {
-        let allowed = PermissionService.hasScreenRecordingAccess
-        DiagnosticLog.write("capture(\(kind.rawValue)) screenRecordingAccess=\(allowed)")
-        guard allowed else {
+        guard PermissionService.hasScreenRecordingAccess else {
+            DiagnosticLog.write("capture(\(kind.rawValue)) blocked: no Screen Recording access")
             onPermissionMissing()
             return
         }
+        // Set before the task starts, so a fast second hotkey press cannot start a second capture.
         guard !isCapturing else { return }
+        isCapturing = true
+        Task {
+            defer { isCapturing = false }
+            do {
+                guard let capture = try await makeCapture(kind) else {
+                    DiagnosticLog.write("capture(\(kind.rawValue)) cancelled")
+                    return
+                }
+                finish(capture)
+            } catch {
+                DiagnosticLog.write("capture(\(kind.rawValue)) failed: \(error)")
+                ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
+            }
+        }
+    }
+
+    /// The image for one capture; nil when the user cancelled.
+    private func makeCapture(_ kind: CaptureKind) async throws -> Capture? {
         switch kind {
         case .fullScreen:
-            Task { await captureFullScreen() }
-        case .area:
-            Task { await captureWithOverlay(.area) }
-        case .window:
-            Task { await captureWithOverlay(.window) }
-        }
-    }
-
-    private func captureWithOverlay(_ mode: OverlayCaptureSession.Mode) async {
-        isCapturing = true
-        defer { isCapturing = false }
-        do {
-            switch try await OverlayCaptureSession.run(mode: mode, showsCursor: settings.showsCursor) {
+            let content = try await ScreenCapturer.content()
+            let display = try ScreenCapturer.display(for: .underMouse, in: content)
+            return Capture(kind: .fullScreen, image: try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor))
+        case .area, .window:
+            switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, showsCursor: settings.showsCursor) {
             case .area(let image):
-                DiagnosticLog.write("area selected: \(image.width)x\(image.height) px")
-                finish(Capture(kind: .area, image: image))
+                return Capture(kind: .area, image: image)
             case .window(let window):
                 let image = try await ScreenCapturer.captureWindow(window, showsCursor: settings.showsCursor, includeShadow: true)
-                DiagnosticLog.write("window captured: \(window.title ?? "?") \(image.width)x\(image.height) px")
-                finish(Capture(kind: .window, image: image))
+                return Capture(kind: .window, image: image)
             case .cancelled:
-                DiagnosticLog.write("overlay cancelled")
+                return nil
             }
-        } catch {
-            DiagnosticLog.write("overlay capture failed: \(error)")
-            ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
-        }
-    }
-
-    private func captureFullScreen() async {
-        isCapturing = true
-        defer { isCapturing = false }
-        do {
-            let display = try await ScreenCapturer.display(under: NSEvent.mouseLocation)
-            DiagnosticLog.write("display found: id=\(display.displayID) \(display.width)x\(display.height) pt")
-            let image = try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor)
-            DiagnosticLog.write("image captured: \(image.width)x\(image.height) px")
-            finish(Capture(kind: .fullScreen, image: image))
-        } catch {
-            DiagnosticLog.write("capture failed: \(error)")
-            ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
         }
     }
 
@@ -76,7 +66,7 @@ final class CaptureCoordinator {
         do {
             capture.fileURL = try FileSaver.save(capture.image, format: settings.imageFormat,
                                                  to: settings.saveFolder, date: capture.createdAt)
-            DiagnosticLog.write("saved: \(capture.fileURL?.path(percentEncoded: false) ?? "-")")
+            DiagnosticLog.write("saved \(capture.kind.rawValue) \(capture.image.width)x\(capture.image.height) px")
         } catch {
             DiagnosticLog.write("save failed: \(error)")
             ErrorPresenter.show(title: "Could not save the screenshot",

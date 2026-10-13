@@ -10,7 +10,7 @@ public enum DiagnosticLog {
 
     /// Appends a line; when the file is bigger than `maxBytes` it starts over.
     public static func write(_ message: String, to file: URL = defaultFile, maxBytes: Int = defaultMaxBytes) {
-        let stamp = ISO8601DateFormatter().string(from: .now)
+        let stamp = Date.now.formatted(.iso8601)
         let line = "\(stamp) \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
         let manager = FileManager.default
