@@ -24,7 +24,7 @@ import Testing
     }
 
     @Test func aCurvedArrowsHeadBaseSitsOnTheCurve() {
-        let curve = Curve.bent(from: .zero, to: CGPoint(x: 300, y: 0), arrow: true)
+        let curve = Curve(start: .zero, end: CGPoint(x: 300, y: 0), bend: 60, arrow: true)
         let base = curve.pointBefore(end: 30)
         // On the curve…
         let onCurve = CurveGeometry.point(start: curve.start, control: curve.control, end: curve.end, t: base.t)
@@ -34,11 +34,12 @@ import Testing
     }
 
     @Test func theTrimmedCurveEndsWhereTheHeadBegins() {
-        let curve = Curve.bent(from: .zero, to: CGPoint(x: 300, y: 0), arrow: true)
+        let curve = Curve(start: .zero, end: CGPoint(x: 300, y: 0), bend: 60, arrow: true)
         let base = curve.pointBefore(end: 30)
         let trimmed = curve.prefix(to: base.t)
         #expect(trimmed.start == curve.start)
         #expect(hypot(trimmed.end.x - base.point.x, trimmed.end.y - base.point.y) < 0.001)
-        #expect(curve.prefix(to: 1) == curve)
+        let whole = curve.prefix(to: 1)
+        #expect(whole.start == curve.start && whole.control == curve.control && whole.end == curve.end)
     }
 }

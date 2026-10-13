@@ -26,7 +26,10 @@ struct AnnotationView: View {
                 Path { $0.move(to: shown.start); $0.addQuadCurve(to: shown.end, control: shown.control) }.stroke(stroke, style: line)
                 if figure.arrow { ArrowHead.path(base: base.point, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
             case .freehand(let figure):
-                Smoothing.path(through: figure.points).stroke(stroke, style: line)
+                // A highlighter multiplies onto the image, like ink on paper: text under it stays crisp and dark.
+                Smoothing.path(through: figure.points)
+                    .stroke(stroke, style: line)
+                    .blendMode(figure.form == .highlighter ? .multiply : .normal)
             case .box(let figure):
                 let rect = figure.rect.standardized
                 let outline = figure.form == .ellipse

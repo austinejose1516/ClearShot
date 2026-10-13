@@ -60,6 +60,15 @@ public struct StyleValues: Equatable, Sendable {
 
     public init() {}
 
+    /// What the highlighter starts with: half see-through yellow, wide enough to cover a line of 2× text.
+    public static let highlighter: StyleValues = {
+        var values = StyleValues()
+        values.color = .yellow
+        values.opacity = 0.5
+        values.width = 32
+        return values
+    }()
+
     public mutating func apply(_ change: StyleChange) {
         switch change {
         case .color(let value): color = value

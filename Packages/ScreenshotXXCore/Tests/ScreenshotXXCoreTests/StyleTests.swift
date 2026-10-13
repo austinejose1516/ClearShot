@@ -78,6 +78,13 @@ import Testing
         #expect(StyleValues().stepRadius * 2 == 40)
     }
 
+    @Test func theHighlighterStartsYellowHalfSeeThroughAndWide() {
+        let values = StyleValues.highlighter
+        #expect(values.color == .yellow && values.opacity == 0.5 && values.width == 32)
+        #expect(values.style(canFill: false).strokeColor == RGBAColor.yellow.withAlpha(0.5))
+        #expect(StyleValues.widthRange.contains(values.width))
+    }
+
     @Test func defaultThicknessIsNormalNotHeavy() {
         #expect(StyleValues().width == 4)
         #expect(Annotation.Style().strokeWidth == 4)

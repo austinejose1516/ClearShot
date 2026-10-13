@@ -20,17 +20,39 @@ import Testing
         #expect(box.rect == CGRect(x: -10, y: -10, width: 10, height: 10))
     }
 
-    @Test func curveMiddleHandleBends() {
-        var curve = Curve(start: .zero, control: CGPoint(x: 50, y: 0), end: CGPoint(x: 100, y: 0), arrow: true)
-        #expect(curve.handles.map(\.kind) == [.start, .control, .end])
-        curve.drag(.control, to: CGPoint(x: 50, y: 80))
-        #expect(curve.control == CGPoint(x: 50, y: 80))
-        #expect(curve.bounds.maxY > 30)
+    @Test func aNewCurveIsStraightAndItsMiddleDotBendsItToEitherSide() {
+        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), arrow: true)
+        #expect(curve.handles.map(\.kind) == [.start, .middle, .end])
+        #expect(curve.middle == CGPoint(x: 50, y: 0))
+        #expect(curve.control == CGPoint(x: 50, y: 0))
+
+        curve.drag(.middle, to: CGPoint(x: 50, y: 40))
+        #expect(curve.bend == 40)
+        #expect(curve.middle == CGPoint(x: 50, y: 40))     // the dot stays on the curve…
+        #expect(curve.control == CGPoint(x: 50, y: 80))    // …so the control point is twice as far out
+        #expect(CurveGeometry.point(start: curve.start, control: curve.control, end: curve.end, t: 0.5) == curve.middle)
+        #expect(curve.bounds.maxY == 40)
+
+        // The other side; movement along the line is ignored, so the dot stays in the middle.
+        curve.drag(.middle, to: CGPoint(x: 70, y: -40))
+        #expect(curve.middle == CGPoint(x: 50, y: -40))
     }
 
-    @Test func drawnCurveIsAlreadyBent() {
-        let curve = Curve.bent(from: .zero, to: CGPoint(x: 100, y: 0), arrow: true)
-        #expect(curve.control == CGPoint(x: 50, y: 25))
+    @Test func movingACurvesEndKeepsItsBend() {
+        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, arrow: true)
+        curve.drag(.end, to: CGPoint(x: 0, y: 100))
+        #expect(curve.bend == 30)
+        #expect(abs(hypot(curve.middle.x, curve.middle.y - 50) - 30) < 0.001)
+        curve.move(by: CGVector(dx: 10, dy: 10))
+        #expect(curve.bend == 30)
+        #expect(curve.start == CGPoint(x: 10, y: 10))
+    }
+
+    @Test func aHighlighterStrokeIsAFreehandStrokeInAnotherForm() {
+        let points = [CGPoint.zero, CGPoint(x: 10, y: 0)]
+        #expect(Annotation(kind: .freehand(Freehand(points: points, form: .highlighter))).isHighlight)
+        #expect(Annotation(kind: .freehand(Freehand(points: points))).isHighlight == false)
+        #expect(Freehand(points: points, form: .highlighter).capabilities == Freehand(points: points).capabilities)
     }
 
     @Test func bubbleTailHandleMovesOnlyTheTail() {

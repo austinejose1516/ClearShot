@@ -21,8 +21,11 @@ public final class EditorSession {
     public var tool: EditorTool = .select {
         didSet { if tool != .crop { cropDraft = nil } }
     }
-    /// What new annotations get. A toolbar change also updates these.
+    /// What new annotations get; a toolbar change also updates these. The highlighter keeps its own set, so its
+    /// wide, see-through yellow never leaks into the next arrow. Every other tool shares one set, so a colour
+    /// picked for arrows also applies to the next rectangle.
     public private(set) var defaults = StyleValues()
+    public private(set) var highlighterDefaults = StyleValues.highlighter
     public private(set) var editingTextID: Annotation.ID?
     /// The box being dragged with the Text tool.
     public private(set) var textDraft: CGRect?
@@ -60,8 +63,20 @@ public final class EditorSession {
 
     /// The values the toolbar shows: the selection's own, or the defaults.
     public var shownValues: StyleValues {
-        guard let first = selected.first else { return defaults }
-        return defaults.reading(first)
+        guard let first = selected.first else { return toolbarDefaults }
+        return toolbarDefaults.reading(first)
+    }
+
+    /// The defaults the toolbar shows and edits: the highlighter's while it is in use (the tool is on, or only
+    /// highlights are selected), the shared ones otherwise.
+    private var toolbarDefaults: StyleValues {
+        get { highlighterInUse ? highlighterDefaults : defaults }
+        set { if highlighterInUse { highlighterDefaults = newValue } else { defaults = newValue } }
+    }
+
+    private var highlighterInUse: Bool {
+        let selected = selected
+        return selected.isEmpty ? tool == .highlight : selected.allSatisfy(\.isHighlight)
     }
 
     /// The controls the toolbar shows: what the selection has, or what the tool makes.
@@ -74,7 +89,7 @@ public final class EditorSession {
     /// One toolbar change: it updates the defaults, and each selected annotation where it has that property.
     /// `live` (a slider being dragged) skips the undo step; `endLiveChange()` records one for the whole drag.
     public func apply(_ change: StyleChange, live: Bool = false) {
-        defaults.apply(change)
+        toolbarDefaults.apply(change)
         guard !document.selection.isEmpty else { return }
         for annotation in selected {
             var changed = annotation
@@ -215,8 +230,10 @@ public final class EditorSession {
         case .select:
             document.selection = []
             gesture = .idle
-        case .pen:
-            let stroke = Annotation(kind: .freehand(Freehand(points: [point])), style: defaults.style(canFill: false))
+        case .pen, .highlight:
+            let isHighlighter = tool == .highlight
+            let stroke = Annotation(kind: .freehand(Freehand(points: [point], form: isHighlighter ? .highlighter : .pen)),
+                                    style: (isHighlighter ? highlighterDefaults : defaults).style(canFill: false))
             document.insert(stroke)
             gesture = .scribbling(stroke.id)
         case .text:

@@ -68,6 +68,48 @@ import Testing
         #expect(stroke.points.count == 4)
     }
 
+    @Test func aDrawnCurveStartsStraightAndItsMiddleDotBendsIt() {
+        let s = session()
+        s.tool = .curve
+        drag(s, p(0, 100), p(120, 60), p(200, 100))
+        #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
+        // Still selected, so the middle dot is live; pulling it up bends the curve.
+        drag(s, p(100, 100), p(100, 40))
+        guard case .curve(let curve) = s.document.annotations[0].kind else {
+            Issue.record("no curve")
+            return
+        }
+        #expect(curve.bend == -60)
+        #expect(curve.middle == p(100, 40))
+        s.document.undo()
+        #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
+    }
+
+    @Test func theHighlighterHasItsOwnColourWidthAndOpacity() {
+        let s = session()
+        s.apply(.color(.blue))          // the shared colour, for arrows, pen and shapes
+        s.tool = .highlight
+        #expect(s.shownValues.color == .yellow && s.shownValues.opacity == 0.5)
+        drag(s, p(0, 0), p(50, 0), p(100, 0))
+        let highlight = s.document.annotations[0]
+        #expect(highlight.kind == .freehand(Freehand(points: [p(0, 0), p(50, 0), p(100, 0)], form: .highlighter)))
+        #expect(highlight.style.strokeColor == RGBAColor.yellow.withAlpha(0.5))
+        #expect(highlight.style.strokeWidth == StyleValues.highlighter.width)
+        #expect(s.tool == .highlight)
+
+        // Recolouring the selected highlight changes the next highlight, not the next arrow or pen stroke.
+        s.apply(.color(.green))
+        s.tool = .pen
+        drag(s, p(0, 50), p(50, 50))
+        #expect(s.document.annotations[1].style.strokeColor == .blue)
+        #expect(s.document.annotations[1].style.strokeWidth == Annotation.Style.defaultWidth)
+        s.document.selection = []
+        s.tool = .arrow
+        #expect(s.shownValues.color == .blue)
+        s.tool = .highlight
+        #expect(s.shownValues.color == .green)
+    }
+
     @Test func draggingATextBoxSetsTheFontSizeAndStartsEditing() {
         let s = session()
         s.tool = .text
@@ -244,7 +286,7 @@ import Testing
         #expect(s.editingTextID == s.document.annotations[0].id)
     }
 
-    @Test func shapeToolsHandBackToSelectButPenStepAndBlurStayOn() {
+    @Test func shapeToolsHandBackToSelectButStrokesStepAndBlurStayOn() {
         for tool in [EditorTool.line, .arrow, .curve, .rect, .ellipse, .bubble] {
             let s = session()
             s.tool = tool
@@ -252,7 +294,7 @@ import Testing
             s.finishTextEditing()
             #expect(s.tool == .select, "\(tool) should hand back to Select")
         }
-        for tool in [EditorTool.pen, .step, .blur] {
+        for tool in [EditorTool.pen, .highlight, .step, .blur] {
             let s = session()
             s.tool = tool
             drag(s, p(10, 10), p(120, 80))

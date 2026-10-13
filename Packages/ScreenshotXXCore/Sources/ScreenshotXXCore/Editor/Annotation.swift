@@ -6,13 +6,14 @@ public enum BlurMode: String, Equatable, Sendable, CaseIterable {
 }
 
 public enum HandleKind: Equatable, Sendable {
-    case start, end, control, tail
+    /// `middle` is the curve's bend dot; it sits on the curve, halfway along.
+    case start, end, middle, tail
     case topLeft, topRight, bottomLeft, bottomRight
 
     public var isCorner: Bool {
         switch self {
         case .topLeft, .topRight, .bottomLeft, .bottomRight: true
-        case .start, .end, .control, .tail: false
+        case .start, .end, .middle, .tail: false
         }
     }
 }
@@ -128,6 +129,9 @@ public struct Annotation: Identifiable, Equatable, Sendable {
     public var editableText: String? { kind.figure.editableText }
     public var textContent: TextContent? {
         if case .text(let content) = kind { content } else { nil }
+    }
+    public var isHighlight: Bool {
+        if case .freehand(let stroke) = kind { stroke.form == .highlighter } else { false }
     }
 
     /// `includingInterior`: also inside unfilled rectangles and ellipses (the pointer tool).

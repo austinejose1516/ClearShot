@@ -46,31 +46,48 @@ public struct Line: Figure {
     }
 }
 
-/// A curved line (quadratic Bézier); the middle handle bends it.
+/// A curved line (quadratic Bézier). It is drawn straight; its middle dot, which sits on the curve, bends it to
+/// either side.
 public struct Curve: Figure {
     public var start: CGPoint
-    public var control: CGPoint
     public var end: CGPoint
+    /// How far the middle of the curve sits from the straight line between the ends, in pixels. 0 is straight;
+    /// the sign picks the side. Moving an end keeps it, so the shape stays.
+    public var bend: CGFloat
     public var arrow: Bool
 
-    public init(start: CGPoint, control: CGPoint, end: CGPoint, arrow: Bool) {
+    public init(start: CGPoint, end: CGPoint, bend: CGFloat = 0, arrow: Bool) {
         self.start = start
-        self.control = control
         self.end = end
+        self.bend = bend
         self.arrow = arrow
     }
 
-    /// A new curve from a drag, bent by a quarter of its length so it looks curved right away.
-    public static func bent(from start: CGPoint, to end: CGPoint, arrow: Bool) -> Curve {
+    /// The straight line between the ends: its midpoint and a unit vector at right angles to it.
+    private var chord: (mid: CGPoint, normal: CGVector) {
         let dx = end.x - start.x, dy = end.y - start.y
-        let control = CGPoint(x: (start.x + end.x) / 2 - dy * 0.25, y: (start.y + end.y) / 2 + dx * 0.25)
-        return Curve(start: start, control: control, end: end, arrow: arrow)
+        let length = hypot(dx, dy)
+        let normal = length > 0 ? CGVector(dx: -dy / length, dy: dx / length) : .zero
+        return (CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2), normal)
     }
+
+    /// The point `distance` out from the chord's midpoint, at right angles to the chord.
+    private func offChord(_ distance: CGFloat) -> CGPoint {
+        let (mid, normal) = chord
+        return CGPoint(x: mid.x + normal.dx * distance, y: mid.y + normal.dy * distance)
+    }
+
+    /// The point on the curve halfway along: where the middle dot sits.
+    public var middle: CGPoint { offChord(bend) }
+
+    /// The Bézier control point. The curve's midpoint is ¼ start + ½ control + ¼ end, so the control sits twice
+    /// as far out as the middle dot.
+    public var control: CGPoint { offChord(2 * bend) }
 
     private var samples: [CGPoint] { CurveGeometry.samples(start: start, control: control, end: end) }
 
     public var bounds: CGRect { AnnotationGeometry.bounds(of: samples) }
-    public var handles: [Handle] { [Handle(.start, start), Handle(.control, control), Handle(.end, end)] }
+    public var handles: [Handle] { [Handle(.start, start), Handle(.middle, middle), Handle(.end, end)] }
     public var capabilities: StyleCapabilities { [.color, .width, .arrow] }
     public var asKind: Annotation.Kind { .curve(self) }
 
@@ -81,15 +98,17 @@ public struct Curve: Figure {
 
     public mutating func move(by delta: CGVector) {
         start = start.offset(delta)
-        control = control.offset(delta)
         end = end.offset(delta)
     }
 
     public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
         switch handle {
         case .start: start = point
-        case .control: control = point
         case .end: end = point
+        case .middle:
+            // Only the distance across the chord counts, so the dot slides along the curve's centre line.
+            let (mid, normal) = chord
+            bend = (point.x - mid.x) * normal.dx + (point.y - mid.y) * normal.dy
         default: break
         }
     }
@@ -121,22 +140,29 @@ public struct Curve: Figure {
         return (start, 0)
     }
 
-    /// The same curve from its start up to parameter `t` (de Casteljau split).
-    public func prefix(to t: CGFloat) -> Curve {
-        guard t < 1 else { return self }
-        let t = max(0, t)
-        let newControl = CGPoint(x: start.x + (control.x - start.x) * t, y: start.y + (control.y - start.y) * t)
-        return Curve(start: start, control: newControl,
-                     end: CurveGeometry.point(start: start, control: control, end: end, t: t), arrow: arrow)
+    /// The same curve from its start up to parameter `t` (de Casteljau split), as plain Bézier points: the piece
+    /// is not symmetric, so it is not a `Curve`.
+    public func prefix(to t: CGFloat) -> (start: CGPoint, control: CGPoint, end: CGPoint) {
+        let t = max(0, min(1, t))
+        let control = control
+        return (start,
+                CGPoint(x: start.x + (control.x - start.x) * t, y: start.y + (control.y - start.y) * t),
+                CurveGeometry.point(start: start, control: control, end: end, t: t))
     }
 }
 
-/// A pen stroke.
+/// A pen stroke, or a highlighter stroke: the same points, drawn wide and see-through over the image.
 public struct Freehand: Figure {
-    public var points: [CGPoint]
+    public enum Form: Equatable, Sendable {
+        case pen, highlighter
+    }
 
-    public init(points: [CGPoint]) {
+    public var points: [CGPoint]
+    public var form: Form
+
+    public init(points: [CGPoint], form: Form = .pen) {
         self.points = points
+        self.form = form
     }
 
     public var bounds: CGRect { AnnotationGeometry.bounds(of: points) }
