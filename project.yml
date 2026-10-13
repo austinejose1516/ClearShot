@@ -1,0 +1,60 @@
+name: ScreenshotXX
+options:
+  bundleIdPrefix: com.austinejose
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  disabledValidations: [missingConfigFiles]
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_HARDENED_RUNTIME: NO
+    ENABLE_APP_SANDBOX: NO
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    exactVersion: 3.1.0
+  ScreenshotXXCore:
+    path: Packages/ScreenshotXXCore
+targets:
+  ScreenshotXX:
+    type: application
+    platform: macOS
+    sources:
+      - path: ScreenshotXX
+        excludes: ["Info.plist"]
+    dependencies:
+      - package: KeyboardShortcuts
+      - package: ScreenshotXXCore
+    info:
+      path: ScreenshotXX/Info.plist
+      properties:
+        CFBundleDisplayName: ScreenshotXX
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: "© 2026 Austine Jose"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.austinejose.screenshotxx
+        PRODUCT_NAME: ScreenshotXX
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+    configFiles:
+      Debug: Local.xcconfig
+      Release: Local.xcconfig
+schemes:
+  ScreenshotXX:
+    build:
+      targets:
+        ScreenshotXX: all
+    run:
+      config: Debug
