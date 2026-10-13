@@ -37,6 +37,8 @@ public final class AppSettings {
         static let cardAutoCloseSeconds = "cardAutoCloseSeconds"
         static let appearance = "appearance"
         static let accent = "accent"
+        static let checksForUpdates = "checksForUpdates"
+        static let lastUpdateCheck = "lastUpdateCheck"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -50,6 +52,13 @@ public final class AppSettings {
     public var cardAutoCloseSeconds: Int { didSet { defaults.set(cardAutoCloseSeconds, forKey: Key.cardAutoCloseSeconds) } }
     public var appearance: Appearance { didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) } }
     public var accent: AccentTheme { didSet { defaults.set(accent.rawValue, forKey: Key.accent) } }
+    /// Look for a newer release once a day.
+    public var checksForUpdates: Bool { didSet { defaults.set(checksForUpdates, forKey: Key.checksForUpdates) } }
+    public var lastUpdateCheck: Date? {
+        didSet {
+            if let lastUpdateCheck { defaults.set(lastUpdateCheck, forKey: Key.lastUpdateCheck) } else { defaults.removeObject(forKey: Key.lastUpdateCheck) }
+        }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -62,5 +71,7 @@ public final class AppSettings {
         cardAutoCloseSeconds = defaults.object(forKey: Key.cardAutoCloseSeconds) as? Int ?? 0
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         accent = defaults.string(forKey: Key.accent).flatMap(AccentTheme.init(rawValue:)) ?? .ocean
+        checksForUpdates = defaults.object(forKey: Key.checksForUpdates) as? Bool ?? true
+        lastUpdateCheck = defaults.object(forKey: Key.lastUpdateCheck) as? Date
     }
 }

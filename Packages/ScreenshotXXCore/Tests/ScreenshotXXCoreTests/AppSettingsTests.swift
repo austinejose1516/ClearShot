@@ -24,6 +24,8 @@ import Testing
         #expect(settings.cardAutoCloseSeconds == 0)
         #expect(settings.appearance == .system)
         #expect(settings.accent == .ocean)
+        #expect(settings.checksForUpdates == true)
+        #expect(settings.lastUpdateCheck == nil)
     }
 
     @Test func changesPersistAcrossInstances() {
@@ -39,6 +41,8 @@ import Testing
         first.saveFolder = URL(filePath: "/tmp/shots", directoryHint: .isDirectory)
         first.appearance = .dark
         first.accent = .sunset
+        first.checksForUpdates = false
+        first.lastUpdateCheck = Date(timeIntervalSince1970: 1_800_000_000)
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
@@ -49,6 +53,8 @@ import Testing
         #expect(second.saveFolder.path() == "/tmp/shots/")
         #expect(second.appearance == .dark)
         #expect(second.accent == .sunset)
+        #expect(second.checksForUpdates == false)
+        #expect(second.lastUpdateCheck == Date(timeIntervalSince1970: 1_800_000_000))
     }
 
     @Test func jpegFilesUseJpgExtension() {

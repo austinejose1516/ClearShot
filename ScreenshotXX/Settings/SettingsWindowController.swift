@@ -5,10 +5,10 @@ import SwiftUI
 /// Settings in our own window (toolbar tabs, like system apps), so we control how it comes to the front.
 /// SwiftUI's built-in Settings scene does not open reliably from a menu bar app.
 final class SettingsWindowController: NSWindowController {
-    convenience init(settings: AppSettings) {
+    convenience init(settings: AppSettings, updates: UpdateChecker) {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().themed(settings)))
+        tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().environment(updates).themed(settings)))
         tabs.addTabViewItem(Self.tab("Shortcuts", symbol: "keyboard", ShortcutsSettingsTab().themed(settings)))
         tabs.addTabViewItem(Self.tab("About", symbol: "info.circle", AboutSettingsTab().themed(settings)))
         let window = NSWindow(contentViewController: tabs)

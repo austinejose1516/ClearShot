@@ -36,13 +36,19 @@ brew install --cask austinejose1516/tap/screenshotxx
 | Uninstall | `brew uninstall --cask screenshotxx` |
 | Uninstall and remove its settings and log | `brew uninstall --zap --cask screenshotxx` |
 
+**No admin rights?** Install into your own Applications folder instead of `/Applications`. Add this line to `~/.zshrc` once, so installs and upgrades both go there:
+
+```bash
+export HOMEBREW_CASK_OPTS="--appdir=$HOME/Applications"
+```
+
 **First launch.**
 
 1. The app is not notarized yet, so the first time right-click ScreenshotXX in Applications and choose **Open**.
 2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ScreenshotXX on in System Settings.
 3. Quit ScreenshotXX from the menu bar and open it again. Press **⌃⇧A** to capture.
 
-Needs macOS 26 (Tahoe) or later. ScreenshotXX lives in the menu bar; it has no account, sends nothing over the network, and keeps your screenshots on your Mac.
+Needs macOS 26 (Tahoe) or later. ScreenshotXX lives in the menu bar; it has no account and keeps your screenshots on your Mac. The only thing it sends over the network is a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away).
 
 ## Features
 

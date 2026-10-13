@@ -7,6 +7,14 @@ enum AppInfo {
     static let tagline = "Free and open-source screenshots for your Mac"
     static let repository = URL(string: "https://github.com/austinejose1516/ScreenshotXX")!
     static let issues = URL(string: "https://github.com/austinejose1516/ScreenshotXX/issues")!
+    static let releases = URL(string: "https://github.com/austinejose1516/ScreenshotXX/releases/latest")!
+    static let latestReleaseAPI = URL(string: "https://api.github.com/repos/austinejose1516/ScreenshotXX/releases/latest")!
+    static let upgradeCommand = "brew upgrade --cask screenshotxx"
+
+    /// "0.2.0"
+    static var shortVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
 
     static var version: String {
         let info = Bundle.main.infoDictionary

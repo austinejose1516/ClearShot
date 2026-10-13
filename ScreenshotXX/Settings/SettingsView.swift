@@ -8,6 +8,7 @@ import SwiftUI
 
 struct GeneralSettingsTab: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(UpdateChecker.self) private var updates
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -78,6 +79,17 @@ struct GeneralSettingsTab: View {
                 }
             }
 
+            Section("Updates") {
+                Toggle("Check for updates automatically", isOn: $settings.checksForUpdates)
+                LabeledContent("Last checked") {
+                    HStack(spacing: 8) {
+                        Text(settings.lastUpdateCheck.map { $0.formatted(.relative(presentation: .named)) } ?? "Never")
+                            .foregroundStyle(.secondary)
+                        Button("Check Now") { updates.checkNow() }
+                    }
+                }
+            }
+
             Section("System") {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in setLaunchAtLogin(on) }
@@ -89,7 +101,7 @@ struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 660)
+        .frame(width: 540, height: 760)
     }
 
     private func chooseFolder() {

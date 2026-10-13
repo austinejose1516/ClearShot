@@ -9,7 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var hotkeys: HotkeyService?
     private var onboarding: PermissionOnboardingWindowController?
-    private lazy var settingsWindow = SettingsWindowController(settings: settings)
+    private(set) lazy var updates = UpdateChecker(settings: settings)
+    private lazy var settingsWindow = SettingsWindowController(settings: settings, updates: updates)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
@@ -37,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ErrorPresenter.show(title: "Could not move to Trash", message: error.localizedDescription)
             }
         }
+
+        updates.startAutomaticChecks()
 
         if !PermissionService.hasScreenRecordingAccess {
             showOnboarding()
