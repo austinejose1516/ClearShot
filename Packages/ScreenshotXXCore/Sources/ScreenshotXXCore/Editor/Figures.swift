@@ -36,6 +36,14 @@ public struct Line: Figure {
     }
 
     public func read(into values: inout StyleValues) { values.arrow = arrow }
+
+    /// The point `distance` before the end along the line (where an arrowhead's base sits).
+    public func pointBefore(end distance: CGFloat) -> CGPoint {
+        let total = hypot(end.x - start.x, end.y - start.y)
+        guard total > 0 else { return start }
+        let back = min(distance, total) / total
+        return CGPoint(x: end.x - (end.x - start.x) * back, y: end.y - (end.y - start.y) * back)
+    }
 }
 
 /// A curved line (quadratic Bézier); the middle handle bends it.
@@ -91,6 +99,36 @@ public struct Curve: Figure {
     }
 
     public func read(into values: inout StyleValues) { values.arrow = arrow }
+
+    /// The point about `distance` before the end, measured along the curve, and its curve parameter.
+    /// An arrowhead's base sits here, so the curve flows into the middle of the head.
+    public func pointBefore(end distance: CGFloat) -> (point: CGPoint, t: CGFloat) {
+        let steps = 96
+        var previous = end
+        var travelled: CGFloat = 0
+        for index in stride(from: steps - 1, through: 0, by: -1) {
+            let t = CGFloat(index) / CGFloat(steps)
+            let point = CurveGeometry.point(start: start, control: control, end: end, t: t)
+            let step = hypot(point.x - previous.x, point.y - previous.y)
+            if travelled + step >= distance {
+                let fraction = step > 0 ? (distance - travelled) / step : 0
+                let at = CGFloat(index + 1) / CGFloat(steps) - fraction / CGFloat(steps)
+                return (CurveGeometry.point(start: start, control: control, end: end, t: at), at)
+            }
+            travelled += step
+            previous = point
+        }
+        return (start, 0)
+    }
+
+    /// The same curve from its start up to parameter `t` (de Casteljau split).
+    public func prefix(to t: CGFloat) -> Curve {
+        guard t < 1 else { return self }
+        let t = max(0, t)
+        let newControl = CGPoint(x: start.x + (control.x - start.x) * t, y: start.y + (control.y - start.y) * t)
+        return Curve(start: start, control: newControl,
+                     end: CurveGeometry.point(start: start, control: control, end: end, t: t), arrow: arrow)
+    }
 }
 
 /// A pen stroke.

@@ -1,6 +1,11 @@
 import CoreGraphics
 
 public enum ArrowGeometry {
+    /// How long an arrowhead is for a line width: 4× the width, at least 20 px.
+    public static func headLength(strokeWidth: CGFloat) -> CGFloat {
+        max(20, strokeWidth * 4)
+    }
+
     /// The two wing points of an arrowhead whose tip is at `to`.
     public static func head(from: CGPoint, to: CGPoint, length: CGFloat, width: CGFloat) -> (left: CGPoint, right: CGPoint) {
         let dx = to.x - from.x, dy = to.y - from.y

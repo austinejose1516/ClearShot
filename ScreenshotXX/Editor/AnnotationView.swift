@@ -13,11 +13,18 @@ struct AnnotationView: View {
         ZStack(alignment: .topLeading) {
             switch annotation.kind {
             case .line(let figure):
-                Path { $0.move(to: figure.start); $0.addLine(to: figure.end) }.stroke(stroke, style: line)
-                if figure.arrow { ArrowHead.path(from: figure.start, to: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
+                // With an arrow, the line stops where the head starts, and the head points along the line.
+                let headLength = ArrowGeometry.headLength(strokeWidth: style.strokeWidth)
+                let lineEnd = figure.arrow ? figure.pointBefore(end: headLength) : figure.end
+                Path { $0.move(to: figure.start); $0.addLine(to: lineEnd) }.stroke(stroke, style: line)
+                if figure.arrow { ArrowHead.path(base: lineEnd, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
             case .curve(let figure):
-                Path { $0.move(to: figure.start); $0.addQuadCurve(to: figure.end, control: figure.control) }.stroke(stroke, style: line)
-                if figure.arrow { ArrowHead.path(from: figure.control, to: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
+                // The head's base sits on the curve, so the curve flows into the middle of the head.
+                let headLength = ArrowGeometry.headLength(strokeWidth: style.strokeWidth)
+                let base = figure.arrow ? figure.pointBefore(end: headLength) : (point: figure.end, t: 1)
+                let shown = figure.prefix(to: base.t)
+                Path { $0.move(to: shown.start); $0.addQuadCurve(to: shown.end, control: shown.control) }.stroke(stroke, style: line)
+                if figure.arrow { ArrowHead.path(base: base.point, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
             case .freehand(let figure):
                 Smoothing.path(through: figure.points).stroke(stroke, style: line)
             case .box(let figure):
@@ -81,12 +88,11 @@ struct TextAnnotationView: View {
 }
 
 enum ArrowHead {
-    static func length(for strokeWidth: CGFloat) -> CGFloat { max(28, strokeWidth * 5) }
-
-    /// A filled triangle with its tip at `to`, pointing away from `from`.
-    static func path(from: CGPoint, to tip: CGPoint, strokeWidth: CGFloat) -> Path {
-        let length = length(for: strokeWidth)
-        let wings = ArrowGeometry.head(from: from, to: tip, length: length, width: length * 0.85)
+    /// A filled triangle from `base` (the middle of its back edge) to `tip`.
+    static func path(base: CGPoint, tip: CGPoint, strokeWidth: CGFloat) -> Path {
+        let length = hypot(tip.x - base.x, tip.y - base.y)
+        let width = ArrowGeometry.headLength(strokeWidth: strokeWidth) * 0.9
+        let wings = ArrowGeometry.head(from: base, to: tip, length: length, width: width)
         return Path { path in
             path.move(to: tip)
             path.addLine(to: wings.left)
