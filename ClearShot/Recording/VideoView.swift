@@ -13,7 +13,12 @@ struct VideoView: View {
     let onCommand: (VideoCommand) -> Void
     let onRangeChanged: (TrimRange) -> Void
     let onSeek: (Double) -> Void
+    /// Gets the Share button's AppKit view, so the Share menu can open under it.
+    let onShare: (NSView?) -> Void
     let onCancelExport: () -> Void
+
+    @State private var shareAnchor = AnchorHolder()
+    @State private var linkCopied = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,7 +48,7 @@ struct VideoView: View {
                 Text("\(Self.clock(state.range.start, decimals: true)) – \(Self.clock(state.range.end, decimals: true))")
                     .font(.body.monospacedDigit())
                 Text("·").foregroundStyle(.tertiary)
-                Text("\(Self.clock(state.range.duration)) kept").foregroundStyle(.secondary)
+                Text("\(Self.length(state.range.duration)) kept").foregroundStyle(.secondary)
                 Button("Start Here") { change(state.range.movingStart(to: state.playhead)) }
                     .help("Move the start to the playhead")
                 Button("End Here") { change(state.range.movingEnd(to: state.playhead)) }
@@ -55,6 +60,36 @@ struct VideoView: View {
             Text("up to ≈ \(ByteCountFormatter.string(fromByteCount: Int64(encoding.estimatedBytes(seconds: state.range.duration)), countStyle: .file))")
                 .foregroundStyle(.secondary)
                 .help("The most the file can be. Still parts of the screen make it smaller.")
+            Button { onShare(shareAnchor.view) } label: {
+                Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
+            }
+            .buttonBorderShape(.capsule)
+            .fixedSize()
+            .disabled(exporting)
+            .background(AnchorView(holder: shareAnchor))
+            .help("Share the trimmed video (the window stays open)")
+            Button {
+                if let link = state.uploadedLink {
+                    UploadService.copy(link)
+                    flashLinkCopied()
+                } else {
+                    onCommand(.upload)
+                }
+            } label: {
+                if let progress = state.uploadProgress {
+                    ProgressView(value: progress).progressViewStyle(.linear).frame(width: 64).padding(.horizontal, 4)
+                } else if state.uploadedLink != nil {
+                    Label(linkCopied ? "Copied" : "Copy Link", systemImage: linkCopied ? "checkmark" : "link")
+                        .labelStyle(.titleAndIcon).padding(.horizontal, 2)
+                } else {
+                    Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
+                }
+            }
+            .buttonBorderShape(.capsule)
+            .fixedSize()
+            .disabled(exporting || state.uploadProgress != nil)
+            .animation(.snappy(duration: 0.2), value: state.uploadProgress == nil)
+            .help("Upload to your cloud bucket and copy the link (set up in Settings → Cloud)")
             Menu {
                 Button("Save As…") { onCommand(.saveAs) }
             } label: {
@@ -74,6 +109,19 @@ struct VideoView: View {
     private func change(_ range: TrimRange) {
         state.range = range
         onRangeChanged(range)
+    }
+
+    private func flashLinkCopied() {
+        withAnimation(.snappy(duration: 0.2)) { linkCopied = true }
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            withAnimation(.easeOut(duration: 0.2)) { linkCopied = false }
+        }
+    }
+
+    /// "8.9 s" under a minute, else "1:42".
+    static func length(_ seconds: Double) -> String {
+        seconds < 60 ? "\(seconds.formatted(.number.precision(.fractionLength(1)))) s" : clock(seconds)
     }
 
     /// "0:42" or, with decimals, "0:03.2".

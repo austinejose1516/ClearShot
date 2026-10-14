@@ -3,7 +3,7 @@ import ClearShotCore
 
 /// The shared tail of Upload (editor and card): send the bytes, put the link on the clipboard, say so.
 enum UploadService {
-    /// Images go to the bucket's "images/" folder; videos and scrolling shots get their own folders later.
+    /// Images go to the bucket's "images/" folder (scrolling shots are images too); videos go to "videos/".
     /// Returns the link, so the card can offer it again.
     @discardableResult
     static func upload(_ data: Data, format: ImageFormat, with uploader: R2Uploader,
@@ -12,6 +12,18 @@ enum UploadService {
         let link = try await uploader.upload(data, contentType: format.mimeType, key: key, progress: progress)
         copy(link)
         DiagnosticLog.write("uploaded \(data.count) bytes, link copied: \(link.absoluteString)")
+        Toast.show("Link copied")
+        return link
+    }
+
+    /// A file on disk (a recording) goes to its own folder: "videos/k3x9p2m7qa.mp4".
+    @discardableResult
+    static func upload(fileURL: URL, contentType: String, folder: R2Folder, with uploader: R2Uploader,
+                       progress: (@Sendable (Double) -> Void)? = nil) async throws -> URL {
+        let key = folder.key(for: R2Name.random(fileExtension: fileURL.pathExtension))
+        let link = try await uploader.upload(file: fileURL, contentType: contentType, key: key, progress: progress)
+        copy(link)
+        DiagnosticLog.write("uploaded \(fileURL.lastPathComponent), link copied: \(link.absoluteString)")
         Toast.show("Link copied")
         return link
     }

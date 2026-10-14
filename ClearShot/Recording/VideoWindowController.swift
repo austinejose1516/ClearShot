@@ -6,7 +6,7 @@ import SwiftUI
 
 /// What the video window's keys and buttons can ask for.
 enum VideoCommand {
-    case save, saveAs
+    case save, saveAs, upload
 }
 
 /// What the video window shows: the trim range, the playhead, the filmstrip and the export's progress.
@@ -18,6 +18,10 @@ final class VideoState {
     var thumbnails: [CGImage?] = []
     /// 0…1 while an export runs; nil otherwise.
     var exportProgress: Double?
+    /// 0…1 while an upload runs; nil otherwise.
+    var uploadProgress: Double?
+    /// Set once an upload worked, so the link can be copied again. Cleared when the range changes.
+    var uploadedLink: URL?
 
     init(total: Double) {
         self.total = total
@@ -76,6 +80,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
             onCommand: { [weak self] in self?.perform($0) },
             onRangeChanged: { [weak self] in self?.rangeChanged($0) },
             onSeek: { [weak self] in self?.seek(to: $0) },
+            onShare: { [weak self] in self?.share(from: $0) },
             onCancelExport: { [weak self] in self?.exportTask?.cancel() })
             .themed(settings))
         host.sizingOptions = .minSize
@@ -93,6 +98,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         switch command {
         case .save: save()
         case .saveAs: saveAs()
+        case .upload: upload()
         }
     }
 
@@ -117,6 +123,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
 
     /// Playback stays inside the kept part.
     private func rangeChanged(_ range: TrimRange) {
+        if lastExport?.range != range { state.uploadedLink = nil }   // the link would be the old cut
         guard let item = player.currentItem else { return }
         item.forwardPlaybackEndTime = CMTime(seconds: range.end, preferredTimescale: 600)
         if state.playhead < range.start || state.playhead > range.end {
@@ -220,6 +227,49 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    /// Sends the trimmed file to the cloud bucket and copies the link. The window stays open.
+    private func upload() {
+        guard state.exportProgress == nil, state.uploadProgress == nil else { return }
+        guard let uploader = R2Uploader.fromSettings(settings) else {
+            UploadService.openCloudSettings()
+            return
+        }
+        let state = state
+        Task {
+            do {
+                let exported = try await exportIfNeeded()
+                state.uploadProgress = 0
+                defer { state.uploadProgress = nil }
+                state.uploadedLink = try await UploadService.upload(fileURL: exported, contentType: "video/mp4", folder: .videos,
+                                                                    with: uploader) { fraction in
+                    Task { @MainActor in state.uploadProgress = fraction }
+                }
+            } catch is CancellationError {
+            } catch {
+                ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
+            }
+        }
+    }
+
+    /// The Share menu with the trimmed file, named like a saved recording. The window stays open.
+    private func share(from anchor: NSView?) {
+        guard let anchor = anchor ?? window?.contentView, state.exportProgress == nil else { return }
+        Task {
+            do {
+                let exported = try await exportIfNeeded()
+                let folder = FileManager.default.temporaryDirectory.appending(path: "ClearShot", directoryHint: .isDirectory)
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let named = folder.appending(path: FileNamer.fileName(date: .now, fileExtension: "mp4"))
+                try? FileManager.default.removeItem(at: named)
+                try FileManager.default.copyItem(at: exported, to: named)   // an APFS clone: instant, no extra space
+                ShareService.share([named], from: anchor)
+            } catch is CancellationError {
+            } catch {
+                ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
+            }
+        }
+    }
+
     private func didSave() {
         saved = true
         Toast.show("Saved")
@@ -236,7 +286,10 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Discard").hasDestructiveAction = true
         alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
+        WindowPresenter.becomeRegularApp()
+        let discard = alert.runModal() == .alertFirstButtonReturn
+        DiagnosticLog.write("discard recording? \(discard ? "discard" : "keep")")
+        return discard
     }
 
     func windowWillClose(_ notification: Notification) {

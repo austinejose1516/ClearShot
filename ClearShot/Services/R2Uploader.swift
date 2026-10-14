@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import ClearShotCore
 
@@ -24,7 +25,16 @@ struct R2Uploader {
     /// `progress` gets the fraction sent so far, off the main thread.
     func upload(_ data: Data, contentType: String, key: String, progress: (@Sendable (Double) -> Void)? = nil) async throws -> URL {
         guard let url = config.endpoint(key: key), let link = config.link(name: key) else { throw R2Failure.badSettings }
-        _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: data, progress: progress)
+        _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: .data(data), progress: progress)
+        return link
+    }
+
+    /// The same for a file on disk (a recording): hashed in chunks and streamed from disk, so a long video
+    /// never sits in memory.
+    func upload(file: URL, contentType: String, key: String, progress: (@Sendable (Double) -> Void)? = nil) async throws -> URL {
+        guard let url = config.endpoint(key: key), let link = config.link(name: key) else { throw R2Failure.badSettings }
+        let hash = try await Task.detached { try Self.sha256Hex(ofFile: file) }.value
+        _ = try await send("PUT", url, headers: ["Content-Type": contentType], body: .file(file, sha256Hex: hash), progress: progress)
         return link
     }
 
@@ -45,28 +55,50 @@ struct R2Uploader {
 
     // MARK: - Requests
 
-    private func send(_ method: String, _ url: URL, headers: [String: String] = [:], body: Data = Data(),
+    private enum Body {
+        case data(Data)
+        case file(URL, sha256Hex: String)
+    }
+
+    private func send(_ method: String, _ url: URL, headers: [String: String] = [:], body: Body = .data(Data()),
                       progress: (@Sendable (Double) -> Void)? = nil) async throws -> Data {
         var request = URLRequest(url: url, timeoutInterval: 60)
         request.httpMethod = method
-        for (name, value) in signer.headers(for: .init(method: method, url: url, headers: headers, payload: body)) {
+        let signed: SigV4Signer.Request
+        switch body {
+        case .data(let data):
+            signed = .init(method: method, url: url, headers: headers, payload: data)
+        case .file(_, let hash):
+            signed = .init(method: method, url: url, headers: headers, payloadHash: hash)
+            request.timeoutInterval = 600   // a long recording on a slow line
+        }
+        for (name, value) in signer.headers(for: signed) {
             request.setValue(value, forHTTPHeaderField: name)
         }
         let started = ContinuousClock.now
         let data: Data, response: URLResponse
+        let delegate = progress.map(UploadProgressDelegate.init)
+        let bytes: Int
         do {
-            if let progress {
-                (data, response) = try await URLSession.shared.upload(for: request, from: body, delegate: UploadProgressDelegate(progress))
-            } else {
-                request.httpBody = body
-                (data, response) = try await URLSession.shared.data(for: request)
+            switch body {
+            case .data(let payload):
+                bytes = payload.count
+                if let delegate {
+                    (data, response) = try await URLSession.shared.upload(for: request, from: payload, delegate: delegate)
+                } else {
+                    request.httpBody = payload
+                    (data, response) = try await URLSession.shared.data(for: request)
+                }
+            case .file(let file, _):
+                bytes = (try? FileManager.default.attributesOfItem(atPath: file.path(percentEncoded: false))[.size] as? Int) ?? 0
+                (data, response) = try await URLSession.shared.upload(for: request, fromFile: file, delegate: delegate)
             }
         } catch let error as URLError {
             DiagnosticLog.write("r2 \(method) \(url.lastPathComponent) failed: \(error.code.rawValue) \(error.localizedDescription)")
             throw Self.failure(for: error, host: url.host() ?? "")
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        DiagnosticLog.write("r2 \(method) \(url.lastPathComponent): HTTP \(status), \(body.count) bytes, "
+        DiagnosticLog.write("r2 \(method) \(url.lastPathComponent): HTTP \(status), \(bytes) bytes, "
                             + "\((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
         guard (200..<300).contains(status) else { throw R2Response.failure(status: status, body: data) }
         return data
@@ -78,6 +110,17 @@ struct R2Uploader {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw R2Failure.publicURLNotServing }
         return data
+    }
+
+    /// The SHA-256 of a file as lower-case hex, read a megabyte at a time.
+    nonisolated static func sha256Hex(ofFile url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     private static func failure(for error: URLError, host: String) -> R2Failure {
