@@ -1,4 +1,5 @@
 import AppKit
+import ClearShotCore
 import ScreenCaptureKit
 
 enum ScreenCapturer {
@@ -47,6 +48,20 @@ enum ScreenCapturer {
         configuration.showsCursor = showsCursor
         configuration.dynamicRange = .sdr
         return try await capture(SCContentFilter(display: display, excludingWindows: []), configuration)
+    }
+
+    /// The pixels of `region` right now, without the pointer and without ClearShot's own windows (the HUD, the
+    /// frame). `content` must have been fetched after those windows were made.
+    static func captureRegion(_ region: ScreenRegion, in content: SCShareableContent) async throws -> CGImage {
+        guard let display = content.displays.first(where: { $0.displayID == region.displayID }) else { throw Failure.noDisplay }
+        let ours = content.windows.filter { $0.owningApplication?.bundleIdentifier == Bundle.main.bundleIdentifier }
+        let configuration = SCScreenshotConfiguration()
+        configuration.showsCursor = false
+        configuration.dynamicRange = .sdr
+        configuration.sourceRect = region.rect(inDisplay: display.frame)
+        configuration.width = Int(region.pixelSize.width)
+        configuration.height = Int(region.pixelSize.height)
+        return try await capture(SCContentFilter(display: display, excludingWindows: ours), configuration)
     }
 
     private static func capture(_ filter: SCContentFilter, _ configuration: SCScreenshotConfiguration) async throws -> CGImage {

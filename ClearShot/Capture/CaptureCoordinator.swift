@@ -63,7 +63,44 @@ final class CaptureCoordinator {
                 return nil
             }
         case .scrolling:
-            return nil   // the scrolling capture session arrives with its own task
+            let region: ScreenRegion
+            switch try await OverlayCaptureSession.run(mode: .area, settings: settings) {
+            case .area(_, let picked):
+                region = picked
+            case .window(let window):
+                let center = CGPoint(x: window.frame.midX, y: window.frame.midY)
+                let screen = NSScreen.screens.first { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: NSScreen.screens.first?.frame.height ?? 0).contains(center) } ?? .main
+                region = ScreenRegion(displayID: screen?.displayID ?? 0, quartzRect: window.frame, scale: screen?.backingScaleFactor ?? 2)
+            case .cancelled:
+                return nil
+            }
+            guard let mode = scrollingMode() else { return nil }
+            guard let result = try await ScrollingCaptureSession.run(region: region, mode: mode) else { return nil }
+            return Capture(kind: .scrolling, image: result.image, pageCount: result.pages)
+        }
+    }
+
+    /// Automatic when ClearShot may scroll other apps; otherwise the user chooses: allow it, scroll by hand, or stop.
+    private func scrollingMode() -> ScrollHUDState.Mode? {
+        guard !PermissionService.hasAccessibilityAccess else { return .automatic }
+        let alert = NSAlert()
+        alert.messageText = "Let ClearShot scroll the page for you?"
+        alert.informativeText = "To scroll other apps, ClearShot needs the Accessibility permission: System Settings → Privacy & Security → Accessibility. Allow it there, then start again.\n\nOr scroll by hand: scroll down yourself and press Enter when you reach the end."
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Scroll by Hand")
+        alert.addButton(withTitle: "Cancel")
+        WindowPresenter.becomeRegularApp()
+        let answer = alert.runModal()
+        WindowPresenter.returnToMenuBarIfNoWindows()
+        switch answer {
+        case .alertFirstButtonReturn:
+            PermissionService.requestAccessibilityAccess()
+            PermissionService.openAccessibilitySettings()
+            return nil
+        case .alertSecondButtonReturn:
+            return .manual
+        default:
+            return nil
         }
     }
 
@@ -73,7 +110,8 @@ final class CaptureCoordinator {
     private func finish(_ capture: Capture) async {
         let format = settings.imageFormat
         let copies = settings.copiesToClipboard
-        let budget = settings.fileBudget
+        // A scrolling shot gets the budget once per page, so a long page is not crushed into a blurry JPEG.
+        let budget = settings.fileBudget.map { $0 * capture.pageCount }
         let folder = settings.saveFolder
         CaptureFlash.flash(on: .underMouse)
         if settings.playsSound { SoundPlayer.playShutter() }

@@ -16,6 +16,7 @@ struct MenuBarMenu: View {
         Button("Capture Area") { coordinator.capture(.area) }
         Button("Capture Window") { coordinator.capture(.window) }
         Button("Capture Full Screen") { coordinator.capture(.fullScreen) }
+        Button("Scrolling Capture") { coordinator.capture(.scrolling) }
         Divider()
         if recording.isRecording {
             Button("Stop Recording") { recording.stop() }

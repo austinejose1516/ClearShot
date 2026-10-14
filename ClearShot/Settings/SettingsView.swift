@@ -173,9 +173,10 @@ struct ShortcutsSettingsTab: View {
                 KeyboardShortcuts.Recorder("Capture area", name: .captureArea)
                 KeyboardShortcuts.Recorder("Capture window", name: .captureWindow)
                 KeyboardShortcuts.Recorder("Capture full screen", name: .captureFullScreen)
+                KeyboardShortcuts.Recorder("Scrolling capture", name: .scrollingCapture)
                 KeyboardShortcuts.Recorder("Record screen", name: .recordScreen)
             } footer: {
-                Text("In area mode, press Space to switch to window mode. Esc cancels. Press the record shortcut again to stop a recording.")
+                Text("In area mode, press Space to switch to window mode. Esc cancels. Press the record shortcut again to stop a recording. Scrolling capture needs the Accessibility permission to scroll for you; without it, scroll by hand and press Enter.")
             }
 
             Section {
@@ -187,7 +188,7 @@ struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 360)
+        .frame(width: 540, height: 400)
     }
 
     private func useSystemShortcuts() {
