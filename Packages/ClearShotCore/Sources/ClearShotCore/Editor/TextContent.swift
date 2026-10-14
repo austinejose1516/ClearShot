@@ -26,12 +26,7 @@ public struct TextContent: Figure {
         self.boxed = boxed
     }
 
-    /// The font size whose one-line box is `height` tall (line height 1.2×, plus padding when boxed).
-    public static func fontSize(forBoxHeight height: CGFloat, boxed: Bool) -> CGFloat {
-        max(minimumFontSize, (height / (boxed ? 1.5 : 1.2)).rounded())
-    }
-
-    /// The system font at this size: regular or bold, upright or italic. (Underline is drawn, not a font.)
+    /// The text font at this size: regular or bold, upright or italic. (Underline is drawn, not a font.)
     public var font: CTFont { TextMetrics.font(size: fontSize, bold: bold, italic: italic) }
     /// Space between the text and the edge of its box; zero when not boxed.
     public var padding: CGSize { boxed ? CGSize(width: fontSize * 0.3, height: fontSize * 0.15) : .zero }
@@ -93,28 +88,24 @@ public struct TextContent: Figure {
 }
 
 enum TextMetrics {
+    /// Avenir Next, built into macOS. Plain text is Medium: Regular's thin strokes get lost on busy screenshots.
     static func font(size: CGFloat, bold: Bool, italic: Bool) -> CTFont {
-        guard let system = CTFontCreateUIFontForLanguage(.system, size, nil) else {
-            return CTFontCreateWithName("Helvetica" as CFString, size, nil)
-        }
-        // Weight values match NSFont.Weight.bold (0.4) and .regular (0).
-        let traits = [kCTFontWeightTrait as String: bold ? 0.4 : 0.0] as CFDictionary
-        let attributes = [kCTFontTraitsAttribute as String: traits] as CFDictionary
-        let descriptor = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(system), attributes)
-        let upright = CTFontCreateWithFontDescriptor(descriptor, size, nil)
-        guard italic, let slanted = CTFontCreateCopyWithSymbolicTraits(upright, size, nil, .italicTrait, .italicTrait) else {
-            return upright
-        }
-        return slanted
+        avenirNext(bold ? "Bold" : "Medium", italic: italic, size: size)
     }
 
-    static func size(of text: String, font: CTFont) -> CGSize {
+    /// `weight` is the face name's weight part: "Medium", "DemiBold" or "Bold".
+    static func avenirNext(_ weight: String, italic: Bool = false, size: CGFloat) -> CTFont {
+        CTFontCreateWithName("AvenirNext-\(weight)\(italic ? "Italic" : "")" as CFString, size, nil)
+    }
+
+    /// The text's size, wrapped to `width` when given.
+    static func size(of text: String, font: CTFont, width: CGFloat = .greatestFiniteMagnitude) -> CGSize {
         let attributes = [kCTFontAttributeName as String: font] as CFDictionary
         guard let attributed = CFAttributedStringCreate(nil, text as CFString, attributes) else { return .zero }
         let framesetter = CTFramesetterCreateWithAttributedString(attributed)
         let fitted = CTFramesetterSuggestFrameSizeWithConstraints(
             framesetter, CFRange(location: 0, length: 0), nil,
-            CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude), nil)
+            CGSize(width: width, height: CGFloat.greatestFiniteMagnitude), nil)
         return CGSize(width: ceil(fitted.width), height: ceil(fitted.height))
     }
 }

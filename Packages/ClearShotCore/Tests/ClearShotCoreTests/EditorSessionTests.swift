@@ -144,13 +144,13 @@ import Testing
         #expect(s.shownValues.color == .green)
     }
 
-    @Test func draggingATextBoxSetsTheFontSizeAndStartsEditing() {
+    @Test func draggingWithTheTextToolKeepsTheToolbarSizeAndStartsEditing() {
         let s = session()
         s.tool = .text
         drag(s, p(10, 10), p(200, 70))
         let text = s.document.annotations[0]
         #expect(s.editingTextID == text.id)
-        #expect(text.textContent?.fontSize == 50)
+        #expect(text.textContent?.fontSize == StyleValues().fontSize)
         #expect(text.textContent?.origin == p(10, 10))
         s.editText("Hello")
         s.finishTextEditing()
@@ -184,7 +184,8 @@ import Testing
 
         drag(s, middle, p(middle.x + 40, middle.y))
         #expect(s.editingTextID == nil)
-        #expect(s.document.annotations[0].textContent?.origin == p(50, 10))
+        let origin = s.document.annotations[0].textContent?.origin ?? .zero
+        #expect(abs(origin.x - 50) < 0.001 && abs(origin.y - 10) < 0.001)
     }
 
     @Test func aDrawnBubbleStartsEditingItsText() {

@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 
 /// A straight line; with `arrow`, an arrowhead at the end.
 public struct Line: Figure {
@@ -251,20 +252,41 @@ public struct Bubble: Figure {
     public var text: String
     public var fontSize: CGFloat
 
-    public init(rect: CGRect, tail: CGPoint, text: String = "", fontSize: CGFloat = 28) {
+    public init(rect: CGRect, tail: CGPoint, text: String = "", fontSize: CGFloat = 32) {
         self.rect = rect
         self.tail = tail
         self.text = text
         self.fontSize = fontSize
     }
 
-    /// A new bubble from a drag: tail below-left, font size from the height.
-    public static func drawn(from start: CGPoint, to end: CGPoint) -> Bubble {
+    /// A new bubble from a drag: tail below-left, the toolbar's font size (shrunk to fit when needed).
+    public static func drawn(from start: CGPoint, to end: CGPoint, fontSize: CGFloat) -> Bubble {
         let r = SelectionGeometry.normalizedRect(from: start, to: end)
-        return Bubble(rect: r,
-                      tail: CGPoint(x: r.minX + r.width * 0.25, y: r.maxY + r.height * 0.5),
-                      fontSize: max(20, (r.height / 4).rounded()))
+        return Bubble(rect: r, tail: CGPoint(x: r.minX + r.width * 0.25, y: r.maxY + r.height * 0.5), fontSize: fontSize)
     }
+
+    /// The same family as text annotations, a step bolder so short words stand out in the box.
+    /// Drawn at `fittedFontSize`, so long text shrinks instead of spilling out of the bubble.
+    public var font: CTFont { Self.font(size: fittedFontSize) }
+
+    /// `fontSize`, or the largest smaller size at which the wrapped text fits in `textRect`.
+    public var fittedFontSize: CGFloat {
+        let box = textRect
+        // SwiftUI's Text and the inline editor's text view can wrap a word earlier than CoreText measures,
+        // so fit to a slightly narrower box: the text stays inside the bubble in both.
+        func fits(_ size: CGFloat) -> Bool {
+            TextMetrics.size(of: text, font: Self.font(size: size), width: box.width - 10).height <= box.height
+        }
+        guard !text.isEmpty, !fits(fontSize) else { return fontSize }
+        var low = TextContent.minimumFontSize, high = fontSize
+        while high - low > 0.5 {
+            let middle = (low + high) / 2
+            if fits(middle) { low = middle } else { high = middle }
+        }
+        return low
+    }
+
+    private static func font(size: CGFloat) -> CTFont { TextMetrics.avenirNext("DemiBold", size: size) }
 
     /// Where the text goes inside the box.
     public var textRect: CGRect {

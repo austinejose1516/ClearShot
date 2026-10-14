@@ -57,7 +57,8 @@ public struct StyleValues: Equatable, Sendable {
     public var bold = false
     public var italic = false
     public var underline = false
-    public var boxed = false
+    /// On by default: a solid box keeps text readable on any screenshot.
+    public var boxed = true
     public var blurMode: BlurMode = .pixelate
     public var stepRadius: CGFloat = 20
     public var cornerRadius: CGFloat = 0

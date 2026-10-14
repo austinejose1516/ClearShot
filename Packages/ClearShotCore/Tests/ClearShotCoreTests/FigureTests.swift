@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 import Testing
 @testable import ClearShotCore
 
@@ -71,11 +72,19 @@ import Testing
         #expect(bubble.textRect == CGRect(x: 8, y: 6, width: 184, height: 88))
     }
 
-    @Test func drawnBubbleHasItsTailBelowAndFontFromHeight() {
-        let bubble = Bubble.drawn(from: CGPoint(x: 100, y: 100), to: .zero)
+    @Test func longBubbleTextShrinksToFitTheBox() {
+        let box = CGRect(x: 0, y: 0, width: 400, height: 120)
+        #expect(Bubble(rect: box, tail: .zero, text: "Hi there", fontSize: 32).fittedFontSize == 32)
+        let long = Bubble(rect: box, tail: .zero, text: String(repeating: "sdfsdf sdflnsdf ", count: 8), fontSize: 32)
+        #expect(long.fittedFontSize < 32)
+        #expect(TextMetrics.size(of: long.text, font: long.font, width: long.textRect.width).height <= long.textRect.height)
+    }
+
+    @Test func drawnBubbleHasItsTailBelowAndTheToolbarFontSize() {
+        let bubble = Bubble.drawn(from: CGPoint(x: 100, y: 100), to: .zero, fontSize: 32)
         #expect(bubble.rect == CGRect(x: 0, y: 0, width: 100, height: 100))
         #expect(bubble.tail == CGPoint(x: 25, y: 150))
-        #expect(bubble.fontSize == 25)
+        #expect(bubble.fontSize == 32)
     }
 
     @Test func blurResizesByCorners() {

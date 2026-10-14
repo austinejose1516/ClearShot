@@ -27,8 +27,6 @@ public final class EditorSession {
     public private(set) var defaults = StyleValues()
     public private(set) var highlighterDefaults = StyleValues.highlighter
     public private(set) var editingTextID: Annotation.ID?
-    /// The box being dragged with the Text tool.
-    public private(set) var textDraft: CGRect?
     public private(set) var cropDraft: CGRect?
 
     @ObservationIgnored private var editingTextIsNew = false
@@ -41,7 +39,8 @@ public final class EditorSession {
         case reshaping(Annotation, HandleKind)
         /// Pressed on already-selected text: a click edits it, a drag moves it.
         case pressedOnSelectedText(Annotation.ID, start: CGPoint)
-        case sizingText(start: CGPoint)
+        /// Text goes where the press started, at the toolbar's size; a drag does not size it.
+        case placingText(start: CGPoint)
         case cropping(start: CGPoint)
         case idle
     }
@@ -163,8 +162,8 @@ public final class EditorSession {
             guard hypot(point.x - start.x, point.y - start.y) > tolerance / 2 else { return }
             document.moveSelection(by: CGVector(dx: point.x - start.x, dy: point.y - start.y))
             self.gesture = .moving(last: point)
-        case .sizingText(let start):
-            textDraft = SelectionGeometry.normalizedRect(from: start, to: point)
+        case .placingText:
+            break
         case .cropping(let start):
             cropDraft = SelectionGeometry.normalizedRect(from: start, to: point)
         case .idle:
@@ -192,10 +191,8 @@ public final class EditorSession {
             document.commit()
         case .pressedOnSelectedText(let id, _):
             startEditing(id, isNew: false)
-        case .sizingText(let start):
-            let box = textDraft
-            textDraft = nil
-            placeText(at: start, box: box)
+        case .placingText(let start):
+            placeText(at: start)
         case .cropping:
             // A plain click (no draft) or a tiny drag picks nothing: back to the pointer.
             if cropDraft.map(SelectionGeometry.isUsable) != true {
@@ -244,7 +241,7 @@ public final class EditorSession {
             document.insert(stroke)
             gesture = .scribbling(stroke.id)
         case .text:
-            gesture = .sizingText(start: point)
+            gesture = .placingText(start: point)
         case .crop:
             cropDraft = nil
             gesture = .cropping(start: point)
@@ -287,13 +284,8 @@ public final class EditorSession {
 
     // MARK: - Text
 
-    /// A dragged box sets the font size from its height; a plain click uses the current size.
-    private func placeText(at point: CGPoint, box: CGRect?) {
-        var origin = point
-        if let box, box.height >= 12 {
-            origin = box.origin
-            defaults.apply(.fontSize(TextContent.fontSize(forBoxHeight: box.height, boxed: defaults.boxed)))
-        }
+    /// New text uses the toolbar's values, like a new bubble.
+    private func placeText(at origin: CGPoint) {
         let content = TextContent(text: "", origin: origin, fontSize: defaults.fontSize, bold: defaults.bold,
                                   italic: defaults.italic, underline: defaults.underline, boxed: defaults.boxed)
         let annotation = Annotation(kind: .text(content), style: defaults.style(canFill: false))

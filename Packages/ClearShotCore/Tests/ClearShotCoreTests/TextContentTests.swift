@@ -32,6 +32,15 @@ import Testing
         #expect(underlined.size == text().size)
     }
 
+    @Test func textAndBubblesUseAvenirNext() {
+        var italic = text(bold: false)
+        italic.italic = true
+        let bubble = Bubble(rect: CGRect(x: 0, y: 0, width: 200, height: 100), tail: .zero)
+        for font in [text(bold: false).font, text(bold: true).font, italic.font, bubble.font] {
+            #expect(CTFontCopyFamilyName(font) as String == "Avenir Next")
+        }
+    }
+
     @Test func textStartsPlainAtThirtyTwoPixels() {
         let content = TextContent(text: "Hi", origin: .zero)
         #expect(content.fontSize == 32 && content.bold == false && content.italic == false && content.underline == false)
@@ -65,12 +74,6 @@ import Testing
         #expect(shrink.fontSize < 25)
         #expect(abs(shrink.frame.maxX - start.maxX) < 0.001)
         #expect(abs(shrink.frame.maxY - start.maxY) < 0.001)
-    }
-
-    @Test func fontSizeFromADraggedBoxHeight() {
-        #expect(TextContent.fontSize(forBoxHeight: 60, boxed: false) == 50)
-        #expect(TextContent.fontSize(forBoxHeight: 60, boxed: true) == 40)
-        #expect(TextContent.fontSize(forBoxHeight: 2, boxed: false) == TextContent.minimumFontSize)
     }
 
     @Test func textHitsInsideItsFrameAndMoves() {

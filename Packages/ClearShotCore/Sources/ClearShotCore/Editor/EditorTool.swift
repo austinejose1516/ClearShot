@@ -61,7 +61,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .highlight: "Drag over the text to mark it"
         case .rect: "Drag to draw · Fill makes it solid · Corners rounds it"
         case .ellipse: "Drag to draw · Fill makes it solid"
-        case .text: "Drag a box (sets the size) or click, then type · Enter finishes · ⌘Enter adds a line"
+        case .text: "Click and type · Enter finishes · ⌘Enter adds a line · Box turns the background on or off"
         case .bubble: "Drag to draw the bubble, type, then drag its tail"
         case .step: "Click to place the next number · drag a corner dot to resize"
         case .blur: "Drag over the part to hide"
@@ -105,7 +105,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .curve: Curve(start: start, end: end, arrow: true)
         case .rect: Box(rect: area, form: .rectangle, cornerRadius: values.cornerRadius)
         case .ellipse: Box(rect: area, form: .ellipse)
-        case .bubble: Bubble.drawn(from: start, to: end)
+        case .bubble: Bubble.drawn(from: start, to: end, fontSize: values.fontSize)
         case .blur: Blur(rect: area, mode: values.blurMode)
         case .select, .pen, .highlight, .text, .step, .crop: nil
         }

@@ -47,9 +47,9 @@ import Testing
         #expect(shown.bold && shown.italic && shown.underline && shown.boxed)
     }
 
-    @Test func newTextIsPlainByDefault() {
+    @Test func newTextIsBoxedButOtherwisePlain() {
         let values = StyleValues()
-        #expect(values.bold == false && values.italic == false && values.underline == false && values.boxed == false)
+        #expect(values.bold == false && values.italic == false && values.underline == false && values.boxed)
     }
 
     @Test func newShapesGetFillOnlyWhenTheyCanBeFilled() {

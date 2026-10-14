@@ -12,7 +12,7 @@ import Testing
         #expect(EditorTool.ellipse.figure(from: start, to: end, values: values)?.asKind
             == .box(Box(rect: CGRect(x: 0, y: 50, width: 100, height: 50), form: .ellipse)))
         #expect(EditorTool.curve.figure(from: start, to: end, values: values)?.asKind == .curve(Curve(start: start, end: end, arrow: true)))
-        #expect(EditorTool.bubble.figure(from: start, to: end, values: values)?.asKind == .bubble(Bubble.drawn(from: start, to: end)))
+        #expect(EditorTool.bubble.figure(from: start, to: end, values: values)?.asKind == .bubble(Bubble.drawn(from: start, to: end, fontSize: values.fontSize)))
     }
 
     @Test func blurUsesTheChosenMode() {

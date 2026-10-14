@@ -44,20 +44,12 @@ struct EditorCanvasView: View {
         let shown = CGSize(width: canvasSize.width * zoom, height: canvasSize.height * zoom)
         let transform = transform
         return ZStack(alignment: .topLeading) {
-            CompositionView(document: session.document, hiddenAnnotationID: session.editingTextID)
+            CompositionView(document: session.document, editingTextID: session.editingTextID)
                 .scaleEffect(zoom, anchor: .topLeading)
                 .frame(width: shown.width, height: shown.height, alignment: .topLeading)
                 .clipped()
                 .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
             SelectionOverlay(document: session.document, transform: transform, hiddenID: session.editingTextID)
-            if let draft = session.textDraft {
-                let rect = transform.toCanvas(draft)
-                Rectangle()
-                    .stroke(.tint, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .background(.tint.opacity(0.08))
-                    .frame(width: max(1, rect.width), height: max(1, rect.height))
-                    .offset(x: rect.minX, y: rect.minY)
-            }
             if let crop = session.cropDraft {
                 let rect = transform.toCanvas(crop)
                 DimLayer(size: shown, hole: rect)

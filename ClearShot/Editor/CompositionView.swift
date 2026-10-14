@@ -6,8 +6,8 @@ import SwiftUI
 /// Used on screen (scaled by the canvas) and for export (scale 1), so both match.
 struct CompositionView: View {
     let document: EditorDocument
-    /// The text being edited is drawn by the inline editor instead.
-    var hiddenAnnotationID: Annotation.ID? = nil
+    /// The annotation whose text the inline editor is drawing instead.
+    var editingTextID: Annotation.ID? = nil
 
     var body: some View {
         let layout = document.layout
@@ -25,8 +25,8 @@ struct CompositionView: View {
             // Annotations use image coordinates; negative ones land in the padding. Not clipped to the image.
             ZStack(alignment: .topLeading) {
                 ForEach(document.annotations) { annotation in
-                    AnnotationView(annotation: annotation, baseImage: document.baseImage)
-                        .opacity(annotation.id == hiddenAnnotationID ? 0 : 1)
+                    AnnotationView(annotation: annotation, baseImage: document.baseImage,
+                                   hidesText: annotation.id == editingTextID)
                 }
             }
             .frame(width: layout.imageSize.width, height: layout.imageSize.height, alignment: .topLeading)

@@ -1,59 +1,64 @@
+import AppKit
 import ClearShotCore
 import SwiftUI
 
-/// The inline editor, drawn at image scale where the text sits, then scaled with the canvas.
+/// The inline editor, drawn where the text sits so typing looks like the finished annotation: the same font,
+/// colour, box and alignment. Laid out at screen size (not scaled with the canvas), so the cursor stays crisp.
 struct TextEditingOverlay: View {
     let session: EditorSession
     let transform: CanvasTransform
 
-    @FocusState private var focused: Bool
-
     var body: some View {
         if let id = session.editingTextID, let annotation = session.document.annotation(id: id) {
+            let scale = transform.scale
             switch annotation.kind {
             case .text(let content):
-                field(placeholder: "Type here")
-                    .font(Font(content.font))
-                    .underline(content.underline)
-                    .foregroundStyle(content.boxed ? Color.white : Color(annotation.style.strokeColor))
-                    .padding(.horizontal, content.padding.width)
-                    .padding(.vertical, content.padding.height)
-                    .background(content.boxed ? Color(annotation.style.strokeColor) : Color.black.opacity(0.2),
-                                in: RoundedRectangle(cornerRadius: content.cornerRadius))
-                    .fixedSize()
-                    .placed(at: content.origin, transform: transform)
+                let colour = annotation.style.strokeColor
+                ZStack(alignment: .topLeading) {
+                    if content.boxed {
+                        RoundedRectangle(cornerRadius: content.cornerRadius * scale)
+                            .fill(Color(colour))
+                    }
+                    InlineTextView(text: content.text, font: screenFont(content.font),
+                                   color: content.boxed ? .white : NSColor(Color(colour)),
+                                   underline: content.underline, shadow: content.boxed ? nil : shadow(content.fontSize),
+                                   onChange: session.editText, onFinish: session.finishTextEditing)
+                        // A little wider than measured, so AppKit never wraps or clips the last letter.
+                        .frame(width: content.textSize.width * scale + 8, height: content.textSize.height * scale)
+                        .offset(x: content.padding.width * scale, y: content.padding.height * scale)
+                }
+                .placed(in: content.frame, transform: transform)
             case .bubble(let bubble):
-                field(placeholder: "Say something")
-                    .font(.system(size: bubble.fontSize, weight: .semibold))
-                    .foregroundStyle(Color.black)
-                    .multilineTextAlignment(.center)
-                    .frame(width: bubble.textRect.width)
-                    .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
-                    .placed(at: bubble.textRect.origin, transform: transform)
+                InlineTextView(text: bubble.text, font: screenFont(bubble.font), color: .black, alignment: .center,
+                               wraps: true, onChange: session.editText, onFinish: session.finishTextEditing)
+                    .placed(in: bubble.textRect, transform: transform)
             default:
                 EmptyView()
             }
         }
     }
 
-    private func field(placeholder: String) -> some View {
-        TextField(placeholder, text: Binding(
-            get: { session.editingTextID.flatMap { session.document.annotation(id: $0)?.editableText } ?? "" },
-            set: { session.editText($0) }), axis: .vertical)
-            .textFieldStyle(.plain)
-            .focused($focused)
-            .onAppear { focused = true }
-            .onSubmit { session.finishTextEditing() }
-            .onExitCommand { session.finishTextEditing() }
+    /// The annotation's font at its size on screen.
+    private func screenFont(_ font: CTFont) -> NSFont {
+        CTFontCreateCopyWithAttributes(font, CTFontGetSize(font) * transform.scale, nil, nil) as NSFont
+    }
+
+    /// The soft shadow plain text has when finished (see TextAnnotationView), at screen size.
+    private func shadow(_ fontSize: CGFloat) -> NSShadow {
+        let shadow = NSShadow()
+        shadow.shadowColor = .black.withAlphaComponent(0.35)
+        shadow.shadowBlurRadius = fontSize * 0.06 * transform.scale
+        shadow.shadowOffset = NSSize(width: 0, height: -transform.scale)
+        return shadow
     }
 }
 
 private extension View {
-    /// Scales an image-sized view with the canvas zoom and puts its top-left corner at `origin` (image pixels).
-    func placed(at origin: CGPoint, transform: CanvasTransform) -> some View {
-        let point = transform.toCanvas(origin)
-        return overlay(Rectangle().stroke(.tint, style: StrokeStyle(lineWidth: 1 / transform.scale, dash: [4, 3])))
-            .scaleEffect(transform.scale, anchor: .topLeading)
-            .offset(x: point.x, y: point.y)
+    /// Sizes the view to `rect` (image pixels) on screen, outlines it, and puts it there.
+    func placed(in rect: CGRect, transform: CanvasTransform) -> some View {
+        let shown = transform.toCanvas(rect)
+        return frame(width: shown.width, height: shown.height, alignment: .topLeading)
+            .overlay(Rectangle().stroke(.tint, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+            .offset(x: shown.minX, y: shown.minY)
     }
 }

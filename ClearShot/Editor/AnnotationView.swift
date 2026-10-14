@@ -5,6 +5,9 @@ import SwiftUI
 struct AnnotationView: View {
     let annotation: Annotation
     let baseImage: CGImage
+    /// While its text is being edited: the inline editor draws the text (and a text annotation's box),
+    /// but a bubble still draws its shape, so typing happens on the real bubble.
+    var hidesText = false
 
     var body: some View {
         let style = annotation.style
@@ -38,17 +41,19 @@ struct AnnotationView: View {
                 if let fill = style.fillColor { outline.fill(Color(fill)) }
                 outline.stroke(stroke, style: line)
             case .text(let content):
-                TextAnnotationView(content: content, color: style.strokeColor)
+                if !hidesText { TextAnnotationView(content: content, color: style.strokeColor) }
             case .bubble(let bubble):
                 let shape = SpeechBubbleShape(box: bubble.rect.standardized, tail: bubble.tail)
                 shape.fill(Color(style.fillColor ?? .white))
                 shape.stroke(stroke, style: line)
-                Text(bubble.text)
-                    .font(.system(size: bubble.fontSize, weight: .semibold))
-                    .foregroundStyle(Color.black)
-                    .multilineTextAlignment(.center)
-                    .frame(width: bubble.textRect.width, height: bubble.textRect.height)
-                    .offset(x: bubble.textRect.minX, y: bubble.textRect.minY)
+                if !hidesText {
+                    Text(bubble.text)
+                        .font(Font(bubble.font))
+                        .foregroundStyle(Color.black)
+                        .multilineTextAlignment(.center)
+                        .frame(width: bubble.textRect.width, height: bubble.textRect.height)
+                        .offset(x: bubble.textRect.minX, y: bubble.textRect.minY)
+                }
             case .step(let step):
                 let bounds = step.bounds
                 Circle()
