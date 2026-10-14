@@ -18,4 +18,10 @@ import Testing
                                            screenQuartzFrame: CGRect(x: 1800, y: 0, width: 1920, height: 1080))
         #expect(r == CGRect(x: 200, y: 300, width: 400, height: 200))
     }
+
+    @Test func viewRectGoesBackToQuartz() {
+        let r = ScreenCoordinates.quartzRect(fromView: CGRect(x: 200, y: 300, width: 400, height: 200),
+                                             screenQuartzFrame: CGRect(x: 1800, y: 0, width: 1920, height: 1080))
+        #expect(r == CGRect(x: 2000, y: 300, width: 400, height: 200))
+    }
 }

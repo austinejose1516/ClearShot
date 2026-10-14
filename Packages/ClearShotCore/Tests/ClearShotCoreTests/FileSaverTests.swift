@@ -26,6 +26,15 @@ private func tempFolder() -> URL {
         #expect(!FileManager.default.fileExists(atPath: url.path(percentEncoded: false)))
     }
 
+    @Test func aVideoReservesAnMP4Name() throws {
+        let folder = tempFolder()
+        defer { try? FileManager.default.removeItem(at: folder.deletingLastPathComponent()) }
+        let url = try FileSaver.reserveURL(fileExtension: "mp4", in: folder, date: Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(url.pathExtension == "mp4")
+        #expect(url.lastPathComponent.hasPrefix("ClearShot "))
+        #expect(!FileManager.default.fileExists(atPath: url.path(percentEncoded: false)))
+    }
+
     @Test func aTakenNameGetsANumber() throws {
         let folder = tempFolder()
         defer { try? FileManager.default.removeItem(at: folder.deletingLastPathComponent()) }

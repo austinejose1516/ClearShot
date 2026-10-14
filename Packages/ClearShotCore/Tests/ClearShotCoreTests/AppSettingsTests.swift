@@ -30,6 +30,10 @@ import Testing
         #expect(settings.cloud == R2Config())
         #expect(settings.cloud.isComplete == false)
         #expect(settings.cloudConnected == false)
+        #expect(settings.videoQuality == .smaller)
+        #expect(settings.recordsMicrophone == true)
+        #expect(settings.recordsSystemAudio == true)
+        #expect(settings.recordingShowsPointer == true)
     }
 
     @Test func cloudSettingsPersistWithoutTheSecret() {
@@ -63,6 +67,10 @@ import Testing
         first.accent = .sunset
         first.checksForUpdates = false
         first.lastUpdateCheck = Date(timeIntervalSince1970: 1_800_000_000)
+        first.videoQuality = .retina
+        first.recordsMicrophone = false
+        first.recordsSystemAudio = false
+        first.recordingShowsPointer = false
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
@@ -76,6 +84,10 @@ import Testing
         #expect(second.accent == .sunset)
         #expect(second.checksForUpdates == false)
         #expect(second.lastUpdateCheck == Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(second.videoQuality == .retina)
+        #expect(second.recordsMicrophone == false)
+        #expect(second.recordsSystemAudio == false)
+        #expect(second.recordingShowsPointer == false)
     }
 
     @Test func jpegFilesUseJpgExtension() {

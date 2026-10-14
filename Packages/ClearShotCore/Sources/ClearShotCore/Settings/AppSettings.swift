@@ -54,6 +54,10 @@ public final class AppSettings {
         static let cloudBucket = "cloudBucket"
         static let cloudPublicURL = "cloudPublicURL"
         static let cloudConnected = "cloudConnected"
+        static let videoQuality = "videoQuality"
+        static let recordsMicrophone = "recordsMicrophone"
+        static let recordsSystemAudio = "recordsSystemAudio"
+        static let recordingShowsPointer = "recordingShowsPointer"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -88,6 +92,12 @@ public final class AppSettings {
     /// Set by Connect in Settings → Cloud once a test upload worked; Disconnect clears it. Upload needs it.
     public var cloudConnected: Bool { didSet { defaults.set(cloudConnected, forKey: Key.cloudConnected) } }
 
+    /// Recordings: the size they are encoded at, what sound they carry, and whether the pointer is in the picture.
+    public var videoQuality: VideoQuality { didSet { defaults.set(videoQuality.rawValue, forKey: Key.videoQuality) } }
+    public var recordsMicrophone: Bool { didSet { defaults.set(recordsMicrophone, forKey: Key.recordsMicrophone) } }
+    public var recordsSystemAudio: Bool { didSet { defaults.set(recordsSystemAudio, forKey: Key.recordsSystemAudio) } }
+    public var recordingShowsPointer: Bool { didSet { defaults.set(recordingShowsPointer, forKey: Key.recordingShowsPointer) } }
+
     public var cloud: R2Config {
         R2Config(accountID: cloudAccountID, accessKeyID: cloudAccessKeyID, bucket: cloudBucket, publicURL: cloudPublicURL)
     }
@@ -111,5 +121,9 @@ public final class AppSettings {
         cloudBucket = defaults.string(forKey: Key.cloudBucket) ?? ""
         cloudPublicURL = defaults.string(forKey: Key.cloudPublicURL) ?? ""
         cloudConnected = defaults.object(forKey: Key.cloudConnected) as? Bool ?? false
+        videoQuality = defaults.string(forKey: Key.videoQuality).flatMap(VideoQuality.init(rawValue:)) ?? .smaller
+        recordsMicrophone = defaults.object(forKey: Key.recordsMicrophone) as? Bool ?? true
+        recordsSystemAudio = defaults.object(forKey: Key.recordsSystemAudio) as? Bool ?? true
+        recordingShowsPointer = defaults.object(forKey: Key.recordingShowsPointer) as? Bool ?? true
     }
 }

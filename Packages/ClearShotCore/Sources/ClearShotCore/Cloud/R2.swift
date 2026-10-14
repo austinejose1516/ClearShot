@@ -59,7 +59,16 @@ public enum R2Name {
     }
 
     public static func random(format: ImageFormat, using generator: inout some RandomNumberGenerator) -> String {
-        "\(stem(using: &generator)).\(format.fileExtension)"
+        random(fileExtension: format.fileExtension, using: &generator)
+    }
+
+    public static func random(fileExtension: String) -> String {
+        var generator = SystemRandomNumberGenerator()
+        return random(fileExtension: fileExtension, using: &generator)
+    }
+
+    public static func random(fileExtension: String, using generator: inout some RandomNumberGenerator) -> String {
+        "\(stem(using: &generator)).\(fileExtension)"
     }
 
     /// The name without an extension: "k3x9p2m7qa".

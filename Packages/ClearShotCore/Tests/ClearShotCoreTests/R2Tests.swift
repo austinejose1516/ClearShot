@@ -37,6 +37,8 @@ import Testing
         #expect(stem.allSatisfy { ($0.isLetter && $0.isLowercase) || $0.isNumber })
         #expect(R2Name.random(format: .png) != R2Name.random(format: .png))
         #expect(R2Name.stem().count == 10 && !R2Name.stem().contains("."))
+        let mp4 = R2Name.random(fileExtension: "mp4", using: &generator)
+        #expect(mp4.hasSuffix(".mp4") && mp4.count == 14)
     }
 
     @Test func serverAnswersBecomePlainFailures() {

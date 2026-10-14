@@ -68,6 +68,15 @@ import Testing
         #expect(authorization.hasSuffix("Signature=\(expected)"))
     }
 
+    @Test func aPrecomputedPayloadHashSignsLikeTheBytesThemselves() {
+        let signer = signer(service: "s3")
+        let url = URL(string: "https://abc.r2.cloudflarestorage.com/shots/videos/k3x9p2m7qa.mp4")!
+        let withData = SigV4Signer.Request(method: "PUT", url: url, headers: ["Content-Type": "video/mp4"], payload: Data("hello".utf8))
+        let withHash = SigV4Signer.Request(method: "PUT", url: url, headers: ["Content-Type": "video/mp4"],
+                                           payloadHash: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+        #expect(signer.headers(for: withHash, date: date) == signer.headers(for: withData, date: date))
+    }
+
     @Test func encodingAndHeaderCleanup() {
         #expect(SigV4Signer.uriEncode("a b/c~d") == "a%20b%2Fc~d")
         #expect(SigV4Signer.uriEncode("a b/c", keepingSlashes: true) == "a%20b/c")

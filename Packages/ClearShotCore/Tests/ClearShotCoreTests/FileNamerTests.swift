@@ -15,6 +15,7 @@ import Testing
         let at = date(2026, 10, 13, 9, 41, 12)
         #expect(FileNamer.fileName(date: at, format: .png, timeZone: dublin) == "ClearShot 2026-10-13 at 09.41.12.png")
         #expect(FileNamer.fileName(date: at, format: .jpeg, timeZone: dublin) == "ClearShot 2026-10-13 at 09.41.12.jpg")
+        #expect(FileNamer.fileName(date: at, fileExtension: "mp4", timeZone: dublin) == "ClearShot 2026-10-13 at 09.41.12.mp4")
     }
 
     @Test func uniqueNameAddsCounterOnlyWhenTaken() {

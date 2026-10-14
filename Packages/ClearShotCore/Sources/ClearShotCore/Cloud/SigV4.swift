@@ -23,12 +23,15 @@ public struct SigV4Signer: Sendable {
         /// Extra headers to send and sign (e.g. content-type). Host, the date and the payload hash are added.
         public var headers: [String: String]
         public var payload: Data
+        /// The SHA-256 of the body as lower-case hex, when the body is not in `payload` (a file sent from disk).
+        public var payloadHash: String?
 
-        public init(method: String, url: URL, headers: [String: String] = [:], payload: Data = Data()) {
+        public init(method: String, url: URL, headers: [String: String] = [:], payload: Data = Data(), payloadHash: String? = nil) {
             self.method = method
             self.url = url
             self.headers = headers
             self.payload = payload
+            self.payloadHash = payloadHash
         }
     }
 
@@ -38,7 +41,7 @@ public struct SigV4Signer: Sendable {
         var headers = request.headers.reduce(into: [String: String]()) { $0[$1.key.lowercased()] = $1.value }
         headers["host"] = request.url.host() ?? ""
         headers["x-amz-date"] = Self.timestamp(date)
-        headers["x-amz-content-sha256"] = Self.hex(SHA256.hash(data: request.payload))
+        headers["x-amz-content-sha256"] = request.payloadHash ?? Self.hex(SHA256.hash(data: request.payload))
         let canonical = canonicalRequest(method: request.method, url: request.url, headers: headers,
                                          payloadHash: headers["x-amz-content-sha256"]!)
         let signature = signature(of: stringToSign(date: date, canonicalRequest: canonical), date: date)

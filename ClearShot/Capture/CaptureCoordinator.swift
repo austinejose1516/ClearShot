@@ -62,6 +62,8 @@ final class CaptureCoordinator {
             case .cancelled:
                 return nil
             }
+        case .scrolling:
+            return nil   // the scrolling capture session arrives with its own task
         }
     }
 

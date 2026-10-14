@@ -14,4 +14,9 @@ public enum ScreenCoordinates {
     public static func viewRect(fromQuartz rect: CGRect, screenQuartzFrame screen: CGRect) -> CGRect {
         rect.offsetBy(dx: -screen.minX, dy: -screen.minY)
     }
+
+    /// The other way: a rect inside such a view, back to global Quartz coordinates.
+    public static func quartzRect(fromView rect: CGRect, screenQuartzFrame screen: CGRect) -> CGRect {
+        rect.offsetBy(dx: screen.minX, dy: screen.minY)
+    }
 }

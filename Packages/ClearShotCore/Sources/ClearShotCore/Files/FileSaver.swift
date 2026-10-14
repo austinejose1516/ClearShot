@@ -18,9 +18,14 @@ public enum FileSaver {
     /// Picks the file name for a new capture and creates the folder if needed. Writes nothing yet,
     /// so the card can show right away. Never overwrites: a clash gets " (2)", " (3)", …
     public static func reserveURL(for format: ImageFormat, in folder: URL, date: Date = .now) throws -> URL {
+        try reserveURL(fileExtension: format.fileExtension, in: folder, date: date)
+    }
+
+    /// The same for any kind of file ("mp4" for a recording).
+    public static func reserveURL(fileExtension: String, in folder: URL, date: Date = .now) throws -> URL {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
-        let name = FileNamer.uniqueFileName(FileNamer.fileName(date: date, format: format)) { candidate in
+        let name = FileNamer.uniqueFileName(FileNamer.fileName(date: date, fileExtension: fileExtension)) { candidate in
             fileManager.fileExists(atPath: folder.appending(path: candidate).path(percentEncoded: false))
         }
         return folder.appending(path: name)
