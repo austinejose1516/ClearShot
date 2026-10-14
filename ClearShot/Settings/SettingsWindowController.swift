@@ -6,7 +6,7 @@ import SwiftUI
 /// SwiftUI's built-in Settings scene does not open reliably from a menu bar app.
 final class SettingsWindowController: NSWindowController {
     enum Tab: Int {
-        case general, shortcuts, cloud, about
+        case general, recording, shortcuts, cloud, about
     }
 
     private let tabs = NSTabViewController()
@@ -14,6 +14,7 @@ final class SettingsWindowController: NSWindowController {
     init(settings: AppSettings, updates: UpdateChecker) {
         tabs.tabStyle = .toolbar
         tabs.addTabViewItem(Self.tab("General", symbol: "gearshape", GeneralSettingsTab().environment(updates).themed(settings)))
+        tabs.addTabViewItem(Self.tab("Recording", symbol: "record.circle", RecordingSettingsTab().themed(settings)))
         tabs.addTabViewItem(Self.tab("Shortcuts", symbol: "keyboard", ShortcutsSettingsTab().themed(settings)))
         tabs.addTabViewItem(Self.tab("Cloud", symbol: "icloud", CloudSettingsTab().themed(settings)))
         tabs.addTabViewItem(Self.tab("About", symbol: "info.circle", AboutSettingsTab().themed(settings)))

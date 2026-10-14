@@ -48,7 +48,7 @@ final class CaptureCoordinator {
             return Capture(kind: .fullScreen, image: try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor))
         case .area, .window:
             switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, settings: settings) {
-            case .area(let image):
+            case .area(let image, _):
                 return Capture(kind: .area, image: image)
             case .window(let window):
                 // Both at once: the shadowed one is saved, the plain one is what the editor starts from.

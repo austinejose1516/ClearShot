@@ -11,7 +11,8 @@ final class OverlayCaptureSession {
     }
 
     enum Outcome {
-        case area(CGImage)
+        /// The cropped frozen image and where it sits on screen (recording and scrolling capture need the place).
+        case area(CGImage, ScreenRegion)
         case window(SCWindow)
         case cancelled
     }
@@ -62,7 +63,10 @@ final class OverlayCaptureSession {
                         viewRect: rect,
                         viewSize: screen.frame.size,
                         imageSize: CGSize(width: image.width, height: image.height))
-                    self?.resolve(image.cropping(to: pixelRect).map(Outcome.area) ?? .cancelled)
+                    let region = ScreenRegion(displayID: screen.displayID ?? 0,
+                                              quartzRect: ScreenCoordinates.quartzRect(fromView: rect, screenQuartzFrame: quartzFrame),
+                                              scale: screen.backingScaleFactor)
+                    self?.resolve(image.cropping(to: pixelRect).map { .area($0, region) } ?? .cancelled)
                 },
                 onPickWindow: { [weak self] info in
                     self?.resolve(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled)

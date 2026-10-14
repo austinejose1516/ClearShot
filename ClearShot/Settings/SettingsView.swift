@@ -131,6 +131,39 @@ struct GeneralSettingsTab: View {
     }
 }
 
+// MARK: - Recording
+
+struct RecordingSettingsTab: View {
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        @Bindable var settings = settings
+        Form {
+            Section {
+                Picker("Quality", selection: $settings.videoQuality) {
+                    ForEach(VideoQuality.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Size")
+            } footer: {
+                Text("Smaller and Better record at normal size, so a minute of ordinary work is a few megabytes. Retina keeps every pixel and is about four times bigger.")
+            }
+
+            Section("Sound") {
+                Toggle("Record the microphone", isOn: $settings.recordsMicrophone)
+                Toggle("Record the Mac's sound", isOn: $settings.recordsSystemAudio)
+            }
+
+            Section("Picture") {
+                Toggle("Show the pointer", isOn: $settings.recordingShowsPointer)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 540, height: 380)
+    }
+}
+
 // MARK: - Shortcuts
 
 struct ShortcutsSettingsTab: View {
@@ -140,8 +173,9 @@ struct ShortcutsSettingsTab: View {
                 KeyboardShortcuts.Recorder("Capture area", name: .captureArea)
                 KeyboardShortcuts.Recorder("Capture window", name: .captureWindow)
                 KeyboardShortcuts.Recorder("Capture full screen", name: .captureFullScreen)
+                KeyboardShortcuts.Recorder("Record screen", name: .recordScreen)
             } footer: {
-                Text("In area mode, press Space to switch to window mode. Esc cancels.")
+                Text("In area mode, press Space to switch to window mode. Esc cancels. Press the record shortcut again to stop a recording.")
             }
 
             Section {
@@ -153,7 +187,7 @@ struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 330)
+        .frame(width: 540, height: 360)
     }
 
     private func useSystemShortcuts() {

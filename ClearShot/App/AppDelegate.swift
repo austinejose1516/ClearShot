@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var captureCoordinator = CaptureCoordinator(settings: settings, quickAccess: quickAccess) { [weak self] in
         self?.showOnboarding()
     }
+    private(set) lazy var recording = RecordingCoordinator(settings: settings) { [weak self] in
+        self?.showOnboarding()
+    }
     private var hotkeys: HotkeyService?
     private var onboarding: PermissionOnboardingWindowController?
     private(set) lazy var updates = UpdateChecker(settings: settings)
@@ -15,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
         Theme.apply(settings.appearance)
-        let hotkeys = HotkeyService(coordinator: captureCoordinator)
+        let hotkeys = HotkeyService(coordinator: captureCoordinator, recording: recording)
         hotkeys.register()
         self.hotkeys = hotkeys
 
@@ -37,6 +40,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 ErrorPresenter.show(title: "Could not move to Trash", message: error.localizedDescription)
             }
+        }
+
+        TemporaryFiles.sweepRecordings()
+        recording.onFinished = { url, _ in
+            // Until the video window exists: open the temp file so the recording can be checked.
+            NSWorkspace.shared.open(url)
         }
 
         updates.startAutomaticChecks()

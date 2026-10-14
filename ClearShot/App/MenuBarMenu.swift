@@ -3,6 +3,7 @@ import ClearShotCore
 
 struct MenuBarMenu: View {
     @Environment(CaptureCoordinator.self) private var coordinator
+    @Environment(RecordingCoordinator.self) private var recording
     @Environment(UpdateChecker.self) private var updates
     let onAbout: () -> Void
     let onSettings: () -> Void
@@ -15,6 +16,14 @@ struct MenuBarMenu: View {
         Button("Capture Area") { coordinator.capture(.area) }
         Button("Capture Window") { coordinator.capture(.window) }
         Button("Capture Full Screen") { coordinator.capture(.fullScreen) }
+        Divider()
+        if recording.isRecording {
+            Button("Stop Recording") { recording.stop() }
+        } else {
+            Button("Record Area") { recording.start(.area) }
+            Button("Record Window") { recording.start(.window) }
+            Button("Record Full Screen") { recording.start(.fullScreen) }
+        }
         Divider()
         Button("About ClearShot", action: onAbout)
         Button("Check for Updates…") { updates.checkNow() }

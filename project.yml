@@ -43,6 +43,7 @@ targets:
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "© 2026 Austine Jose"
+        NSMicrophoneUsageDescription: "ClearShot records your voice when a recording has the microphone on."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.austinejose.clearshot
