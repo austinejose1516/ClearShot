@@ -21,8 +21,13 @@ final class RegionFramePanel: NSPanel {
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        alphaValue = 0   // shown with `reveal()` once the recording runs
         contentView = NSHostingView(rootView: Rectangle()
             .strokeBorder(.red.opacity(0.85), lineWidth: 2)
             .padding(Self.inset - 2))
+    }
+
+    func reveal() {
+        animator().alphaValue = 1
     }
 }

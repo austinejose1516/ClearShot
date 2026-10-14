@@ -24,9 +24,8 @@ final class RecordingCoordinator {
     private var encoding: VideoEncoding.Settings?
     private var bar: RecordingBarPanel?
     private var frame: RegionFramePanel?
-
-    /// The finished recording: the temp file and the size it was recorded at.
-    var onFinished: ((URL, VideoEncoding.Settings) -> Void)?
+    /// Open video windows, one per finished recording, until each is closed.
+    private var videoWindows: [VideoWindowController] = []
 
     init(settings: AppSettings, onPermissionMissing: @escaping () -> Void) {
         self.settings = settings
@@ -57,6 +56,7 @@ final class RecordingCoordinator {
                 try await begin(target)
             } catch {
                 state = .idle
+                hideBarAndFrame()
                 DiagnosticLog.write("record(\(kind.rawValue)) failed to start: \(error)")
                 ErrorPresenter.show(title: "Could not start recording", message: error.localizedDescription)
             }
@@ -101,10 +101,20 @@ final class RecordingCoordinator {
     // MARK: - Recording
 
     private func begin(_ target: Target) async throws {
-        // Every window and app, not only the on-screen ones: the bar and the frame appear after this snapshot,
-        // so the whole app is excluded rather than a list of windows.
+        // The bar and the frame exist (invisible) before the capture filter is made, so the filter can leave
+        // them out by window. They get their content and fade in once the stream runs.
+        let bar = RecordingBarPanel()
+        bar.reserve()
+        self.bar = bar
+        if case .region(let region, let display) = target, region.quartzRect != display.frame {
+            let frame = RegionFramePanel(region: region)
+            frame.orderFrontRegardless()
+            self.frame = frame
+        }
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        let ourApp = content.applications.filter { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
+        let ourWindows = content.windows.filter { $0.owningApplication?.bundleIdentifier == Bundle.main.bundleIdentifier }
+        let ourApps = content.applications.filter { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
+        DiagnosticLog.write("recording leaves out \(ourWindows.count) ClearShot windows (\(ourApps.count) app entries)")
 
         let filter: SCContentFilter
         let pixelSize: CGSize
@@ -112,7 +122,7 @@ final class RecordingCoordinator {
         let screen: NSScreen?
         switch target {
         case .region(let region, let display):
-            filter = SCContentFilter(display: display, excludingApplications: ourApp, exceptingWindows: [])
+            filter = SCContentFilter(display: display, excludingWindows: ourWindows)
             pixelSize = region.pixelSize
             scale = region.scale
             screen = NSScreen.screens.first { $0.displayID == region.displayID }
@@ -150,16 +160,15 @@ final class RecordingCoordinator {
         try await recorder.start(filter: filter, configuration: configuration, to: url)
         self.recorder = recorder
         self.encoding = encoding
-        state = .recording(since: .now)
+        let since = Date.now
+        state = .recording(since: since)
         DiagnosticLog.write("recording started: \(encoding.width)x\(encoding.height) @\(encoding.fps) fps, "
                             + "mic=\(configuration.captureMicrophone) audio=\(configuration.capturesAudio) → \(url.lastPathComponent)")
 
         if settings.playsSound { SoundPlayer.playShutter() }
         if microphoneDenied { Toast.show("Microphone is off", symbol: "mic.slash", on: screen) }
-        showBar(on: screen)
-        if case .region(let region, let display) = target, region.quartzRect != display.frame {
-            showFrame(around: region)
-        }
+        if let screen { bar.show(startedAt: since, on: screen) { [weak self] in self?.stop() } }
+        frame?.reveal()
     }
 
     private func finish(streamAlreadyStopped: Bool) {
@@ -176,7 +185,7 @@ final class RecordingCoordinator {
                 let url = try await recorder.stop(streamAlreadyStopped: streamAlreadyStopped)
                 let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.size] as? Int) ?? 0
                 DiagnosticLog.write("recording stopped after \(Int(Date.now.timeIntervalSince(since))) s: \(bytes / 1024) KB in \(url.lastPathComponent)")
-                onFinished?(url, encoding)
+                await openVideoWindow(for: url, encoding: encoding)
             } catch {
                 DiagnosticLog.write("recording failed: \(error)")
                 ErrorPresenter.show(title: "Recording failed", message: error.localizedDescription)
@@ -184,20 +193,22 @@ final class RecordingCoordinator {
         }
     }
 
+    // MARK: - The video window
+
+    private func openVideoWindow(for url: URL, encoding: VideoEncoding.Settings) async {
+        do {
+            let controller = try await VideoWindowController.make(recordingURL: url, encoding: encoding, settings: settings) { [weak self] closed in
+                self?.videoWindows.removeAll { $0 === closed }
+            }
+            videoWindows.append(controller)
+            controller.window.map(WindowPresenter.show)
+        } catch {
+            DiagnosticLog.write("could not open the recording: \(error)")
+            ErrorPresenter.show(title: "Could not open the recording", message: error.localizedDescription)
+        }
+    }
+
     // MARK: - Bar and frame
-
-    private func showBar(on screen: NSScreen?) {
-        guard let screen, case .recording(let since) = state else { return }
-        let bar = RecordingBarPanel(startedAt: since, onStop: { [weak self] in self?.stop() })
-        bar.show(on: screen)
-        self.bar = bar
-    }
-
-    private func showFrame(around region: ScreenRegion) {
-        let frame = RegionFramePanel(region: region)
-        frame.orderFrontRegardless()
-        self.frame = frame
-    }
 
     private func hideBarAndFrame() {
         bar?.orderOut(nil)

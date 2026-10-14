@@ -2,10 +2,12 @@ import AppKit
 import SwiftUI
 
 /// The small floating bar while recording: a red dot, the time, and Stop. It takes no focus and sits at the top
-/// centre of the recorded screen. The video never shows it (ClearShot is excluded from the capture).
+/// centre of the recorded screen. It is put on screen empty and invisible before the recording starts, so the
+/// capture filter can leave it out by window; then it gets its content and fades in.
 final class RecordingBarPanel: NSPanel {
-    init(startedAt: Date, onStop: @escaping () -> Void) {
-        super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+    init() {
+        super.init(contentRect: CGRect(x: 0, y: 0, width: 1, height: 1), styleMask: [.borderless, .nonactivatingPanel],
+                   backing: .buffered, defer: false)
         level = .statusBar
         isOpaque = false
         backgroundColor = .clear
@@ -13,18 +15,22 @@ final class RecordingBarPanel: NSPanel {
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        alphaValue = 0
+    }
+
+    /// Makes the window exist for the window server (so ScreenCaptureKit can exclude it) without showing anything.
+    func reserve() {
+        orderFrontRegardless()
+    }
+
+    func show(startedAt: Date, on screen: NSScreen, onStop: @escaping () -> Void) {
         let view = FirstMouseHostingView(rootView: RecordingBarView(startedAt: startedAt, onStop: onStop))
         view.sizingOptions = .intrinsicContentSize   // the panel takes SwiftUI's ideal size, so nothing is clipped
         contentView = view
-    }
-
-    func show(on screen: NSScreen) {
-        guard let view = contentView else { return }
         view.layoutSubtreeIfNeeded()
         let size = view.intrinsicContentSize
         let visible = screen.visibleFrame
         setFrame(CGRect(x: visible.midX - size.width / 2, y: visible.maxY - size.height - 8, width: size.width, height: size.height), display: true)
-        alphaValue = 0
         orderFrontRegardless()
         animator().alphaValue = 1
     }

@@ -43,10 +43,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         TemporaryFiles.sweepRecordings()
-        recording.onFinished = { url, _ in
-            // Until the video window exists: open the temp file so the recording can be checked.
-            NSWorkspace.shared.open(url)
-        }
 
         updates.startAutomaticChecks()
 
