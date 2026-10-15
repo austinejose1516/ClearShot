@@ -5,15 +5,17 @@ import SwiftUI
 /// Two fixed-height rows (so the canvas never jumps): tools and file actions on top; below, only the
 /// settings that apply to the tool or the selection.
 struct EditorToolbar: View {
+    static let mainRowHeight: CGFloat = 48
+    static let optionsRowHeight: CGFloat = 40
+    /// Both rows and the line between them.
+    static let height = mainRowHeight + 1 + optionsRowHeight
+
     let session: EditorSession
     let viewState: EditorViewState
     let onCommand: (EditorCommand) -> Void
-    /// Share needs the button's AppKit view, so the Share menu can open under it.
-    let onShare: (NSView?) -> Void
 
     /// The colour panel reports every small move; this records one undo step once it settles.
     @State private var colourCommit: Task<Void, Never>?
-    @State private var shareAnchor = AnchorHolder()
     /// The accent chip behind the active tool slides from button to button.
     @Namespace private var toolHighlight
 
@@ -81,49 +83,12 @@ struct EditorToolbar: View {
                     session.document.commit()
                 }
             }
-            Button { onCommand(.upload) } label: {
-                if let progress = viewState.uploadProgress {
-                    ProgressView(value: progress).progressViewStyle(.linear).frame(width: 64).padding(.horizontal, 4)
-                        .transition(.opacity)
-                } else {
-                    Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-                        .transition(.opacity)
-                }
-            }
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .disabled(viewState.uploadProgress != nil)
-            .animation(.snappy(duration: 0.2), value: viewState.uploadProgress == nil)
-            .help("Upload to your cloud bucket, copy the link and close (set up in Settings → Cloud)")
-            Button { onShare(shareAnchor.view) } label: {
-                Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-            }
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .background(AnchorView(holder: shareAnchor))
-            .help("Share the result (the editor stays open)")
-            Button { onCommand(.copy) } label: {
-                Label("Copy", systemImage: "doc.on.doc").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-            }
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .help("Copy the result and close (⌘C)")
-            Menu {
-                Button("Save As…") { onCommand(.saveAs) }
-            } label: {
-                Label("Save", systemImage: "square.and.arrow.down").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-            } primaryAction: {
-                onCommand(.save)
-            }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .help("Save and close (⌘S). Arrow: Save As… (⇧⌘S)")
+            DoneButton { onCommand(.done) }
         }
         // On a screen too narrow for the window's minimum, overflow goes off the right edge, never both.
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .frame(height: 48)
+        .frame(height: Self.mainRowHeight)
         .animation(.snappy(duration: 0.22), value: session.tool)
     }
 
@@ -222,7 +187,7 @@ struct EditorToolbar: View {
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .frame(height: 40)
+        .frame(height: Self.optionsRowHeight)
     }
 
     // MARK: - Pieces
@@ -381,5 +346,21 @@ private extension View {
         padding(.horizontal, 9)
             .frame(height: 28)
             .background(.quaternary.opacity(0.55), in: Capsule())
+    }
+}
+
+/// The one way out of an editor (screenshot or video): back to the card, which saves the result and has Copy,
+/// Share and Upload.
+struct DoneButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Done", systemImage: "checkmark").labelStyle(.titleAndIcon).padding(.horizontal, 6)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .fixedSize()
+        .help("Save and back to the card, where Copy, Share and Upload are (⌘S)")
     }
 }

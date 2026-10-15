@@ -2,10 +2,15 @@ import AVKit
 import ClearShotCore
 import SwiftUI
 
-/// The player on top, the trim bar and the actions below.
+/// Done on top (like the screenshot editor), the player in the middle, the trim bar below.
 struct VideoView: View {
     static let minimumSize = NSSize(width: 760, height: 520)
-    static let defaultSize = NSSize(width: 960, height: 660)
+    static let defaultSize = NSSize(width: 960, height: 680)
+    static let actionsHeight: CGFloat = 48
+    static let trimBarHeight: CGFloat = 56
+    static let trimPadding: CGFloat = 12
+    /// The trim bar and the space around it, under the player.
+    static let trimAreaHeight = trimBarHeight + 2 * trimPadding
 
     let state: VideoState
     let player: AVPlayer
@@ -13,125 +18,83 @@ struct VideoView: View {
     let onCommand: (VideoCommand) -> Void
     let onRangeChanged: (TrimRange) -> Void
     let onSeek: (Double) -> Void
-    /// Gets the Share button's AppKit view, so the Share menu can open under it.
-    let onShare: (NSView?) -> Void
     let onCancelExport: () -> Void
-
-    @State private var shareAnchor = AnchorHolder()
-    @State private var linkCopied = false
 
     var body: some View {
         VStack(spacing: 0) {
+            actions
+            Divider()
             PlayerView(player: player)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.black)
             Divider()
-            VStack(spacing: 10) {
-                TrimBar(state: state, onRangeChanged: onRangeChanged, onSeek: onSeek)
-                    .frame(height: 64)
-                actions
-            }
-            .padding(14)
+            trim
         }
         .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height)
     }
 
-    private var exporting: Bool { state.exportProgress != nil }
+    private var busy: Bool { state.exportProgress != nil }
+
+    // MARK: - Top: Done, like the screenshot editor
 
     private var actions: some View {
-        HStack(spacing: 10) {
-            if let progress = state.exportProgress {
-                ProgressView(value: progress).progressViewStyle(.linear).frame(width: 160)
-                Text("Preparing the video…").foregroundStyle(.secondary)
-                Button("Cancel", action: onCancelExport)
-            } else {
-                Text("\(Self.clock(state.range.start, decimals: true)) – \(Self.clock(state.range.end, decimals: true))")
-                    .font(.body.monospacedDigit())
-                Text("·").foregroundStyle(.tertiary)
-                Text("\(Self.length(state.range.duration)) kept").foregroundStyle(.secondary)
-                Button("Start Here") { change(state.range.movingStart(to: state.playhead)) }
-                    .help("Move the start to the playhead")
-                Button("End Here") { change(state.range.movingEnd(to: state.playhead)) }
-                    .help("Move the end to the playhead")
-                Button("Reset") { change(.whole(total: state.total)) }
-                    .disabled(state.range.isWhole)
-            }
-            Spacer(minLength: 8)
-            Text("up to ≈ \(ByteCountFormatter.string(fromByteCount: Int64(encoding.estimatedBytes(seconds: state.range.duration)), countStyle: .file))")
+        HStack(spacing: 8) {
+            Label(VideoTime.clock(state.total), systemImage: "video")
+                .labelStyle(.titleAndIcon)
+                .font(.body.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .help("The most the file can be. Still parts of the screen make it smaller.")
-            Button { onShare(shareAnchor.view) } label: {
-                Label("Share", systemImage: "square.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-            }
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .disabled(exporting)
-            .background(AnchorView(holder: shareAnchor))
-            .help("Share the trimmed video (the window stays open)")
-            Button {
-                if let link = state.uploadedLink {
-                    UploadService.copy(link)
-                    flashLinkCopied()
-                } else {
-                    onCommand(.upload)
-                }
-            } label: {
-                if let progress = state.uploadProgress {
-                    ProgressView(value: progress).progressViewStyle(.linear).frame(width: 64).padding(.horizontal, 4)
-                } else if state.uploadedLink != nil {
-                    Label(linkCopied ? "Copied" : "Copy Link", systemImage: linkCopied ? "checkmark" : "link")
-                        .labelStyle(.titleAndIcon).padding(.horizontal, 2)
-                } else {
-                    Label("Upload", systemImage: "icloud.and.arrow.up").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-                }
-            }
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .disabled(exporting || state.uploadProgress != nil)
-            .animation(.snappy(duration: 0.2), value: state.uploadProgress == nil)
-            .help("Upload to your cloud bucket and copy the link (set up in Settings → Cloud)")
-            Menu {
-                Button("Save As…") { onCommand(.saveAs) }
-            } label: {
-                Label("Save", systemImage: "square.and.arrow.down").labelStyle(.titleAndIcon).padding(.horizontal, 2)
-            } primaryAction: {
-                onCommand(.save)
-            }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
-            .fixedSize()
-            .disabled(exporting)
-            .help("Save to your folder and close (⌘S). Arrow: Save As… (⇧⌘S)")
+                .padding(.leading, 4)
+            Spacer(minLength: 12)
+            DoneButton { onCommand(.done) }
         }
-        .controlSize(.regular)
+        .disabled(busy)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .frame(height: Self.actionsHeight)
+        .background(.bar)
+    }
+
+    // MARK: - Bottom: the trim bar
+
+    private var trim: some View {
+        HStack(spacing: 14) {
+            TrimBar(state: state, onRangeChanged: onRangeChanged, onSeek: onSeek)
+                .frame(height: Self.trimBarHeight)
+            Group {
+                if let progress = state.exportProgress {
+                    HStack(spacing: 8) {
+                        ProgressView(value: progress).progressViewStyle(.linear)
+                        Button("Cancel", action: onCancelExport).controlSize(.small)
+                    }
+                    .help("Making the trimmed video")
+                } else {
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        Text("\(VideoTime.length(state.range.duration)) kept · ≈ \(ByteCountFormatter.string(fromByteCount: Int64(encoding.estimatedBytes(seconds: state.range.duration)), countStyle: .file))")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .help("The most the file can be. Still parts of the screen make it smaller.")
+                        if !state.range.isWhole {
+                            Button { change(.whole(total: state.total)) } label: {
+                                Image(systemName: "arrow.counterclockwise")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Keep the whole recording")
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                }
+            }
+            .frame(width: 210, alignment: .trailing)
+            .animation(.snappy(duration: 0.2), value: state.range.isWhole)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, Self.trimPadding)
     }
 
     private func change(_ range: TrimRange) {
         state.range = range
         onRangeChanged(range)
-    }
-
-    private func flashLinkCopied() {
-        withAnimation(.snappy(duration: 0.2)) { linkCopied = true }
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            withAnimation(.easeOut(duration: 0.2)) { linkCopied = false }
-        }
-    }
-
-    /// "8.9 s" under a minute, else "1:42".
-    static func length(_ seconds: Double) -> String {
-        seconds < 60 ? "\(seconds.formatted(.number.precision(.fractionLength(1)))) s" : clock(seconds)
-    }
-
-    /// "0:42" or, with decimals, "0:03.2".
-    static func clock(_ seconds: Double, decimals: Bool = false) -> String {
-        let whole = Int(seconds)
-        let minutes = whole / 60
-        if decimals {
-            return String(format: "%d:%04.1f", minutes, seconds - Double(minutes * 60))
-        }
-        return String(format: "%d:%02d", minutes, whole % 60)
     }
 }
 

@@ -1,24 +1,27 @@
 import AppKit
 import ClearShotCore
 import SwiftUI
-import UniformTypeIdentifiers
 
-/// One editor window. Every command, from a key or a toolbar button, ends up in `perform`.
+/// One editor window. Every command, from a key or a toolbar button, ends up in `perform`. It writes no file:
+/// Done hands the result to the card, which saves it and has Copy, Share and Upload.
 final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let session: EditorSession
     private let viewState = EditorViewState()
     private let settings: AppSettings
-    private let fileURL: URL?
-    private let onFinished: () -> Void
+    /// The result, or nil when nothing was edited (the card and its file stay as they are).
+    private let onDone: (CGImage?) -> Void
+    /// The close button: the store shrinks the editor back into its card first.
+    private let onCloseRequest: () -> Void
     private let onWindowClosed: () -> Void
 
     var editorDocument: EditorDocument { session.document }
 
-    init(capture: Capture, settings: AppSettings, onFinished: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
+    init(capture: Capture, settings: AppSettings, onDone: @escaping (CGImage?) -> Void,
+         onCloseRequest: @escaping () -> Void, onWindowClosed: @escaping () -> Void) {
         session = EditorSession(document: EditorDocument(baseImage: capture.editorImage, frame: capture.editorFrame))
         self.settings = settings
-        fileURL = capture.fileURL
-        self.onFinished = onFinished
+        self.onDone = onDone
+        self.onCloseRequest = onCloseRequest
         self.onWindowClosed = onWindowClosed
         let window = EditorWindow(
             contentRect: NSRect(x: 0, y: 0, width: EditorView.defaultSize.width, height: EditorView.defaultSize.height),
@@ -28,6 +31,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         window.title = capture.fileURL?.lastPathComponent ?? "Screenshot"
         window.minSize = EditorView.minimumSize
         window.isReleasedWhenClosed = false
+        // Opens on the Space you are on, also over an app in full screen, like the card it grew from.
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         super.init(window: window)
         window.delegate = self
         window.onCommand = { [weak self] in self?.perform($0) }
@@ -35,7 +40,6 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             session: session,
             viewState: viewState,
             onCommand: { [weak self] in self?.perform($0) },
-            onShare: { [weak self] in self?.share(from: $0) },
             onEdited: { [weak window] edited in window?.isDocumentEdited = edited })
             .themed(settings))
         // A window with a content view controller takes its minimum size from that controller, so SwiftUI's
@@ -51,6 +55,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not supported") }
 
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        onCloseRequest()
+        return false   // the store closes it once it is back in the card
+    }
+
     func windowWillClose(_ notification: Notification) {
         onWindowClosed()
     }
@@ -65,102 +74,38 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         case .confirm: session.applyCrop()
         case .zoomIn: viewState.zoom(by: 1.25)
         case .zoomOut: viewState.zoom(by: 1 / 1.25)
-        case .copy: copyToClipboard()
-        case .save: fileURL.map(write(to:)) ?? saveAs()
-        case .saveAs: saveAs()
+        case .done: done()
         case .newLine: (window as? EditorWindow)?.insertNewLineInText()
         case .bold: session.apply(.bold(!session.shownValues.bold))
         case .italic: session.apply(.italic(!session.shownValues.italic))
         case .underline: session.apply(.underline(!session.shownValues.underline))
-        case .upload: upload()
         }
     }
 
-    /// Sends the result to the cloud bucket and copies the link; then the editor closes, like Copy and Save.
-    /// Without a cloud setup it opens Settings → Cloud instead.
-    private func upload() {
-        guard viewState.uploadProgress == nil else { return }
-        guard let uploader = R2Uploader.fromSettings(settings) else {
-            UploadService.openCloudSettings()
-            return
-        }
-        guard let image = renderResult() else { return }
-        let format = settings.imageFormat
-        let viewState = viewState
-        viewState.uploadProgress = 0
-        Task {
-            defer { viewState.uploadProgress = nil }
-            do {
-                let budget = settings.fileBudget
-                let encoded = try await Task.detached { try FileSaver.encode(image, preferring: format, budget: budget) }.value
-                try await UploadService.upload(encoded.data, format: encoded.format, with: uploader) { fraction in
-                    Task { @MainActor in viewState.uploadProgress = fraction }
-                }
-                onFinished()
-            } catch {
-                ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
-            }
-        }
+    /// Where the picture is on screen at the editor's zoom: the canvas centred in the space under the toolbar
+    /// (left of the frame panel when it is open). The card animation flies the picture to and from here.
+    func pictureFrameOnScreen() -> CGRect? {
+        guard let window else { return nil }
+        let content = window.contentLayoutRect
+        let panel = viewState.showsFramePanel ? FramePanelView.width + 1 : 0
+        let viewport = CGRect(x: content.minX, y: content.minY,
+                              width: content.width - panel, height: content.height - EditorToolbar.height - 1)
+        var zoom = viewState.canvasZoom
+        zoom.canvasSize = session.document.layout.canvasSize
+        return window.convertToScreen(zoom.shownRect(in: viewport))
     }
 
     // MARK: - Output
 
-    private func renderResult() -> CGImage? {
+    /// The result goes back to the card (which saves it); the drawings stay editable here.
+    private func done() {
         session.finishTextEditing()
+        guard session.document.canUndo else { return onDone(nil) }
         guard let image = Exporter.render(session.document) else {
             ErrorPresenter.show(title: "Export failed", message: "The image could not be rendered.")
-            return nil
+            return
         }
-        return image
-    }
-
-    private func copyToClipboard() {
-        guard let image = renderResult() else { return }
-        ClipboardService.copy(image)
-        Toast.show("Copied")
-        onFinished()
-    }
-
-    /// The Share menu with the result as a temp PNG. The editor stays open: the menu may be cancelled.
-    private func share(from anchor: NSView?) {
-        guard let anchor = anchor ?? window?.contentView, let image = renderResult() else { return }
-        let budget = settings.fileBudget
-        Task {
-            do {
-                ShareService.share([try await ShareService.temporaryFile(image, budget: budget)], from: anchor)
-            } catch {
-                ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
-            }
-        }
-    }
-
-    private func saveAs() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png, .jpeg]
-        panel.nameFieldStringValue = fileURL?.lastPathComponent ?? "ClearShot.png"
-        panel.directoryURL = fileURL?.deletingLastPathComponent()
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        write(to: url)
-    }
-
-    /// Encodes off the main thread (the smaller PNG takes a moment), then closes like Copy. When the size
-    /// budget turns the result into a JPEG, the file changes its extension and the old one goes.
-    private func write(to url: URL) {
-        guard let image = renderResult() else { return }
-        let preferred = ImageFormat(url: url) ?? .png
-        let budget = settings.fileBudget
-        Task {
-            do {
-                let encoded = try await Task.detached { try FileSaver.encode(image, preferring: preferred, budget: budget) }.value
-                let target = encoded.format == preferred ? url : url.deletingPathExtension().appendingPathExtension(encoded.format.fileExtension)
-                try encoded.data.write(to: target, options: .atomic)
-                if target != url { try? FileManager.default.removeItem(at: url) }
-                DiagnosticLog.write("editor saved \(image.width)x\(image.height) px, \(encoded.data.count / 1024) KB, to \(target.path(percentEncoded: false))")
-                window?.isDocumentEdited = false
-                onFinished()
-            } catch {
-                ErrorPresenter.show(title: "Could not save", message: error.localizedDescription)
-            }
-        }
+        window?.isDocumentEdited = false
+        onDone(image)
     }
 }

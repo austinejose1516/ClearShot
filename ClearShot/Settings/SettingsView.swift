@@ -74,7 +74,8 @@ struct GeneralSettingsTab: View {
 
             Section("After a capture") {
                 Toggle("Copy to the clipboard", isOn: $settings.copiesToClipboard)
-                Toggle("Play the shutter sound", isOn: $settings.playsSound)
+                Toggle("Play sounds", isOn: $settings.playsSound)
+                    .help("The shutter for a screenshot; a start and a stop sound for a recording.")
                 Toggle("Include the mouse pointer", isOn: $settings.showsCursor)
                 Picker("Card stays for", selection: $settings.cardAutoCloseSeconds) {
                     Text("Until closed").tag(0)
@@ -135,6 +136,7 @@ struct GeneralSettingsTab: View {
 
 struct RecordingSettingsTab: View {
     @Environment(AppSettings.self) private var settings
+    @State private var microphones: [Microphone] = []
 
     var body: some View {
         @Bindable var settings = settings
@@ -152,15 +154,26 @@ struct RecordingSettingsTab: View {
 
             Section("Sound") {
                 Toggle("Record the microphone", isOn: $settings.recordsMicrophone)
+                Picker("Microphone", selection: $settings.microphoneID) {
+                    Text("Default (\(Microphone.systemDefaultName ?? "System"))").tag(String?.none)
+                    ForEach(microphones) { Text($0.name).tag(String?.some($0.id)) }
+                }
+                .disabled(!settings.recordsMicrophone)
                 Toggle("Record the Mac's sound", isOn: $settings.recordsSystemAudio)
             }
 
-            Section("Picture") {
+            Section {
                 Toggle("Show the pointer", isOn: $settings.recordingShowsPointer)
+                Toggle("Show clicks", isOn: $settings.recordingShowsClicks)
+            } header: {
+                Text("Picture")
+            } footer: {
+                Text("Show clicks draws a ring where you click, in the video. The same switches are on the toolbar before each recording.")
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 380)
+        .frame(width: 540, height: 470)
+        .onAppear { microphones = Microphone.all() }
     }
 }
 
@@ -169,14 +182,31 @@ struct RecordingSettingsTab: View {
 struct ShortcutsSettingsTab: View {
     var body: some View {
         Form {
+            Section("Screenshot") {
+                KeyboardShortcuts.Recorder("Area", name: .captureArea)
+                KeyboardShortcuts.Recorder("Window", name: .captureWindow)
+                KeyboardShortcuts.Recorder("Full screen", name: .captureFullScreen)
+            }
+
             Section {
-                KeyboardShortcuts.Recorder("Capture area", name: .captureArea)
-                KeyboardShortcuts.Recorder("Capture window", name: .captureWindow)
-                KeyboardShortcuts.Recorder("Capture full screen", name: .captureFullScreen)
-                KeyboardShortcuts.Recorder("Scrolling capture", name: .scrollingCapture)
-                KeyboardShortcuts.Recorder("Record screen", name: .recordScreen)
+                KeyboardShortcuts.Recorder("Area", name: .scrollingCapture)
+                KeyboardShortcuts.Recorder("Window", name: .scrollingWindow)
+                KeyboardShortcuts.Recorder("Full screen", name: .scrollingFullScreen)
+            } header: {
+                Text("Scrolling capture")
             } footer: {
-                Text("In area mode, press Space to switch to window mode. Esc cancels. Press the record shortcut again to stop a recording. Scrolling capture needs the Accessibility permission to scroll for you; without it, scroll by hand and press Enter.")
+                Text("Press once to pick, again to Start, again for Done. Auto scroll needs the Accessibility permission; By hand needs nothing.")
+            }
+
+            Section {
+                KeyboardShortcuts.Recorder("Area", name: .recordScreen)
+                KeyboardShortcuts.Recorder("Window", name: .recordWindow)
+                KeyboardShortcuts.Recorder("Full screen", name: .recordFullScreen)
+                KeyboardShortcuts.Recorder("Pause / resume", name: .pauseRecording)
+            } header: {
+                Text("Record")
+            } footer: {
+                Text("Press once to pick, again to Record, again to Stop. In area mode, press Space to switch to window mode. Esc cancels.")
             }
 
             Section {
@@ -188,7 +218,7 @@ struct ShortcutsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 540, height: 400)
+        .frame(width: 540, height: 720)
     }
 
     private func useSystemShortcuts() {

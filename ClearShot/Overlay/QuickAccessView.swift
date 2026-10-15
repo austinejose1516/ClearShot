@@ -1,20 +1,38 @@
+import AVFoundation
 import Observation
 import ClearShotCore
 import SwiftUI
 
-/// Lets the controller play the exit animation before the panel goes away, and show the upload's state.
+/// Lets the controller play the exit animation before the panel goes away, show the upload's state, and
+/// swap in what an editor saved.
 @Observable
 final class CardPresentation {
+    /// The picture on the card: the capture, or the editor's saved result (a recording's first frame).
+    var image: CGImage
+    /// A recording's length, for the badge; nil for a screenshot.
+    var videoDuration: Double?
+    /// Goes up by one each time an editor saves into this card: the card bounces and says Saved.
+    var savedCount = 0
+    /// The card is an editor right now (hidden): it forgets the mouse, which left with it.
+    var isAway = false
     var isDismissing = false
-    /// The saved file, once it is written (a moment after the card appears).
+    /// The saved file, once it is written (a moment after the card appears; longer for a recording).
     var fileURL: URL?
+    /// 0…1 while a recording is compressed into its file; nil otherwise.
+    var saveProgress: Double?
     /// 0…1 while an upload runs; nil otherwise.
     var uploadProgress: Double?
     /// Set once an upload worked, so the card can copy the link again.
     var uploadedLink: URL?
+
+    init(image: CGImage, videoDuration: Double?) {
+        self.image = image
+        self.videoDuration = videoDuration
+    }
 }
 
-/// The card: the screenshot fills it; on hover a glass bar slides up with the actions, plus close and size on top.
+/// The card: the screenshot (or a recording's first frame) fills it; on hover a glass bar slides up with the
+/// actions, plus close and size on top. A recording shows its length at all times and plays while hovered.
 struct QuickAccessView: View {
     let capture: Capture
     let presentation: CardPresentation
@@ -32,6 +50,7 @@ struct QuickAccessView: View {
     @State private var linkCopied = false
     @State private var appeared = false
     @State private var hovered = false
+    @State private var showsSaved = false
     @State private var shareAnchor = AnchorHolder()
 
     var body: some View {
@@ -39,34 +58,57 @@ struct QuickAccessView: View {
         let size = QuickAccessLayout.cardSize
         ZStack {
             thumbnail
-            if hovered {
-                VStack(spacing: 0) {
-                    HStack {
-                        CircleButton(symbol: "xmark", help: "Close", action: onClose)
-                        Spacer()
-                        Text("\(capture.image.width) × \(capture.image.height)")
-                            .font(.caption2.monospacedDigit().weight(.medium))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .glassEffect(.regular, in: .capsule)
-                    }
-                    Spacer(minLength: 0)
-                    actionBar
-                }
-                .padding(8)
-                .transition(.opacity.combined(with: .offset(y: 8)))
+            if showsSaved {
+                Label("Saved", systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .glassEffect(.regular, in: .capsule)
+                    .transition(.scale(scale: 0.7).combined(with: .opacity))
             }
+            if let progress = presentation.saveProgress {
+                HStack(spacing: 6) {
+                    UploadRing(progress: progress)
+                    Text("Saving").font(.caption.weight(.medium))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .glassEffect(.regular, in: .capsule)
+                .help("Making the video small")
+                .transition(.opacity)
+            }
+            VStack(spacing: 0) {
+                HStack {
+                    if hovered {
+                        CircleButton(symbol: "xmark", help: "Close", action: onClose)
+                            .transition(.opacity)
+                    }
+                    Spacer()
+                    if hovered || capture.isVideo {
+                        badge.transition(.opacity)
+                    }
+                }
+                Spacer(minLength: 0)
+                if hovered {
+                    actionBar.transition(.opacity.combined(with: .offset(y: 8)))
+                }
+            }
+            .padding(8)
         }
         .frame(width: size.width, height: size.height)
         .glassEffect(.regular, in: .rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.18)))
-        .scaleEffect(dismissing ? 0.88 : (appeared ? (hovered ? 1.03 : 1) : 0.8))
+        .scaleEffect(dismissing ? 0.88 : (appeared ? (hovered || showsSaved ? 1.03 : 1) : 0.8))
         .opacity(dismissing ? 0 : (appeared ? 1 : 0))
         .offset(y: dismissing ? 18 : (appeared ? 0 : 36))
         .padding(QuickAccessLayout.panelMargin)
         .animation(.spring(response: 0.28, dampingFraction: 0.8), value: appeared)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: hovered)
         .animation(.easeIn(duration: 0.22), value: dismissing)
+        .animation(.easeOut(duration: 0.2), value: presentation.saveProgress == nil)
+        .animation(.spring(response: 0.3, dampingFraction: 0.55), value: showsSaved)
+        .onChange(of: presentation.savedCount) { flash($showsSaved) }
+        .onChange(of: presentation.isAway) { _, away in if away { hovered = false } }
         .onAppear { appeared = true }
         .onHover { inside in
             hovered = inside
@@ -74,13 +116,36 @@ struct QuickAccessView: View {
         }
     }
 
+    /// Pixel size for a screenshot; "▶ 0:42" for a recording.
+    private var badge: some View {
+        Group {
+            if let duration = presentation.videoDuration {
+                Label(VideoTime.clock(duration), systemImage: "play.fill")
+                    .labelStyle(.titleAndIcon)
+                    .imageScale(.small)
+            } else {
+                Text("\(presentation.image.width) × \(presentation.image.height)")
+            }
+        }
+        .font(.caption2.monospacedDigit().weight(.medium))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .glassEffect(.regular, in: .capsule)
+    }
+
     private var thumbnail: some View {
-        Image(decorative: capture.image, scale: 1)
+        Image(decorative: presentation.image, scale: 1)
             .resizable()
             .aspectRatio(contentMode: .fit)
+            .overlay {
+                // A recording plays, muted, while the mouse is over its card (once its file is saved).
+                if capture.isVideo, hovered, let url = presentation.fileURL {
+                    LoopingVideo(url: url).transition(.opacity)
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
-            .padding(10)
+            .padding(QuickAccessLayout.thumbnailPadding)
             .frame(width: QuickAccessLayout.cardSize.width, height: QuickAccessLayout.cardSize.height)
             .contentShape(Rectangle())
             .onDrag {
@@ -90,15 +155,20 @@ struct QuickAccessView: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 2) {
-            BarIcon(symbol: "pencil", help: "Edit", prominent: true, action: onEdit)
-            BarIcon(symbol: copied ? "checkmark" : "doc.on.doc", help: "Copy to clipboard") {
+        // A recording's actions all need its file, which is written a little after the card appears.
+        let waiting = capture.isVideo && presentation.fileURL == nil
+        return HStack(spacing: 2) {
+            BarIcon(symbol: "pencil", help: capture.isVideo ? "Edit (trim)" : "Edit", prominent: true, action: onEdit)
+                .disabled(waiting)
+            BarIcon(symbol: copied ? "checkmark" : "doc.on.doc", help: capture.isVideo ? "Copy the video file" : "Copy to clipboard") {
                 onCopy()
                 flash($copied)
             }
             .symbolEffect(.bounce, value: copied)
+            .disabled(waiting)
             BarIcon(symbol: "square.and.arrow.up", help: "Share") { onShare(shareAnchor.view) }
                 .background(AnchorView(holder: shareAnchor))
+                .disabled(waiting)
             ZStack {
                 if let progress = presentation.uploadProgress {
                     UploadRing(progress: progress)
@@ -115,6 +185,7 @@ struct QuickAccessView: View {
                 } else {
                     BarIcon(symbol: "icloud.and.arrow.up", help: "Upload to your cloud bucket and copy the link", action: onUpload)
                         .transition(.scale(scale: 0.6).combined(with: .opacity))
+                        .disabled(waiting)
                 }
             }
             .animation(.snappy(duration: 0.25), value: presentation.uploadProgress == nil)
@@ -139,7 +210,51 @@ struct QuickAccessView: View {
     }
 }
 
-/// A small ring that fills as the upload goes up.
+/// A recording's file on a loop, muted, drawn by AVFoundation's player layer (AVKit's SwiftUI player aborts on
+/// this macOS build).
+private struct LoopingVideo: NSViewRepresentable {
+    let url: URL
+
+    func makeNSView(context: Context) -> LoopingPlayerView {
+        LoopingPlayerView(url: url)
+    }
+
+    func updateNSView(_ view: LoopingPlayerView, context: Context) {}
+
+    static func dismantleNSView(_ view: LoopingPlayerView, coordinator: ()) {
+        view.stop()
+    }
+}
+
+final class LoopingPlayerView: NSView {
+    private let player = AVQueuePlayer()
+    private var looper: AVPlayerLooper?
+
+    init(url: URL) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        (layer as? AVPlayerLayer)?.videoGravity = .resizeAspect
+        player.isMuted = true
+        looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+        player.play()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not supported") }
+
+    override func makeBackingLayer() -> CALayer {
+        AVPlayerLayer(player: player)
+    }
+
+    func stop() {
+        player.pause()
+        looper?.disableLooping()
+        looper = nil
+        player.removeAllItems()
+    }
+}
+
+/// A small ring that fills as the upload (or a recording's save) goes up.
 private struct UploadRing: View {
     let progress: Double
 

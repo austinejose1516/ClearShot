@@ -8,6 +8,13 @@ enum ClipboardService {
         copy(png: png, of: image)
     }
 
+    /// A file (a recording): apps paste the file itself, as if it was copied in Finder.
+    static func copy(fileURL: URL) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([fileURL as NSURL])
+    }
+
     /// Puts ready PNG bytes on the general pasteboard (what Slack and browsers read).
     /// TIFF, for older apps, is only made if an app asks for it, so copying stays fast.
     static func copy(png: Data, of image: CGImage) {

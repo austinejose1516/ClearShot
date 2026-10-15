@@ -2,8 +2,9 @@ import AVFoundation
 import ClearShotCore
 import Synchronization
 
-/// Trims and re-encodes a recording: H.264 at the bitrate from Settings, every audio track mixed into one AAC
-/// track. Runs off the main actor; `progress` is called from the encoder's thread.
+/// Trims and re-encodes a recording (one file, or the pieces of a paused recording joined): H.264 at the
+/// bitrate from Settings, every audio track mixed into one AAC track. Runs off the main actor; `progress` is
+/// called from the encoder's thread.
 nonisolated enum VideoExporter {
     enum Failure: LocalizedError {
         case noVideoTrack
@@ -17,9 +18,8 @@ nonisolated enum VideoExporter {
         }
     }
 
-    static func export(from source: URL, range: TrimRange, encoding: VideoEncoding.Settings, to destination: URL,
+    static func export(from asset: AVAsset, range: TrimRange, encoding: VideoEncoding.Settings, to destination: URL,
                        progress: @escaping @Sendable (Double) -> Void) async throws {
-        let asset = AVURLAsset(url: source)
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else { throw Failure.noVideoTrack }
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
         let start = CMTime(seconds: range.start, preferredTimescale: 600)

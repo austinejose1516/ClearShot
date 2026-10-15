@@ -4,24 +4,27 @@ import AVKit
 import ClearShotCore
 import SwiftUI
 
-/// What the video window's keys and buttons can ask for.
+/// What the video editor's keys and buttons can ask for: only Done. Copy, Share and Upload are on the card.
 enum VideoCommand {
-    case save, saveAs, upload
+    case done
 }
 
-/// What the video window shows: the trim range, the playhead, the filmstrip and the export's progress.
+/// What the card needs after the video editor saved: the new length and first frame, and where the file is.
+struct VideoSaveResult {
+    let duration: Double
+    let poster: CGImage
+    let url: URL
+}
+
+/// What the video editor shows: the trim range, the playhead, the filmstrip and the export's progress.
 @Observable
 final class VideoState {
     let total: Double
     var range: TrimRange
     var playhead: Double = 0
     var thumbnails: [CGImage?] = []
-    /// 0…1 while an export runs; nil otherwise.
+    /// 0…1 while the trimmed cut is made; nil otherwise.
     var exportProgress: Double?
-    /// 0…1 while an upload runs; nil otherwise.
-    var uploadProgress: Double?
-    /// Set once an upload worked, so the link can be copied again. Cleared when the range changes.
-    var uploadedLink: URL?
 
     init(total: Double) {
         self.total = total
@@ -29,47 +32,51 @@ final class VideoState {
     }
 }
 
-/// One recording's window: play it, trim it, then Save, Save As, Share or Upload. Nothing is written until then;
-/// closing without saving asks first and then deletes the temp file.
+/// The video editor, opened with Edit on a recording's card: play, trim, then Done, which writes the trim into
+/// the card's file. Like the screenshot editor, everything else is on the card: Copy, Share and Upload.
 final class VideoWindowController: NSWindowController, NSWindowDelegate {
     static let thumbnailCount = 12
 
-    private let recordingURL: URL
+    private let fileURL: URL
     private let encoding: VideoEncoding.Settings
     private let settings: AppSettings
     private let state: VideoState
     private let player: AVPlayer
-    private let onClosed: (VideoWindowController) -> Void
-    private var saved = false
+    /// Nil when there was nothing to save (no trim): the editor just goes back to the card.
+    private let onSaved: (VideoSaveResult?) -> Void
+    /// The close button: the store shrinks the editor back into its card first.
+    private let onCloseRequest: () -> Void
+    private let onWindowClosed: () -> Void
     private var exportTask: Task<URL, any Error>?
     private var lastExport: (range: TrimRange, url: URL)?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var saved = false
 
-    /// Loads the recording's length first, so the window opens with the right range.
-    static func make(recordingURL: URL, encoding: VideoEncoding.Settings, settings: AppSettings,
-                     onClosed: @escaping (VideoWindowController) -> Void) async throws -> VideoWindowController {
-        let total = try await CMTimeGetSeconds(AVURLAsset(url: recordingURL).load(.duration))
-        guard total > 0 else { throw VideoExporter.Failure.noVideoTrack }
-        return VideoWindowController(recordingURL: recordingURL, total: total, encoding: encoding, settings: settings, onClosed: onClosed)
-    }
+    /// A trim that is not saved yet; it is kept while the card can reopen the editor.
+    var hasUnsavedTrim: Bool { !saved && !state.range.isWhole }
 
-    private init(recordingURL: URL, total: Double, encoding: VideoEncoding.Settings, settings: AppSettings,
-                 onClosed: @escaping (VideoWindowController) -> Void) {
-        self.recordingURL = recordingURL
-        self.encoding = encoding
+    init(fileURL: URL, video: Capture.Video, settings: AppSettings,
+         onSaved: @escaping (VideoSaveResult?) -> Void, onCloseRequest: @escaping () -> Void,
+         onWindowClosed: @escaping () -> Void) {
+        self.fileURL = fileURL
+        self.encoding = video.encoding
         self.settings = settings
-        self.onClosed = onClosed
-        state = VideoState(total: total)
-        player = AVPlayer(url: recordingURL)
+        self.onSaved = onSaved
+        self.onCloseRequest = onCloseRequest
+        self.onWindowClosed = onWindowClosed
+        state = VideoState(total: video.duration)
+        player = AVPlayer(url: fileURL)
         let window = VideoWindow(
             contentRect: NSRect(origin: .zero, size: VideoView.defaultSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false)
-        window.title = "Recording · \(VideoView.clock(total))"
+        window.title = fileURL.lastPathComponent
         window.minSize = VideoView.minimumSize
         window.isReleasedWhenClosed = false
+        // Opens on the Space you are on, also over an app in full screen, like the card it grew from.
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         super.init(window: window)
         window.delegate = self
         window.onCommand = { [weak self] in self?.perform($0) }
@@ -80,7 +87,6 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
             onCommand: { [weak self] in self?.perform($0) },
             onRangeChanged: { [weak self] in self?.rangeChanged($0) },
             onSeek: { [weak self] in self?.seek(to: $0) },
-            onShare: { [weak self] in self?.share(from: $0) },
             onCancelExport: { [weak self] in self?.exportTask?.cancel() })
             .themed(settings))
         host.sizingOptions = .minSize
@@ -95,11 +101,21 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
     required init?(coder: NSCoder) { fatalError("not supported") }
 
     func perform(_ command: VideoCommand) {
+        guard state.exportProgress == nil else { return }
         switch command {
-        case .save: save()
-        case .saveAs: saveAs()
-        case .upload: upload()
+        case .done: done()
         }
+    }
+
+    /// Where the video is on screen: fitted in the player, between the top bar and the trim bar. The card
+    /// animation flies the first frame to and from here.
+    func pictureFrameOnScreen() -> CGRect? {
+        guard let window else { return nil }
+        let content = window.contentLayoutRect
+        let bottom = VideoView.trimAreaHeight + 1
+        let player = CGRect(x: content.minX, y: content.minY + bottom,
+                            width: content.width, height: content.height - bottom - VideoView.actionsHeight - 1)
+        return window.convertToScreen(AspectFit.rect(for: CGSize(width: encoding.width, height: encoding.height), in: player))
     }
 
     // MARK: - Playback
@@ -110,20 +126,18 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
             MainActor.assumeIsolated { state.playhead = CMTimeGetSeconds(time) }
         }
         rangeChanged(state.range)
-        let player = player
         endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification, object: player.currentItem, queue: .main
-        ) { _ in
+        ) { [weak player] _ in
             // The end of the kept part: back to its start, ready to play again.
             MainActor.assumeIsolated {
-                player.seek(to: CMTime(seconds: state.range.start, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                player?.seek(to: CMTime(seconds: state.range.start, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
             }
         }
     }
 
     /// Playback stays inside the kept part.
     private func rangeChanged(_ range: TrimRange) {
-        if lastExport?.range != range { state.uploadedLink = nil }   // the link would be the old cut
         guard let item = player.currentItem else { return }
         item.forwardPlaybackEndTime = CMTime(seconds: range.end, preferredTimescale: 600)
         if state.playhead < range.start || state.playhead > range.end {
@@ -137,7 +151,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
 
     private func loadThumbnails() {
         let state = state
-        let url = recordingURL
+        let url = fileURL
         let times = TrimBarGeometry.thumbnailTimes(count: Self.thumbnailCount, total: state.total)
         Task.detached(priority: .utility) {
             let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
@@ -154,20 +168,22 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
 
     // MARK: - Output
 
-    /// The trimmed, re-encoded file in the temp folder. The last one is reused while the range is unchanged, so
-    /// Upload then Save does not encode twice.
-    private func exportIfNeeded() async throws -> URL {
+    /// The file as it is when nothing is trimmed; otherwise the trimmed cut, re-encoded into the temp folder.
+    /// The last cut is reused while the range is unchanged, so pressing Done again does not encode twice.
+    private func result() async throws -> URL {
+        if state.range.isWhole { return fileURL }
         if let lastExport, lastExport.range == state.range { return lastExport.url }
         exportTask?.cancel()
         let range = state.range
         let encoding = encoding
-        let source = recordingURL
-        let target = TemporaryFiles.recordingsFolder.appending(path: source.deletingPathExtension().lastPathComponent + " export.mp4")
+        let source = fileURL
+        let target = TemporaryFiles.recordingsFolder.appending(path: "\(UUID().uuidString) trim.mp4")
         let state = state
         state.exportProgress = 0
         let started = ContinuousClock.now
         let task = Task.detached(priority: .userInitiated) {
-            try await VideoExporter.export(from: source, range: range, encoding: encoding, to: target) { fraction in
+            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try await VideoExporter.export(from: AVURLAsset(url: source), range: range, encoding: encoding, to: target) { fraction in
                 Task { @MainActor in state.exportProgress = fraction }
             }
             return target
@@ -179,141 +195,83 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         }
         let url = try await task.value
         let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.size] as? Int) ?? 0
-        DiagnosticLog.write("exported \(range.duration.formatted(.number.precision(.fractionLength(1)))) s at "
-                            + "\(encoding.width)x\(encoding.height): \(bytes / 1024) KB in "
+        DiagnosticLog.write("trimmed \(VideoTime.length(range.duration)) at \(encoding.width)x\(encoding.height): \(bytes / 1024) KB in "
                             + "\((ContinuousClock.now - started).formatted(.units(allowed: [.seconds, .milliseconds])))")
+        if let lastExport { try? FileManager.default.removeItem(at: lastExport.url) }
         lastExport = (range, url)
         return url
     }
 
-    private func save() {
-        guard state.exportProgress == nil else { return }
-        Task {
-            do {
-                let exported = try await exportIfNeeded()
-                let url = try FileSaver.reserveURL(fileExtension: "mp4", in: settings.saveFolder)
-                try FileManager.default.copyItem(at: exported, to: url)
-                DiagnosticLog.write("recording saved to \(url.path(percentEncoded: false))")
-                didSave()
-            } catch is CancellationError {
-            } catch {
-                ErrorPresenter.show(title: "Could not save the recording", message: error.localizedDescription)
-            }
+    /// Nothing trimmed: just back to the card. Trimmed: the cut replaces the card's file.
+    private func done() {
+        guard hasUnsavedTrim else { return onSaved(nil) }
+        run("Could not save the recording") { [self] in
+            let cut = try await result()
+            player.replaceCurrentItem(with: nil)   // let go of the file before it is replaced
+            _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: cut)
+            lastExport = nil   // the cut moved into place
+            DiagnosticLog.write("recording trimmed and saved to \(fileURL.path(percentEncoded: false))")
+            try await didSave(fileURL)
         }
     }
 
-    private func saveAs() {
-        guard state.exportProgress == nil else { return }
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.mpeg4Movie]
-        panel.nameFieldStringValue = FileNamer.fileName(date: .now, fileExtension: "mp4")
-        panel.directoryURL = settings.saveFolder
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task {
-            do {
-                let exported = try await exportIfNeeded()
-                if FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
-                    _ = try FileManager.default.replaceItemAt(url, withItemAt: exported)
-                    lastExport = nil   // the export moved; the next Save makes a new one
-                } else {
-                    try FileManager.default.copyItem(at: exported, to: url)
-                }
-                DiagnosticLog.write("recording saved to \(url.path(percentEncoded: false))")
-                didSave()
-            } catch is CancellationError {
-            } catch {
-                ErrorPresenter.show(title: "Could not save the recording", message: error.localizedDescription)
-            }
-        }
-    }
-
-    /// Sends the trimmed file to the cloud bucket and copies the link. The window stays open.
-    private func upload() {
-        guard state.exportProgress == nil, state.uploadProgress == nil else { return }
-        guard let uploader = R2Uploader.fromSettings(settings) else {
-            UploadService.openCloudSettings()
-            return
-        }
-        let state = state
-        Task {
-            do {
-                let exported = try await exportIfNeeded()
-                state.uploadProgress = 0
-                defer { state.uploadProgress = nil }
-                state.uploadedLink = try await UploadService.upload(fileURL: exported, contentType: "video/mp4", folder: .videos,
-                                                                    with: uploader) { fraction in
-                    Task { @MainActor in state.uploadProgress = fraction }
-                }
-            } catch is CancellationError {
-            } catch {
-                ErrorPresenter.show(title: "Upload failed", message: error.localizedDescription)
-            }
-        }
-    }
-
-    /// The Share menu with the trimmed file, named like a saved recording. The window stays open.
-    private func share(from anchor: NSView?) {
-        guard let anchor = anchor ?? window?.contentView, state.exportProgress == nil else { return }
-        Task {
-            do {
-                let exported = try await exportIfNeeded()
-                let folder = FileManager.default.temporaryDirectory.appending(path: "ClearShot", directoryHint: .isDirectory)
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let named = folder.appending(path: FileNamer.fileName(date: .now, fileExtension: "mp4"))
-                try? FileManager.default.removeItem(at: named)
-                try FileManager.default.copyItem(at: exported, to: named)   // an APFS clone: instant, no extra space
-                ShareService.share([named], from: anchor)
-            } catch is CancellationError {
-            } catch {
-                ErrorPresenter.show(title: "Could not share", message: error.localizedDescription)
-            }
-        }
-    }
-
-    private func didSave() {
+    /// The card follows the saved file: its length and first frame.
+    private func didSave(_ url: URL) async throws {
         saved = true
-        Toast.show("Saved")
-        close()
+        let duration = try await CMTimeGetSeconds(AVURLAsset(url: url).load(.duration))
+        guard let poster = await RecordingFinisher.poster(of: url) else { return onSaved(nil) }
+        onSaved(VideoSaveResult(duration: duration, poster: poster, url: url))
+    }
+
+    /// Runs an output step; a cancelled export is quiet, anything else is shown.
+    private func run(_ failure: String, _ work: @escaping @MainActor () async throws -> Void) {
+        Task {
+            do {
+                try await work()
+            } catch is CancellationError {
+            } catch {
+                ErrorPresenter.show(title: failure, message: error.localizedDescription)
+            }
+        }
     }
 
     // MARK: - Closing
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard !saved else { return true }
-        let alert = NSAlert()
-        alert.messageText = "Discard this recording?"
-        alert.informativeText = "It is not saved anywhere yet."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Discard").hasDestructiveAction = true
-        alert.addButton(withTitle: "Cancel")
-        WindowPresenter.becomeRegularApp()
-        let discard = alert.runModal() == .alertFirstButtonReturn
-        DiagnosticLog.write("discard recording? \(discard ? "discard" : "keep")")
-        return discard
+        onCloseRequest()
+        return false   // the store closes it once it is back in the card
     }
 
+    /// Closing keeps the trim (the store decides whether the editor lives on); only the playback stops.
     func windowWillClose(_ notification: Notification) {
+        exportTask?.cancel()
+        player.pause()
+        onWindowClosed()
+    }
+
+    /// The store is done with this editor: stop watching playback and remove the temp cut.
+    func release() {
         exportTask?.cancel()
         player.pause()
         if let timeObserver { player.removeTimeObserver(timeObserver) }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
-        try? FileManager.default.removeItem(at: recordingURL)
+        timeObserver = nil
+        endObserver = nil
         if let lastExport { try? FileManager.default.removeItem(at: lastExport.url) }
-        DiagnosticLog.write("recording window closed (\(saved ? "saved" : "discarded"))")
-        onClosed(self)
+        lastExport = nil
     }
 }
 
-/// A menu-bar app has no File menu, so the window turns ⌘S and ⇧⌘S into commands itself.
+/// A menu-bar app has no File menu, so the window turns ⌘S into Done itself, like the screenshot editor.
 final class VideoWindow: NSWindow {
     var onCommand: ((VideoCommand) -> Void)?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard flags.contains(.command), event.charactersIgnoringModifiers?.lowercased() == "s" else {
+        guard flags.contains(.command), !flags.contains(.shift), event.charactersIgnoringModifiers?.lowercased() == "s" else {
             return super.performKeyEquivalent(with: event)
         }
-        onCommand?(flags.contains(.shift) ? .saveAs : .save)
+        onCommand?(.done)
         return true
     }
 }

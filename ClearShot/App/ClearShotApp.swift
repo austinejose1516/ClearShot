@@ -10,6 +10,7 @@ struct ClearShotApp: App {
             MenuBarMenu(onAbout: appDelegate.showAbout, onSettings: { appDelegate.showSettings() })
                 .environment(appDelegate.captureCoordinator)
                 .environment(appDelegate.recording)
+                .environment(appDelegate.scrolling)
                 .environment(appDelegate.updates)
         } label: {
             MenuBarLabel().environment(appDelegate.recording)
@@ -18,11 +19,19 @@ struct ClearShotApp: App {
     }
 }
 
-/// The camera, or a record dot while a recording runs.
+/// The camera, a record dot while a recording runs, or a pause sign while it is paused.
 private struct MenuBarLabel: View {
     @Environment(RecordingCoordinator.self) private var recording
 
     var body: some View {
-        Image(systemName: recording.isRecording ? "record.circle.fill" : "camera.viewfinder")
+        Image(systemName: symbol)
+    }
+
+    private var symbol: String {
+        switch recording.state {
+        case .recording: "record.circle.fill"
+        case .paused: "pause.circle.fill"
+        default: "camera.viewfinder"
+        }
     }
 }

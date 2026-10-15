@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 
 /// Right-side panel: everything around the image.
 struct FramePanelView: View {
+    static let width: CGFloat = 272
+
     let document: EditorDocument
 
     /// The colour panel reports every small move; one undo step once it settles.
@@ -71,7 +73,7 @@ struct FramePanelView: View {
             }
             .padding(14)
         }
-        .frame(width: 272)
+        .frame(width: Self.width)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

@@ -97,6 +97,8 @@ final class OverlayCaptureSession {
         NSCursor.pop()
         let closing = panels
         panels.removeAll()
+        // The caller goes on only once the overlay is gone. It sits above every window and takes every click, and
+        // its fade stalls while an alert is modal: the scrolling capture's question could not be clicked.
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.12
             for panel in closing { panel.animator().alphaValue = 0 }
@@ -106,9 +108,10 @@ final class OverlayCaptureSession {
                     panel.orderOut(nil)
                     panel.contentView = nil
                 }
+                DiagnosticLog.write("capture overlay closed")
+                continuation.resume(returning: outcome)
             }
         })
-        continuation.resume(returning: outcome)
     }
 }
 

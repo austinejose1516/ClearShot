@@ -7,10 +7,10 @@ enum TemporaryFiles {
     static let recordingsFolder = FileManager.default.temporaryDirectory
         .appending(path: "ClearShot/Recordings", directoryHint: .isDirectory)
 
-    /// A fresh file name for a recording, in the recordings folder (created if needed).
-    static func newRecordingURL(date: Date = .now) throws -> URL {
+    /// A fresh file for one piece of a recording (a run between pauses), in the recordings folder.
+    static func newPieceURL() throws -> URL {
         try FileManager.default.createDirectory(at: recordingsFolder, withIntermediateDirectories: true)
-        return recordingsFolder.appending(path: FileNamer.fileName(date: date, fileExtension: "mp4"))
+        return recordingsFolder.appending(path: "\(UUID().uuidString).mp4")
     }
 
     static func sweepRecordings(olderThan age: TimeInterval = 24 * 60 * 60, now: Date = .now) {

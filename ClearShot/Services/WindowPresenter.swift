@@ -1,4 +1,5 @@
 import AppKit
+import ClearShotCore
 
 /// Brings our windows to the front like a normal app.
 ///
@@ -20,6 +21,7 @@ enum WindowPresenter {
             try? await Task.sleep(for: .milliseconds(80))
             NSApp.activate()
             window.makeKeyAndOrderFront(nil)
+            DiagnosticLog.write("shown \(window.title.isEmpty ? "window" : window.title): app active=\(NSApp.isActive) key=\(window.isKeyWindow)")
         }
     }
 

@@ -63,45 +63,13 @@ final class CaptureCoordinator {
                 return nil
             }
         case .scrolling:
-            let region: ScreenRegion
-            switch try await OverlayCaptureSession.run(mode: .area, settings: settings) {
-            case .area(_, let picked):
-                region = picked
-            case .window(let window):
-                let center = CGPoint(x: window.frame.midX, y: window.frame.midY)
-                let screen = NSScreen.screens.first { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: NSScreen.screens.first?.frame.height ?? 0).contains(center) } ?? .main
-                region = ScreenRegion(displayID: screen?.displayID ?? 0, quartzRect: window.frame, scale: screen?.backingScaleFactor ?? 2)
-            case .cancelled:
-                return nil
-            }
-            guard let mode = scrollingMode() else { return nil }
-            guard let result = try await ScrollingCaptureSession.run(region: region, mode: mode) else { return nil }
-            return Capture(kind: .scrolling, image: result.image, pageCount: result.pages)
+            return nil   // a scrolling capture runs in ScrollingCoordinator and comes back through `deliver`
         }
     }
 
-    /// Automatic when ClearShot may scroll other apps; otherwise the user chooses: allow it, scroll by hand, or stop.
-    private func scrollingMode() -> ScrollHUDState.Mode? {
-        guard !PermissionService.hasAccessibilityAccess else { return .automatic }
-        let alert = NSAlert()
-        alert.messageText = "Let ClearShot scroll the page for you?"
-        alert.informativeText = "To scroll other apps, ClearShot needs the Accessibility permission: System Settings → Privacy & Security → Accessibility. Allow it there, then start again.\n\nOr scroll by hand: scroll down yourself and press Enter when you reach the end."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Scroll by Hand")
-        alert.addButton(withTitle: "Cancel")
-        WindowPresenter.becomeRegularApp()
-        let answer = alert.runModal()
-        WindowPresenter.returnToMenuBarIfNoWindows()
-        switch answer {
-        case .alertFirstButtonReturn:
-            PermissionService.requestAccessibilityAccess()
-            PermissionService.openAccessibilitySettings()
-            return nil
-        case .alertSecondButtonReturn:
-            return .manual
-        default:
-            return nil
-        }
+    /// A finished capture from elsewhere (a scrolling capture): the same card, clipboard and file as any other.
+    func deliver(_ capture: Capture) {
+        Task { await finish(capture) }
     }
 
     /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–400 ms, so it
