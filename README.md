@@ -46,7 +46,7 @@ brew install --cask austinejose1516/tap/clearshot
 2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ClearShot on in System Settings.
 3. Quit ClearShot from the menu bar and open it again. Press **⌃⇧A** to capture.
 
-Two more permissions come up later, each only when first needed: **Microphone** (the first recording with the microphone on) and **Accessibility** (scrolling capture, so ClearShot can scroll the page for you; without it you scroll by hand).
+Two more permissions come up later, each only when first needed: **Microphone** (the first time the record toolbar opens with Mic on) and **Accessibility** (only for **Auto** in a scrolling capture, so ClearShot can scroll the page for you; **By hand** needs nothing).
 
 Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. It only talks to the network for a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away), and for **Upload**, which sends to your own cloud bucket and only when you press it.
 
@@ -57,14 +57,16 @@ Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no acco
 - **Area** — the screen freezes and dims; drag a box and see its size as you go. Press **Space** to switch to window mode, **Esc** to cancel.
 - **Window** — hover to highlight a window, click to capture it with its shadow and rounded corners.
 - **Full screen** — the display under the mouse.
-- **Scrolling** (⌃⇧S) — one tall screenshot of a long page. Drag the area (or press Space and click a window); ClearShot scrolls the page step by step and stitches the frames, keeping a sticky header or footer once. It stops at the end of the page; **Enter** or **Done** finishes early, **Esc** cancels. Without the Accessibility permission, scroll by hand and press Enter. The result goes through the card, clipboard, file and editor like any screenshot.
+- **Scrolling** — one tall screenshot of a long page. **Scrolling Capture ▸ Area / Window / Full Screen** in the menu, or ⌃⇧S for an area (Space switches to a window). A toolbar like the record one shows at the bottom: pick **By hand** (you scroll) or **Auto** (ClearShot scrolls; needs the Accessibility permission), **Change Area**, then **Start** or Enter. The bar counts the pages and a live preview beside the area shows the tall picture growing. Auto stops at the end of the page and waits. **Done** or Enter finishes, **Esc** cancels. A sticky header or footer is kept once. The result goes through the card, clipboard, file and editor (crop it there) like any screenshot.
 - Every capture flashes the screen, plays the shutter sound, goes to the clipboard and is saved to the Desktop as PNG or JPEG (change the folder and format in Settings).
 
 ### Record the screen
 
-- **Record Area / Window / Full Screen** from the menu, or **⌃⇧R** for an area (Space switches to a window). A small bar at the top shows the time and a **Stop** button; the menu bar icon turns into a record dot. Press ⌃⇧R again, Stop, or **Stop Recording** in the menu to finish. ClearShot's own bar never shows in the video.
-- Sound: the microphone and the Mac's own audio, mixed into one track (each can be turned off in Settings → Recording). The pointer is in the picture unless turned off.
-- When you stop, the recording opens in its own window: play it, drag the two handles on the filmstrip to trim (or **Start Here** / **End Here** at the playhead), then **Save** (⌘S, to your folder), **Save As…** (⇧⌘S), **Share** or **Upload**. Nothing is written until then; closing the window asks before discarding.
+- **Record ▸ Area / Window / Full Screen** in the menu, or **⌃⇧R** for an area (Space switches to a window). Nothing records yet: a toolbar shows at the bottom of the screen with **Mic** (and ▾ to pick a microphone), **Sound** (the Mac's audio), **Pointer**, **Clicks** (a ring where you click), the quality, and **Change Area** / **Change Window**. Press **Record** or Enter; Esc cancels.
+- A 3-2-1 countdown, a start sound, and the toolbar turns into a bar with the time, **Pause** / **Resume** and **Stop**. The menu bar icon shows a record dot (a pause sign while paused). Stop with the bar, ⌃⇧R or **Stop** under Record in the menu (⌃⇧P pauses). ClearShot's toolbar, bar, frame and countdown never show in the video; the click rings do.
+- A window is recorded as its spot on screen, so if you move the window the video does not follow.
+- When you stop, the recording is saved to your folder like a screenshot and gets a card in the same row: the first frame, its length, a short "Saving" ring while it is made small, and a muted preview while the mouse is over it. The card has **Edit**, **Copy** (the file, ready to paste into Slack or Mail), **Share**, **Upload**, Reveal and Trash. The file goes to the clipboard too when "Copy to the clipboard" is on.
+- **Edit** grows the card into the video editor: a filmstrip with two handles to trim, and **Done** (⌘S), which writes the trimmed cut into the recording's file. The editor shrinks back into the card, which shows the new length. Closing without Done keeps the trim while the card is open.
 - Files stay small. Recordings are encoded at normal (1x) size, 30 frames per second, H.264 with a bitrate set from the picture size, so a minute of ordinary work is a few megabytes and the file plays anywhere, including in a browser. Settings → Recording has **Smaller** (default), **Better** and **Retina** (every pixel, about four times bigger).
 
 ### Quick Access card
@@ -73,8 +75,8 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 
 ### Share and upload
 
-- **Share** (editor and card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
-- **Upload** (editor and card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png` (recordings go to `videos/`), and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
+- **Share** (card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
+- **Upload** (card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png` (recordings go to `videos/`), and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
 
 ### Editor
 
@@ -96,14 +98,14 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 - Shape and text tools hand back to the pointer after one use, so you can adjust right away. Pen, Highlighter, Step and Blur stay on; a plain click with any tool goes back to the pointer.
 - Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot. Zoom with ⌘+ / ⌘−, the zoom menu or a trackpad pinch.
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider.
-- **Save** writes back into the screenshot file and closes the editor; **Save As…** writes a new PNG or JPEG; **Copy** puts the result on the clipboard and closes; **Share** opens the Share menu and keeps the editor open; **Upload** sends it to your bucket, copies the link and closes.
+- **Edit** on a card grows the card into the editor. **Done** (⌘S) shrinks it back into the card, which shows the edited picture, says "Saved" and writes it into the same file; **Copy**, **Share** and **Upload** are on the card. Closing the editor goes back to the card too. **Edit** again brings back your drawings, still movable, while the card is open. The same goes for every kind of capture: area, window, full screen, scrolling and recordings.
 
 ### Themes and settings
 
 - **Appearance**: System, Light or Dark, and an accent colour: Ocean, Violet, Sunset, Forest or Graphite.
 - Save folder, file format, clipboard, shutter sound, mouse pointer in captures, card duration, launch at login.
 - **Compress files** (on by default): much smaller files that look the same. A PNG is saved with 256 colours when that is enough, which makes a typical screenshot about a fifth of the size. If a file would still be over 1 MB, for example with a photo or the wallpaper in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.
-- **Recording**: quality (Smaller, Better, Retina), microphone, the Mac's sound, and the pointer.
+- **Recording**: quality (Smaller, Better, Retina), microphone (and which one), the Mac's sound, the pointer and clicks. The same switches are on the toolbar before each recording.
 - **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect.
 - Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 
@@ -114,15 +116,16 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Anywhere | ⌃⇧A | Capture area (Space switches to window) |
 | Anywhere | ⌃⇧W | Capture window |
 | Anywhere | ⌃⇧F | Capture full screen |
-| Anywhere | ⌃⇧S | Scrolling capture (Space switches to window) |
-| Anywhere | ⌃⇧R | Record an area (Space switches to window); press again to stop |
-| Scrolling capture | Enter / Esc | Finish with what is there / cancel |
-| Recording window | ⌘S / ⇧⌘S | Save and close / Save As… |
+| Anywhere | ⌃⇧S / ⌃⌥⇧S / ⌃⇧⌘S | Scrolling capture of an area (Space switches to window) / a window / the full screen; press again to start from the toolbar, again to finish |
+| Anywhere | ⌃⇧R / ⌃⌥⇧R / ⌃⇧⌘R | Record an area (Space switches to window) / a window / the full screen; press again to start from the toolbar, again to stop |
+| Anywhere | ⌃⇧P | Pause or resume a recording |
+| Scrolling toolbar / bar | Enter / Esc | Start, then Done / cancel |
+| Record toolbar | Enter / Esc | Record / cancel (Esc also stops the countdown) |
+| Video editor | ⌘S | Done: back to the card |
 | Editor | ⌘Z / ⇧⌘Z | Undo / redo |
 | Editor | ⌫ | Delete the selection |
 | Editor | ⌘A | Select all |
-| Editor | ⌘C | Copy the result and close |
-| Editor | ⌘S / ⇧⌘S | Save and close / Save As… |
+| Editor | ⌘S | Done: back to the card |
 | Editor | ⌘+ / ⌘− | Zoom in / out |
 | Editor | Enter | Apply the crop |
 | Editor | Esc | Clear the selection and go back to the pointer |
@@ -146,7 +149,7 @@ make dmg        # Release build + build/ClearShot-<version>.dmg
 ### Project layout
 
 - `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
-- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the bar, the video window and exporter) and `Scrolling/` (the scroll injector, HUD and capture session).
+- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click rings, the video editor and exporter) and `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session).
 - `scripts/make-icns.sh` — builds the app icon from `ClearShot/Resources/AppIcon-source.png`.
 - `~/Library/Logs/ClearShot.log` — a small diagnostics log (Settings → Show Log in Finder).
 
