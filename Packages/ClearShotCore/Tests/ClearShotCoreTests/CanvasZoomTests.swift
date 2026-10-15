@@ -46,6 +46,15 @@ import Testing
         #expect(zoom.scale == CanvasZoom.range.lowerBound)
     }
 
+    @Test func theShownCanvasIsCentredInTheViewport() {
+        var zoom = CanvasZoom()
+        zoom.canvasSize = CGSize(width: 2000, height: 1000)
+        // Fit: (1048 - 48) / 2000 = 0.5, so 1000 x 500 points, centred.
+        let shown = zoom.shownRect(in: CGRect(x: 0, y: 0, width: 1048, height: 700))
+        #expect(shown == CGRect(x: 24, y: 100, width: 1000, height: 500))
+        #expect(zoom.viewportSize == .zero)   // only the answer uses the viewport
+    }
+
     @Test func labelIsAWholePercent() {
         var zoom = zoom()
         #expect(zoom.label == "50 %")

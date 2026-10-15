@@ -58,6 +58,8 @@ public final class AppSettings {
         static let recordsMicrophone = "recordsMicrophone"
         static let recordsSystemAudio = "recordsSystemAudio"
         static let recordingShowsPointer = "recordingShowsPointer"
+        static let recordingShowsClicks = "recordingShowsClicks"
+        static let microphoneID = "microphoneID"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -97,6 +99,14 @@ public final class AppSettings {
     public var recordsMicrophone: Bool { didSet { defaults.set(recordsMicrophone, forKey: Key.recordsMicrophone) } }
     public var recordsSystemAudio: Bool { didSet { defaults.set(recordsSystemAudio, forKey: Key.recordsSystemAudio) } }
     public var recordingShowsPointer: Bool { didSet { defaults.set(recordingShowsPointer, forKey: Key.recordingShowsPointer) } }
+    /// A ring pulses where you click while recording.
+    public var recordingShowsClicks: Bool { didSet { defaults.set(recordingShowsClicks, forKey: Key.recordingShowsClicks) } }
+    /// The microphone's unique ID; nil records from the system's default microphone.
+    public var microphoneID: String? {
+        didSet {
+            if let microphoneID { defaults.set(microphoneID, forKey: Key.microphoneID) } else { defaults.removeObject(forKey: Key.microphoneID) }
+        }
+    }
 
     public var cloud: R2Config {
         R2Config(accountID: cloudAccountID, accessKeyID: cloudAccessKeyID, bucket: cloudBucket, publicURL: cloudPublicURL)
@@ -125,5 +135,7 @@ public final class AppSettings {
         recordsMicrophone = defaults.object(forKey: Key.recordsMicrophone) as? Bool ?? true
         recordsSystemAudio = defaults.object(forKey: Key.recordsSystemAudio) as? Bool ?? true
         recordingShowsPointer = defaults.object(forKey: Key.recordingShowsPointer) as? Bool ?? true
+        recordingShowsClicks = defaults.object(forKey: Key.recordingShowsClicks) as? Bool ?? true
+        microphoneID = defaults.string(forKey: Key.microphoneID)
     }
 }

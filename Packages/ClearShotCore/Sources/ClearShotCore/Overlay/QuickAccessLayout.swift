@@ -7,6 +7,13 @@ public enum QuickAccessLayout {
     public static let gap: CGFloat = 8
     /// Transparent room around the card inside its panel, so entrance and hover animations are not clipped.
     public static let panelMargin: CGFloat = 24
+    /// The picture's inset inside the card.
+    public static let thumbnailPadding: CGFloat = 10
+
+    /// Where a card shows its picture: fitted inside the padding, centred.
+    public static func thumbnailRect(imageSize: CGSize, inCard card: CGRect) -> CGRect {
+        AspectFit.rect(for: imageSize, in: card.insetBy(dx: thumbnailPadding, dy: thumbnailPadding))
+    }
 
     public static func maxVisible(in visibleFrame: CGRect) -> Int {
         max(0, Int((visibleFrame.width - margin + gap) / (cardSize.width + gap)))

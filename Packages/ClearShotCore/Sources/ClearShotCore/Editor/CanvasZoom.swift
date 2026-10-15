@@ -36,6 +36,15 @@ public struct CanvasZoom: Equatable, Sendable {
 
     public var isFit: Bool { mode == .fit }
 
+    /// Where the canvas shows inside a viewport of that frame, at this zoom: centred, as the editor draws it.
+    public func shownRect(in viewport: CGRect) -> CGRect {
+        var sized = self
+        sized.viewportSize = viewport.size
+        let width = canvasSize.width * sized.scale
+        let height = canvasSize.height * sized.scale
+        return CGRect(x: viewport.midX - width / 2, y: viewport.midY - height / 2, width: width, height: height)
+    }
+
     /// "50 %"
     public var label: String { "\(Int((scale * 100).rounded())) %" }
 

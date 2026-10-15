@@ -1,12 +1,11 @@
-/// Everything the editor's keyboard shortcuts and toolbar buttons can ask for, in one list.
+/// Everything the editor's keyboard shortcuts and toolbar buttons can ask for, in one list. Copy, Share and
+/// Upload live on the card, not here: the editor only hands its result back to the card (Done).
 public enum EditorCommand: Equatable, Sendable {
-    case undo, redo, delete, copy, save, saveAs, selectAll, cancel, confirm, zoomIn, zoomOut
+    case undo, redo, delete, done, selectAll, cancel, confirm, zoomIn, zoomOut
     /// ⌘Return while typing: a new line in the text instead of finishing it.
     case newLine
     /// ⌘B, ⌘I, ⌘U: flip the text style, also while typing.
     case bold, italic, underline
-    /// Toolbar only: send the result to the cloud bucket and copy the link.
-    case upload
 
     /// The command for a key press in the editor window, or nil to let the system handle it.
     /// `key` is the character without modifiers; key codes cover Delete, Esc and Return.
@@ -32,9 +31,7 @@ public enum EditorCommand: Equatable, Sendable {
             switch (key.lowercased(), shift) {
             case ("z", false): self = .undo
             case ("z", true): self = .redo
-            case ("c", false): self = .copy
-            case ("s", false): self = .save
-            case ("s", true): self = .saveAs
+            case ("s", false): self = .done
             case ("a", false): self = .selectAll
             case ("=", _), ("+", _): self = .zoomIn
             case ("-", _): self = .zoomOut

@@ -32,6 +32,10 @@ public struct ScrollStitcher {
     /// The share of overlapping rows allowed to differ (a caret blinking, a clock ticking).
     public let tolerance: Double
 
+    /// For the log: the best overlap the last `add` found, even one too poor to count (how far, and the share
+    /// of overlapping rows that were equal). Nil when there was nothing to compare.
+    public private(set) var closest: (shift: Int, score: Double)?
+
     /// Rows at the top and bottom that do not scroll (a sticky header, a footer), found on the first scroll.
     public private(set) var header = 0
     public private(set) var footer = 0
@@ -93,11 +97,13 @@ public struct ScrollStitcher {
         let newBand = Array(rows[bandStart..<bandEnd])
 
         var best: (shift: Int, score: Double)?
+        closest = nil
         for shift in 1...(bandHeight - minimumOverlap) {
             let overlap = bandHeight - shift
             var equal = 0
             for index in 0..<overlap where previousBand[shift + index] == newBand[index] { equal += 1 }
             let score = Double(equal) / Double(overlap)
+            if score > (closest?.score ?? -1) { closest = (shift, score) }
             guard score >= 1 - tolerance else { continue }
             guard let current = best else {
                 best = (shift, score)

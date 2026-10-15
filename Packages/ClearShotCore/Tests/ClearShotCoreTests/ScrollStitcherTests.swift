@@ -81,6 +81,18 @@ private func flatten(_ stitcher: ScrollStitcher, frames: [[UInt64]]) -> [UInt64]
         #expect(stitcher.add(page.frame(offset: 60)) == .appended(rows: 60))
     }
 
+    @Test func aNearMissSaysHowCloseItCame() {
+        let page = Page()
+        var stitcher = ScrollStitcher(frameHeight: page.frameHeight)
+        _ = stitcher.add(page.frame(offset: 0))
+        // Scrolled by 30 rows, but 10 of the 50 overlapping body rows came out different (20 %, over the 3 % allowed).
+        var frame = page.frame(offset: 30)
+        for row in 20..<30 { frame[row] = UInt64(90_000 + row) }
+        #expect(stitcher.add(frame) == .noMatch)
+        #expect(stitcher.closest?.shift == 30)
+        #expect(stitcher.closest.map { abs($0.score - 0.8) < 0.001 } == true)
+    }
+
     @Test func aShorterScrollAtTheEndOfThePageIsAppendedAsIs() {
         let page = Page()
         var stitcher = ScrollStitcher(frameHeight: page.frameHeight)

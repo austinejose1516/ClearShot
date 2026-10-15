@@ -43,6 +43,18 @@ public enum FileSaver {
     /// The file in the preferred format, or, with a size `budget` in bytes (Settings → Keep files under 1 MB):
     /// a PNG becomes a 256-colour PNG when that looks the same, and whatever is still over the budget (a photo
     /// in the picture) becomes a JPEG, its quality stepped down until it fits. Safe off the main thread.
+    /// Writes `image` over an existing capture file, in that file's format and size budget. When the budget
+    /// turns it into a JPEG, the file gets the .jpg extension and the old one goes. Returns where it is now.
+    @discardableResult
+    public static func overwrite(_ url: URL, with image: CGImage, budget: Int?) throws -> URL {
+        let preferred = ImageFormat(url: url) ?? .png
+        let encoded = try encode(image, preferring: preferred, budget: budget)
+        let target = encoded.format == preferred ? url : url.deletingPathExtension().appendingPathExtension(encoded.format.fileExtension)
+        try encoded.data.write(to: target, options: .atomic)
+        if target != url { try? FileManager.default.removeItem(at: url) }
+        return target
+    }
+
     public static func encode(_ image: CGImage, preferring format: ImageFormat, budget: Int?) throws -> EncodedImage {
         let standard = try encode(image, format: format)
         let standardPNG = format == .png ? standard : nil

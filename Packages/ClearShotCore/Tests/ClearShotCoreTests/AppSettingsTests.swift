@@ -34,6 +34,8 @@ import Testing
         #expect(settings.recordsMicrophone == true)
         #expect(settings.recordsSystemAudio == true)
         #expect(settings.recordingShowsPointer == true)
+        #expect(settings.recordingShowsClicks == true)
+        #expect(settings.microphoneID == nil)
     }
 
     @Test func cloudSettingsPersistWithoutTheSecret() {
@@ -71,6 +73,8 @@ import Testing
         first.recordsMicrophone = false
         first.recordsSystemAudio = false
         first.recordingShowsPointer = false
+        first.recordingShowsClicks = false
+        first.microphoneID = "BuiltInMicrophoneDevice"
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
@@ -88,6 +92,17 @@ import Testing
         #expect(second.recordsMicrophone == false)
         #expect(second.recordsSystemAudio == false)
         #expect(second.recordingShowsPointer == false)
+        #expect(second.recordingShowsClicks == false)
+        #expect(second.microphoneID == "BuiltInMicrophoneDevice")
+    }
+
+    @Test func clearingTheMicrophoneGoesBackToTheDefault() {
+        let (defaults, cleanup) = freshDefaults()
+        defer { cleanup() }
+        let first = AppSettings(defaults: defaults)
+        first.microphoneID = "AirPods"
+        first.microphoneID = nil
+        #expect(AppSettings(defaults: defaults).microphoneID == nil)
     }
 
     @Test func jpegFilesUseJpgExtension() {
