@@ -47,8 +47,9 @@ public struct Line: Figure {
     }
 }
 
-/// A curved line (quadratic Bézier). It is drawn straight; its middle dot, which sits on the curve, goes
-/// wherever it is dragged and the curve follows.
+/// What the Arrow tool draws: a curved line (quadratic Bézier). It is drawn straight; its middle dot, which
+/// sits on the curve, goes wherever it is dragged and the curve follows. With `arrow`, an arrowhead at the
+/// end; with `bothEnds` as well, another at the start.
 public struct Curve: Figure {
     public var start: CGPoint
     public var end: CGPoint
@@ -58,13 +59,21 @@ public struct Curve: Figure {
     public var bend: CGFloat
     public var lean: CGFloat
     public var arrow: Bool
+    public var bothEnds: Bool
 
-    public init(start: CGPoint, end: CGPoint, bend: CGFloat = 0, lean: CGFloat = 0, arrow: Bool) {
+    public init(start: CGPoint, end: CGPoint, bend: CGFloat = 0, lean: CGFloat = 0, arrow: Bool, bothEnds: Bool = false) {
         self.start = start
         self.end = end
         self.bend = bend
         self.lean = lean
         self.arrow = arrow
+        self.bothEnds = bothEnds
+    }
+
+    /// The same curve run the other way: the ends swap, and the middle dot stays where it is (the chord's
+    /// directions flip, so `bend` and `lean` flip with them).
+    public var reversed: Curve {
+        Curve(start: end, end: start, bend: -bend, lean: -lean, arrow: arrow, bothEnds: bothEnds)
     }
 
     /// The straight line between the ends: its midpoint, a unit vector along it and one at right angles to it.
@@ -93,7 +102,7 @@ public struct Curve: Figure {
 
     public var bounds: CGRect { AnnotationGeometry.bounds(of: samples) }
     public var handles: [Handle] { [Handle(.start, start), Handle(.middle, middle), Handle(.end, end)] }
-    public var capabilities: StyleCapabilities { [.color, .width, .arrow] }
+    public var capabilities: StyleCapabilities { [.color, .width, .arrow, .bothEnds] }
     public var asKind: Annotation.Kind { .curve(self) }
 
     public func hitTest(_ point: CGPoint, tolerance: CGFloat, style: Annotation.Style) -> Bool {
@@ -120,10 +129,24 @@ public struct Curve: Figure {
     }
 
     public mutating func apply(_ change: StyleChange) {
-        if case .arrow(let on) = change { arrow = on }
+        switch change {
+        case .arrow(let on): arrow = on
+        case .bothEnds(let on): bothEnds = on
+        default: break
+        }
     }
 
-    public func read(into values: inout StyleValues) { values.arrow = arrow }
+    public func read(into values: inout StyleValues) {
+        values.arrow = arrow
+        values.bothEnds = bothEnds
+    }
+
+    /// The point about `distance` after the start, measured along the curve, and its curve parameter: where
+    /// the start head's base sits when the arrow has both ends.
+    public func pointAfter(start distance: CGFloat) -> (point: CGPoint, t: CGFloat) {
+        let fromTheOtherEnd = reversed.pointBefore(end: distance)
+        return (fromTheOtherEnd.point, 1 - fromTheOtherEnd.t)
+    }
 
     /// The point about `distance` before the end, measured along the curve, and its curve parameter.
     /// An arrowhead's base sits here, so the curve flows into the middle of the head.
@@ -146,14 +169,17 @@ public struct Curve: Figure {
         return (start, 0)
     }
 
-    /// The same curve from its start up to parameter `t` (de Casteljau split), as plain Bézier points: the piece
-    /// is not symmetric, so it is not a `Curve`.
-    public func prefix(to t: CGFloat) -> (start: CGPoint, control: CGPoint, end: CGPoint) {
-        let t = max(0, min(1, t))
+    /// The piece of this curve between parameters `t0` and `t1`, as plain Bézier points: the piece is not
+    /// symmetric, so it is not a `Curve`. Its control point blends the three points by both parameters (the
+    /// Bézier "blossom"), which is the de Casteljau split done at both ends at once.
+    public func segment(from t0: CGFloat, to t1: CGFloat) -> (start: CGPoint, control: CGPoint, end: CGPoint) {
+        let t0 = max(0, min(1, t0)), t1 = max(0, min(1, t1))
         let control = control
-        return (start,
-                CGPoint(x: start.x + (control.x - start.x) * t, y: start.y + (control.y - start.y) * t),
-                CurveGeometry.point(start: start, control: control, end: end, t: t))
+        let weights = (start: (1 - t0) * (1 - t1), control: (1 - t0) * t1 + t0 * (1 - t1), end: t0 * t1)
+        return (CurveGeometry.point(start: start, control: control, end: end, t: t0),
+                CGPoint(x: weights.start * start.x + weights.control * control.x + weights.end * end.x,
+                        y: weights.start * start.y + weights.control * control.y + weights.end * end.y),
+                CurveGeometry.point(start: start, control: control, end: end, t: t1))
     }
 }
 

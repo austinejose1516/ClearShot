@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// Quadratic Bézier helpers for the curved line tool.
+/// Quadratic Bézier helpers for the Arrow tool's curve.
 public enum CurveGeometry {
     public static func point(start: CGPoint, control: CGPoint, end: CGPoint, t: CGFloat) -> CGPoint {
         let u = 1 - t

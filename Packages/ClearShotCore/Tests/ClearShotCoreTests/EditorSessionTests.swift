@@ -21,7 +21,7 @@ import Testing
         drag(s, p(10, 10), p(50, 50), p(100, 100))
         #expect(s.document.annotations.count == 1)
         let arrow = s.document.annotations[0]
-        #expect(arrow.kind == .line(Line(start: p(10, 10), end: p(100, 100), arrow: true)))
+        #expect(arrow.kind == .curve(Curve(start: p(10, 10), end: p(100, 100), arrow: true)))
         #expect(s.document.selection == [arrow.id])
         #expect(s.tool == .select)
         s.document.undo()
@@ -29,7 +29,7 @@ import Testing
     }
 
     @Test func aClickWithADrawingToolAddsNothingAndHandsBackToThePointer() {
-        for tool in [EditorTool.line, .arrow, .curve, .pen, .highlight, .rect, .ellipse, .bubble, .blur, .crop] {
+        for tool in [EditorTool.line, .arrow, .pen, .highlight, .rect, .ellipse, .bubble, .blur, .crop] {
             let s = session()
             s.tool = tool
             drag(s, p(10, 10))
@@ -78,7 +78,7 @@ import Testing
         s.tool = .arrow
         drag(s, p(50, 10), p(60, 30))
         #expect(s.document.annotations.count == 1)
-        #expect(s.document.annotations[0].kind == .line(Line(start: p(20, 30), end: p(110, 30), arrow: true)))
+        #expect(s.document.annotations[0].kind == .curve(Curve(start: p(20, 30), end: p(110, 30), arrow: true)))
     }
 
     @Test func aCornerDotResizesTheSelectedShapeWithAnyTool() {
@@ -102,9 +102,9 @@ import Testing
         #expect(stroke.points.count == 4)
     }
 
-    @Test func aDrawnCurveStartsStraightAndItsMiddleDotBendsIt() {
+    @Test func aDrawnArrowStartsStraightAndItsMiddleDotBendsIt() {
         let s = session()
-        s.tool = .curve
+        s.tool = .arrow
         drag(s, p(0, 100), p(120, 60), p(200, 100))
         #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
         // Still selected, so the middle dot is live; it follows the pointer in both directions.
@@ -117,6 +117,16 @@ import Testing
         #expect(curve.middle == p(130, 40))
         s.document.undo()
         #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
+    }
+
+    @Test func bothEndsTickedBeforeDrawingGoesOntoTheNewArrow() {
+        let s = session()
+        s.tool = .arrow
+        #expect(s.shownCapabilities.contains(.bothEnds))
+        s.apply(.bothEnds(true))
+        drag(s, p(0, 100), p(200, 100))
+        #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true, bothEnds: true)))
+        #expect(s.shownValues.bothEnds)
     }
 
     @Test func theHighlighterHasItsOwnColourWidthAndOpacity() {
@@ -322,7 +332,7 @@ import Testing
     }
 
     @Test func shapeToolsHandBackToSelectButStrokesStepAndBlurStayOn() {
-        for tool in [EditorTool.line, .arrow, .curve, .rect, .ellipse, .bubble] {
+        for tool in [EditorTool.line, .arrow, .rect, .ellipse, .bubble] {
             let s = session()
             s.tool = tool
             drag(s, p(10, 10), p(120, 80))

@@ -1,14 +1,14 @@
 import CoreGraphics
 
 public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
-    case select, line, arrow, curve, pen, highlight, rect, ellipse, text, bubble, step, blur, crop
+    case select, line, arrow, pen, highlight, rect, ellipse, text, bubble, step, blur, crop
 
     public var id: String { rawValue }
 
     /// How the toolbar groups the tools: Select · Draw · Shapes · Text · Fix.
     public static let groups: [[EditorTool]] = [
         [.select],
-        [.line, .arrow, .curve, .pen, .highlight],
+        [.line, .arrow, .pen, .highlight],
         [.rect, .ellipse],
         [.text, .bubble, .step],
         [.blur, .crop],
@@ -19,7 +19,6 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .select: "Select"
         case .line: "Line"
         case .arrow: "Arrow"
-        case .curve: "Curved arrow"
         case .pen: "Pen"
         case .highlight: "Highlighter"
         case .rect: "Rectangle"
@@ -38,7 +37,6 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         case .select: "cursorarrow"
         case .line: "line.diagonal"
         case .arrow: "arrow.up.right"
-        case .curve: "point.topleft.down.to.point.bottomright.curvepath"
         case .pen: "scribble"
         case .highlight: "highlighter"
         case .rect: "rectangle"
@@ -55,8 +53,8 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
     public var hint: String {
         switch self {
         case .select: "Click to select · drag to move · drag a dot to resize · Delete removes"
-        case .line, .arrow: "Drag to draw"
-        case .curve: "Drag to draw a straight arrow, then drag the middle dot anywhere to bend it"
+        case .line: "Drag to draw"
+        case .arrow: "Drag to draw · drag the middle dot anywhere to bend it · Both ends puts a head at each end"
         case .pen: "Drag to draw freehand"
         case .highlight: "Drag over the text to mark it"
         case .rect: "Drag to draw · Fill makes it solid · Corners rounds it"
@@ -73,7 +71,8 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
     public var capabilities: StyleCapabilities {
         switch self {
         case .select, .crop: []
-        case .line, .arrow, .curve, .pen, .highlight: [.color, .width]
+        case .line, .pen, .highlight: [.color, .width]
+        case .arrow: [.color, .width, .bothEnds]
         case .rect: [.color, .width, .fill, .corners]
         case .ellipse: [.color, .width, .fill]
         case .text: [.color, .fontSize, .textStyle]
@@ -88,7 +87,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
     public var staysActive: Bool {
         switch self {
         case .select, .pen, .highlight, .step, .blur, .crop: true
-        case .line, .arrow, .curve, .rect, .ellipse, .text, .bubble: false
+        case .line, .arrow, .rect, .ellipse, .text, .bubble: false
         }
     }
 
@@ -101,8 +100,7 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         let area = SelectionGeometry.normalizedRect(from: start, to: end)
         return switch self {
         case .line: Line(start: start, end: end)
-        case .arrow: Line(start: start, end: end, arrow: true)
-        case .curve: Curve(start: start, end: end, arrow: true)
+        case .arrow: Curve(start: start, end: end, arrow: true, bothEnds: values.bothEnds)
         case .rect: Box(rect: area, form: .rectangle, cornerRadius: values.cornerRadius)
         case .ellipse: Box(rect: area, form: .ellipse)
         case .bubble: Bubble.drawn(from: start, to: end, fontSize: values.fontSize)

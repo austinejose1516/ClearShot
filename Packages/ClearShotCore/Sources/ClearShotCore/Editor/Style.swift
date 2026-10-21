@@ -18,6 +18,8 @@ public struct StyleCapabilities: OptionSet, Sendable, Hashable {
     public static let stepSize = StyleCapabilities(rawValue: 1 << 7)
     /// Rounded corners (rectangles).
     public static let corners = StyleCapabilities(rawValue: 1 << 8)
+    /// A second arrowhead, at the start (arrows).
+    public static let bothEnds = StyleCapabilities(rawValue: 1 << 9)
 }
 
 /// One change made in the toolbar.
@@ -27,6 +29,7 @@ public enum StyleChange: Equatable, Sendable {
     case width(CGFloat)
     case fill(Bool)
     case arrow(Bool)
+    case bothEnds(Bool)
     case fontSize(CGFloat)
     case bold(Bool)
     case italic(Bool)
@@ -50,8 +53,10 @@ public struct StyleValues: Equatable, Sendable {
     public var opacity: Double = 1
     public var width: CGFloat = Annotation.Style.defaultWidth
     public var fills = false
-    /// Shown for selected lines and curves; new ones take it from the tool (Line vs Arrow).
+    /// Shown for selected lines and arrows; new ones take it from the tool (Line vs Arrow).
     public var arrow = true
+    /// An arrowhead at the start as well as the end. Shown for the Arrow tool and for selected arrows.
+    public var bothEnds = false
     /// Screenshots are usually 2× Retina, so 32 px reads as 16 pt. Plain weight, like any text tool.
     public var fontSize: CGFloat = 32
     public var bold = false
@@ -81,6 +86,7 @@ public struct StyleValues: Equatable, Sendable {
         case .width(let value): width = value
         case .fill(let value): fills = value
         case .arrow(let value): arrow = value
+        case .bothEnds(let value): bothEnds = value
         case .fontSize(let value): fontSize = value
         case .bold(let value): bold = value
         case .italic(let value): italic = value

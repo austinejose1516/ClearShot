@@ -14,6 +14,12 @@ import Testing
         line.apply(.fontSize(40))
         line.apply(.arrow(true))
         #expect(line.kind == .line(Line(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true)))
+        line.apply(.bothEnds(true))     // a plain line has no second head to add
+        #expect(line.kind == .line(Line(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true)))
+
+        var arrow = Annotation(kind: .curve(Curve(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true)))
+        arrow.apply(.bothEnds(true))
+        #expect(arrow.kind == .curve(Curve(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true, bothEnds: true)))
     }
 
     @Test func colourKeepsOpacityAndFillFollowsTheColour() {

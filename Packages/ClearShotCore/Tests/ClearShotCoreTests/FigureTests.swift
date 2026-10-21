@@ -52,6 +52,25 @@ import Testing
         #expect(curve.start == CGPoint(x: 10, y: 10))
     }
 
+    @Test func aReversedCurveSwapsItsEndsAndKeepsItsShape() {
+        let curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, lean: 10, arrow: true)
+        let reversed = curve.reversed
+        #expect(reversed.start == curve.end && reversed.end == curve.start)
+        #expect(abs(reversed.middle.x - curve.middle.x) < 0.001 && abs(reversed.middle.y - curve.middle.y) < 0.001)
+        #expect(abs(reversed.control.x - curve.control.x) < 0.001 && abs(reversed.control.y - curve.control.y) < 0.001)
+    }
+
+    @Test func bothEndsIsTheCurvesOwnSettingAndTheToolbarReadsItBack() {
+        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), arrow: true)
+        #expect(curve.bothEnds == false)
+        #expect(curve.capabilities.contains(.bothEnds))
+        curve.apply(.bothEnds(true))
+        #expect(curve.bothEnds)
+        var values = StyleValues()
+        curve.read(into: &values)
+        #expect(values.bothEnds)
+    }
+
     @Test func aHighlighterStrokeIsAFreehandStrokeInAnotherForm() {
         let points = [CGPoint.zero, CGPoint(x: 10, y: 0)]
         #expect(Annotation(kind: .freehand(Freehand(points: points, form: .highlighter))).isHighlight)

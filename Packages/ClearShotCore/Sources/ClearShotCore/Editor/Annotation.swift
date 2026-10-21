@@ -170,7 +170,7 @@ public struct Annotation: Identifiable, Equatable, Sendable {
         case .fill(let on):
             guard can.contains(.fill) else { return }
             style.fillColor = on ? style.strokeColor : nil
-        case .arrow, .fontSize, .bold, .italic, .underline, .boxed, .blurMode, .stepSize, .cornerRadius:
+        case .arrow, .bothEnds, .fontSize, .bold, .italic, .underline, .boxed, .blurMode, .stepSize, .cornerRadius:
             kind.modify { $0.apply(change) }
         }
     }

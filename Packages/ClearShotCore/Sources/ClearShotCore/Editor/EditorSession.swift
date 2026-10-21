@@ -251,7 +251,7 @@ public final class EditorSession {
             document.add(annotation)
             document.selection = [annotation.id]
             gesture = .idle
-        case .line, .arrow, .curve, .rect, .ellipse, .bubble, .blur:
+        case .line, .arrow, .rect, .ellipse, .bubble, .blur:
             guard let figure = tool.figure(from: point, to: point, values: defaults) else {
                 gesture = .idle
                 return

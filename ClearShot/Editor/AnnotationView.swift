@@ -22,12 +22,18 @@ struct AnnotationView: View {
                 Path { $0.move(to: figure.start); $0.addLine(to: lineEnd) }.stroke(stroke, style: line)
                 if figure.arrow { ArrowHead.path(base: lineEnd, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
             case .curve(let figure):
-                // The head's base sits on the curve, so the curve flows into the middle of the head.
+                // Each head's base sits on the curve, so the curve flows into the middle of the head.
                 let headLength = ArrowGeometry.headLength(strokeWidth: style.strokeWidth)
-                let base = figure.arrow ? figure.pointBefore(end: headLength) : (point: figure.end, t: 1)
-                let shown = figure.prefix(to: base.t)
+                let last = figure.arrow ? figure.pointBefore(end: headLength) : (point: figure.end, t: 1)
+                let first = figure.arrow && figure.bothEnds ? figure.pointAfter(start: headLength) : (point: figure.start, t: 0)
+                let shown = figure.segment(from: first.t, to: last.t)
                 Path { $0.move(to: shown.start); $0.addQuadCurve(to: shown.end, control: shown.control) }.stroke(stroke, style: line)
-                if figure.arrow { ArrowHead.path(base: base.point, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke) }
+                if figure.arrow {
+                    ArrowHead.path(base: last.point, tip: figure.end, strokeWidth: style.strokeWidth).fill(stroke)
+                    if figure.bothEnds {
+                        ArrowHead.path(base: first.point, tip: figure.start, strokeWidth: style.strokeWidth).fill(stroke)
+                    }
+                }
             case .freehand(let figure):
                 // A highlighter multiplies onto the image, like ink on paper: text under it stays crisp and dark.
                 Smoothing.path(through: figure.points)

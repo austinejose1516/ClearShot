@@ -83,8 +83,8 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Tool | What it does |
 |---|---|
 | Select | Click to select (inside rectangles and ellipses too), drag to move, drag a dot to resize |
-| Line, Arrow | Straight lines, with or without an arrowhead |
-| Curved arrow | Drag a straight arrow, then drag the middle dot anywhere to bend it; the head follows the curve |
+| Line | A straight line, with or without an arrowhead |
+| Arrow | Drag to draw; drag the middle dot anywhere to bend it, and the head follows the curve; **Both ends** puts a head at each end |
 | Pen | Freehand, smoothed |
 | Highlighter | A wide, see-through marker that keeps the text under it crisp; remembers its own colour and width |
 | Rectangle, Ellipse | Outline or filled; rectangles can have rounded corners |
@@ -94,7 +94,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Blur | Pixelate or blur anything private |
 | Crop | Drag the part to keep, then **Crop** or **Enter** |
 
-- The toolbar only shows the settings that apply: colour (a dropdown with presets and any custom colour), opacity, width slider, fill, corners, arrowhead, text size, bold / italic / underline, boxed, step size, blur mode.
+- The toolbar only shows the settings that apply: colour (a dropdown with presets and any custom colour), opacity, width slider, fill, corners, arrowhead, both ends, text size, bold / italic / underline, boxed, step size, blur mode.
 - Shape and text tools hand back to the pointer after one use, so you can adjust right away. Pen, Highlighter, Step and Blur stay on; a plain click with any tool goes back to the pointer.
 - Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot. Zoom with ⌘+ / ⌘−, the zoom menu or a trackpad pinch.
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider.

@@ -130,6 +130,11 @@ struct EditorToolbar: View {
             if can.contains(.arrow) {
                 toggle("Arrowhead", isOn: Binding(get: { values.arrow }, set: { session.apply(.arrow($0)) })).chip()
             }
+            if can.contains(.bothEnds) {
+                toggle("Both ends", isOn: Binding(get: { values.bothEnds }, set: { session.apply(.bothEnds($0)) }))
+                    .chip()
+                    .help("An arrowhead at the start as well as the end")
+            }
             if can.contains(.fontSize) {
                 labelled("Size") {
                     menuPicker(Binding(get: { values.fontSize }, set: { session.apply(.fontSize($0)) }),
