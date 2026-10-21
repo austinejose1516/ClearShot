@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ClearShotCore
 
@@ -19,19 +20,22 @@ struct ClearShotApp: App {
     }
 }
 
-/// The camera, a record dot while a recording runs, or a pause sign while it is paused.
+/// The app's glyph (the app icon, small), a record dot while a recording runs, or a pause sign while it is paused.
 private struct MenuBarLabel: View {
     @Environment(RecordingCoordinator.self) private var recording
 
     var body: some View {
-        Image(systemName: symbol)
-    }
-
-    private var symbol: String {
         switch recording.state {
-        case .recording: "record.circle.fill"
-        case .paused: "pause.circle.fill"
-        default: "camera.viewfinder"
+        case .recording: Image(systemName: "record.circle.fill")
+        case .paused: Image(systemName: "pause.circle.fill")
+        default: Image(nsImage: Self.glyph)
         }
     }
+
+    /// `MenuBarIcon.png` (drawn by `scripts/make-icon.swift`) as a template image, so it takes the menu bar's colour.
+    private static let glyph: NSImage = {
+        let image = NSImage(named: "MenuBarIcon") ?? NSImage()
+        image.isTemplate = true
+        return image
+    }()
 }

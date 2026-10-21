@@ -150,7 +150,7 @@ make dmg        # Release build + build/ClearShot-<version>.dmg
 
 - `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
 - `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click rings, the video editor and exporter) and `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session).
-- `scripts/make-icns.sh` — builds the app icon from `ClearShot/Resources/AppIcon-source.png`.
+- `scripts/make-icon.swift` — draws the app icon (`ClearShot/Resources/AppIcon-source.png`) and the menu bar glyph (`MenuBarIcon.png`, `@2x`); `scripts/make-icns.sh` then builds `AppIcon.icns` from the source PNG.
 - `~/Library/Logs/ClearShot.log` — a small diagnostics log (Settings → Show Log in Finder).
 
 ### Releasing
