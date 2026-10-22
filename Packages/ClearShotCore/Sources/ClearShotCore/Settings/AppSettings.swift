@@ -60,6 +60,8 @@ public final class AppSettings {
         static let recordingShowsPointer = "recordingShowsPointer"
         static let recordingShowsClicks = "recordingShowsClicks"
         static let microphoneID = "microphoneID"
+        static let lastCaptureAction = "lastCaptureAction"
+        static let lastPickMode = "lastPickMode"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -108,6 +110,10 @@ public final class AppSettings {
         }
     }
 
+    /// The capture bar's last choices: what to make and how to pick it.
+    public var lastCaptureAction: CaptureAction { didSet { defaults.set(lastCaptureAction.rawValue, forKey: Key.lastCaptureAction) } }
+    public var lastPickMode: PickMode { didSet { defaults.set(lastPickMode.rawValue, forKey: Key.lastPickMode) } }
+
     public var cloud: R2Config {
         R2Config(accountID: cloudAccountID, accessKeyID: cloudAccessKeyID, bucket: cloudBucket, publicURL: cloudPublicURL)
     }
@@ -137,5 +143,7 @@ public final class AppSettings {
         recordingShowsPointer = defaults.object(forKey: Key.recordingShowsPointer) as? Bool ?? true
         recordingShowsClicks = defaults.object(forKey: Key.recordingShowsClicks) as? Bool ?? true
         microphoneID = defaults.string(forKey: Key.microphoneID)
+        lastCaptureAction = defaults.string(forKey: Key.lastCaptureAction).flatMap(CaptureAction.init(rawValue:)) ?? .screenshot
+        lastPickMode = defaults.string(forKey: Key.lastPickMode).flatMap(PickMode.init(rawValue:)) ?? .area
     }
 }

@@ -36,6 +36,8 @@ import Testing
         #expect(settings.recordingShowsPointer == true)
         #expect(settings.recordingShowsClicks == true)
         #expect(settings.microphoneID == nil)
+        #expect(settings.lastCaptureAction == .screenshot)
+        #expect(settings.lastPickMode == .area)
     }
 
     @Test func cloudSettingsPersistWithoutTheSecret() {
@@ -75,6 +77,8 @@ import Testing
         first.recordingShowsPointer = false
         first.recordingShowsClicks = false
         first.microphoneID = "BuiltInMicrophoneDevice"
+        first.lastCaptureAction = .scrolling
+        first.lastPickMode = .window
 
         let second = AppSettings(defaults: defaults)
         #expect(second.imageFormat == .jpeg)
@@ -94,6 +98,8 @@ import Testing
         #expect(second.recordingShowsPointer == false)
         #expect(second.recordingShowsClicks == false)
         #expect(second.microphoneID == "BuiltInMicrophoneDevice")
+        #expect(second.lastCaptureAction == .scrolling)
+        #expect(second.lastPickMode == .window)
     }
 
     @Test func clearingTheMicrophoneGoesBackToTheDefault() {
