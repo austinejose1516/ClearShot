@@ -48,8 +48,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.austinejose.clearshot
         PRODUCT_NAME: ClearShot
-        MARKETING_VERSION: "0.8.0"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "0.9.0"
+        CURRENT_PROJECT_VERSION: "9"
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         SWIFT_APPROACHABLE_CONCURRENCY: YES
     configFiles:
