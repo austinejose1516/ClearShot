@@ -99,7 +99,7 @@ public struct Annotation: Identifiable, Equatable, Sendable {
     }
 
     public struct Style: Equatable, Sendable {
-        public static let defaultWidth: CGFloat = 4
+        public static let defaultWidth: CGFloat = 10
 
         public var strokeColor: RGBAColor
         public var strokeWidth: CGFloat

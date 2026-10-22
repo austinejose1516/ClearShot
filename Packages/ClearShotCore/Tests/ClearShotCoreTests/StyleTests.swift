@@ -22,6 +22,13 @@ import Testing
         #expect(arrow.kind == .curve(Curve(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true, bothEnds: true)))
     }
 
+    @Test func newShapesAreTenPixelsWideAndTextIsTwentyFour() {
+        #expect(Annotation.Style.defaultWidth == 10)
+        #expect(StyleValues().width == 10 && StyleValues().fontSize == 24)
+        #expect(StyleValues.fontSizes == [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96, 128])
+        #expect(StyleValues.highlighter.width == 32)
+    }
+
     @Test func colourKeepsOpacityAndFillFollowsTheColour() {
         var box = Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 10, height: 10), form: .rectangle)))
         box.apply(.opacity(0.5))
@@ -94,11 +101,6 @@ import Testing
         #expect(values.color == .yellow && values.opacity == 0.5 && values.width == 32)
         #expect(values.style(canFill: false).strokeColor == RGBAColor.yellow.withAlpha(0.5))
         #expect(StyleValues.widthRange.contains(values.width))
-    }
-
-    @Test func defaultThicknessIsNormalNotHeavy() {
-        #expect(StyleValues().width == 4)
-        #expect(Annotation.Style().strokeWidth == 4)
     }
 
     @Test func thePaletteHasNineColoursIncludingPink() {

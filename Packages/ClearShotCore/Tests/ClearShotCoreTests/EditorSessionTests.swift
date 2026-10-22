@@ -57,7 +57,7 @@ import Testing
         drag(s, p(10, 10))
         s.editText("Hi")
         let plain = s.document.annotations[0].textContent
-        #expect(plain?.fontSize == 32 && plain?.bold == false && plain?.italic == false && plain?.underline == false)
+        #expect(plain?.fontSize == 24 && plain?.bold == false && plain?.italic == false && plain?.underline == false)
         s.apply(.italic(true))
         s.apply(.underline(true))
         let styled = s.document.annotations[0].textContent
@@ -261,7 +261,7 @@ import Testing
                                   style: .init(strokeWidth: 4, fillColor: .red)))
         s.selectAll()
         #expect(s.shownCapabilities == [.color, .width, .fill, .corners])
-        #expect(s.shownValues.width == 4)
+        #expect(s.shownValues.width == 4)   // the selection's own width, not the default
         #expect(s.shownValues.fills)
         s.cancel()
         s.tool = .text

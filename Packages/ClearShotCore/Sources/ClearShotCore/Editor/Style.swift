@@ -44,7 +44,7 @@ public enum StyleChange: Equatable, Sendable {
 public struct StyleValues: Equatable, Sendable {
     public static let widthRange: ClosedRange<CGFloat> = 1...40
     public static let opacities: [Double] = [1, 0.75, 0.5, 0.25]
-    public static let fontSizes: [CGFloat] = [16, 24, 32, 48, 64, 96, 128]
+    public static let fontSizes: [CGFloat] = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96, 128]
     /// Radii; the toolbar shows diameters (40 px … 192 px).
     public static let stepSizes: [CGFloat] = [20, 28, 36, 48, 64, 96]
     public static let cornerRadii: [CGFloat] = [0, 8, 16, 24, 40]
@@ -57,8 +57,8 @@ public struct StyleValues: Equatable, Sendable {
     public var arrow = true
     /// An arrowhead at the start as well as the end. Shown for the Arrow tool and for selected arrows.
     public var bothEnds = false
-    /// Screenshots are usually 2× Retina, so 32 px reads as 16 pt. Plain weight, like any text tool.
-    public var fontSize: CGFloat = 32
+    /// Screenshots are usually 2× Retina, so 24 px reads as 12 pt: a normal label. Plain weight, like any text tool.
+    public var fontSize: CGFloat = 24
     public var bold = false
     public var italic = false
     public var underline = false

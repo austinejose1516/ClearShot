@@ -278,7 +278,7 @@ public struct Bubble: Figure {
     public var text: String
     public var fontSize: CGFloat
 
-    public init(rect: CGRect, tail: CGPoint, text: String = "", fontSize: CGFloat = 32) {
+    public init(rect: CGRect, tail: CGPoint, text: String = "", fontSize: CGFloat = 24) {
         self.rect = rect
         self.tail = tail
         self.text = text

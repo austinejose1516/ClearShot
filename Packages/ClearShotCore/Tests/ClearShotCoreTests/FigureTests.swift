@@ -106,6 +106,10 @@ import Testing
         #expect(bubble.fontSize == 32)
     }
 
+    @Test func aBubbleWithoutASizeIsTwentyFour() {
+        #expect(Bubble(rect: CGRect(x: 0, y: 0, width: 100, height: 100), tail: .zero).fontSize == 24)
+    }
+
     @Test func blurResizesByCorners() {
         var blur = Blur(rect: CGRect(x: 0, y: 0, width: 10, height: 10), mode: .pixelate)
         blur.drag(.bottomRight, to: CGPoint(x: 40, y: 30))
