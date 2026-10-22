@@ -22,11 +22,16 @@ enum RegionPicker {
             return Target(region: ScreenRegion(displayID: display.displayID, quartzRect: display.frame, scale: screen?.backingScaleFactor ?? 2),
                           window: nil)
         case .area, .window, .scrolling:
-            switch try await OverlayCaptureSession.run(mode: kind == .window ? .window : .area, settings: settings) {
-            case .area(_, let region): return Target(region: region, window: nil)
-            case .window(let window): return Target(region: try await spot(of: window), window: window)
-            case .cancelled: return nil
-            }
+            return try await target(from: OverlayCaptureSession.run(mode: kind == .window ? .window : .area, settings: settings))
+        }
+    }
+
+    /// What the picker (or the capture bar) chose, as a target; nil when cancelled.
+    static func target(from outcome: OverlayCaptureSession.Outcome) async throws -> Target? {
+        switch outcome {
+        case .area(_, let region), .fullScreen(_, let region): Target(region: region, window: nil)
+        case .window(let window): Target(region: try await spot(of: window), window: window)
+        case .cancelled: nil
         }
     }
 

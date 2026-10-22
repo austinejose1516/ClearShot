@@ -47,23 +47,30 @@ final class CaptureCoordinator {
             let display = try ScreenCapturer.display(for: .underMouse, in: content)
             return Capture(kind: .fullScreen, image: try await ScreenCapturer.captureDisplay(display, showsCursor: settings.showsCursor))
         case .area, .window:
-            switch try await OverlayCaptureSession.run(mode: kind == .area ? .area : .window, settings: settings) {
-            case .area(let image, _):
-                return Capture(kind: .area, image: image)
-            case .window(let window):
-                // Both at once: the shadowed one is saved, the plain one is what the editor starts from.
-                let showsCursor = settings.showsCursor
-                let started = ContinuousClock.now
-                let plain = Task { try? await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: false) }
-                let image = try await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: true)
-                let windowImage = await plain.value
-                DiagnosticLog.write("window captured twice in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
-                return Capture(kind: .window, image: image, windowImage: windowImage)
-            case .cancelled:
-                return nil
-            }
+            return try await makeCapture(from: OverlayCaptureSession.run(mode: kind == .area ? .area : .window, settings: settings))
         case .scrolling:
             return nil   // a scrolling capture runs in ScrollingCoordinator and comes back through `deliver`
+        }
+    }
+
+    /// The image for what the picker (or the capture bar) chose; nil when cancelled.
+    private func makeCapture(from outcome: OverlayCaptureSession.Outcome) async throws -> Capture? {
+        switch outcome {
+        case .area(let image, _):
+            return Capture(kind: .area, image: image)
+        case .fullScreen(let image, _):
+            return Capture(kind: .fullScreen, image: image)
+        case .window(let window):
+            // Both at once: the shadowed one is saved, the plain one is what the editor starts from.
+            let showsCursor = settings.showsCursor
+            let started = ContinuousClock.now
+            let plain = Task { try? await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: false) }
+            let image = try await ScreenCapturer.captureWindow(window, showsCursor: showsCursor, includeShadow: true)
+            let windowImage = await plain.value
+            DiagnosticLog.write("window captured twice in \((ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds])))")
+            return Capture(kind: .window, image: image, windowImage: windowImage)
+        case .cancelled:
+            return nil
         }
     }
 
