@@ -1,5 +1,7 @@
-/// Builds one tall page out of frames taken while the page scrolls down. Works on row hashes (see
-/// `FrameSignature`), so it is pure and fast. The pixels are put together later by `ScrollAssembler`.
+/// Builds one tall page out of frames taken while the page scrolls down. Works on frame profiles (see
+/// `FrameProfile`): it finds how far the page moved between two frames by scoring every possible shift on how
+/// much the overlapping rows differ, coarsely first and then exactly around the best, and takes the shift whose
+/// rows differ least. The pixels are put together later by `ScrollAssembler`.
 ///
 /// Frames are numbered in the order they are kept: a frame counts (and must be kept by the caller) only when
 /// `add` answers `.first` or `.appended`; `.noChange` and `.noMatch` frames are dropped.
@@ -25,32 +27,51 @@ public struct ScrollStitcher {
         }
     }
 
+    /// Two frames whose samples differ by at most this on average (0…255) show the same picture: the page did
+    /// not move. A blinking caret or a ticking clock changes far too few samples to reach it.
+    public static let sameThreshold = 1.5
+    /// A shift counts when the overlapping rows differ by at most this on average (0…255). Rows that do not
+    /// belong together differ by far more; a page sitting between two pixels, by far less.
+    public static let matchThreshold = 16.0
+    /// A row stayed put (part of a sticky header or footer) when it differs by at most this.
+    static let stillRowThreshold = 6
+    /// The coarse search tries every `coarseStep`th shift on every `coarseStep`th row, then looks at every
+    /// shift within `coarseStep` of the `refined` best coarse shifts (the true shift's coarse neighbours can
+    /// score worse than a wrong shift that happens to be uniformly close).
+    static let coarseStep = 4
+    static let refined = 4
+    /// Shifts whose scores are this close are equally good: the expected one wins, or else the smallest.
+    static let tieMargin = 0.5
+    /// A shift is given up early once, after this many rows, its rows differ by more than the best shift so far
+    /// plus twice the match threshold: rows that do not belong together are far worse from the start, while a
+    /// changed line or two cannot push a good shift over it. Shifts are tried nearest the expected (or the
+    /// last) shift first, so the best is usually found early and the rest are given up quickly.
+    static let pruneAfterRows = 32
+
     public let frameHeight: Int
     /// Two frames must share at least this many rows to count as the same page scrolled. A tenth of the frame
     /// unless given: the planner scrolls by 60 %, which leaves 40 % in common.
     public let minimumOverlap: Int
-    /// The share of overlapping rows allowed to differ (a caret blinking, a clock ticking).
-    public let tolerance: Double
 
-    /// For the log: the best overlap the last `add` found, even one too poor to count (how far, and the share
-    /// of overlapping rows that were equal). Nil when there was nothing to compare.
-    public private(set) var closest: (shift: Int, score: Double)?
+    /// For the log: the best shift the last `add` found, even one too poor to count, and how much its rows
+    /// differed (0…255). Nil when there was nothing to compare.
+    public private(set) var closest: (shift: Int, distance: Double)?
 
     /// Rows at the top and bottom that do not scroll (a sticky header, a footer), found on the first scroll.
     public private(set) var header = 0
     public private(set) var footer = 0
 
     private var stickyKnown = false
-    private var last: [UInt64]?
+    private var last: FrameProfile?
+    private var lastShift: Int?
     private var lastFrame = 0
     private var keptFrames = 0
     private var appended: [Slice] = []
     private var bodyHeight = 0
 
-    public init(frameHeight: Int, minimumOverlap: Int? = nil, tolerance: Double = 0.03) {
+    public init(frameHeight: Int, minimumOverlap: Int? = nil) {
         self.frameHeight = frameHeight
         self.minimumOverlap = minimumOverlap ?? max(10, frameHeight / 10)
-        self.tolerance = tolerance
     }
 
     public var totalHeight: Int {
@@ -75,47 +96,29 @@ public struct ScrollStitcher {
         return result
     }
 
-    /// `expectedShift` is how far the caller scrolled, in rows, when it knows; among equally good matches the
+    /// `expectedShift` is how far the caller scrolled, in rows, when it knows; among equally good shifts the
     /// nearest to it wins (a page of repeating rows fits several shifts).
-    public mutating func add(_ rows: [UInt64], expectedShift: Int? = nil) -> Step {
-        guard rows.count == frameHeight, frameHeight > 0 else { return .noMatch }
+    public mutating func add(_ frame: FrameProfile, expectedShift: Int? = nil) -> Step {
+        guard frame.height == frameHeight, frameHeight > 0, frame.width > 0 else { return .noMatch }
         guard let previous = last else {
-            last = rows
+            last = frame
             lastFrame = 0
             keptFrames = 1
             return .first
         }
-        if rows == previous { return .noChange }
+        guard previous.width == frame.width else { return .noMatch }
+        if frame.distance(to: previous) <= Self.sameThreshold { return .noChange }
         // The sticky parts are measured on the first scroll, but only kept once that scroll really matched:
         // a stray frame must not fix them.
-        let (top, bottom) = stickyKnown ? (header, footer) : stickyParts(previous, rows)
+        let (top, bottom) = stickyKnown ? (header, footer) : stickyParts(previous, frame)
         let bandStart = top
         let bandEnd = frameHeight - bottom
         let bandHeight = bandEnd - bandStart
         guard bandHeight > minimumOverlap else { return .noMatch }
-        let previousBand = Array(previous[bandStart..<bandEnd])
-        let newBand = Array(rows[bandStart..<bandEnd])
-
-        var best: (shift: Int, score: Double)?
         closest = nil
-        for shift in 1...(bandHeight - minimumOverlap) {
-            let overlap = bandHeight - shift
-            var equal = 0
-            for index in 0..<overlap where previousBand[shift + index] == newBand[index] { equal += 1 }
-            let score = Double(equal) / Double(overlap)
-            if score > (closest?.score ?? -1) { closest = (shift, score) }
-            guard score >= 1 - tolerance else { continue }
-            guard let current = best else {
-                best = (shift, score)
-                continue
-            }
-            if let expectedShift {
-                if abs(shift - expectedShift) < abs(current.shift - expectedShift) { best = (shift, score) }
-            } else if score > current.score {   // a tie keeps the smaller shift, found first
-                best = (shift, score)
-            }
-        }
-        guard let best else { return .noMatch }
+        let best = bestShift(from: previous, to: frame, band: bandStart..<bandEnd, expectedShift: expectedShift)
+        closest = best
+        guard best.distance <= Self.matchThreshold else { return .noMatch }
         if !stickyKnown {
             header = top
             footer = bottom
@@ -123,18 +126,69 @@ public struct ScrollStitcher {
         }
         appended.append(Slice(frame: keptFrames, rows: (bandEnd - best.shift)..<bandEnd))
         bodyHeight += best.shift
-        last = rows
+        lastShift = best.shift
+        last = frame
         lastFrame = keptFrames
         keptFrames += 1
         return .appended(rows: best.shift)
     }
 
+    /// The shift (in rows, 1 or more) at which the new frame's band lines up best with the previous one. A
+    /// shift of `s` means new row `i` shows what previous row `i + s` showed.
+    private func bestShift(from previous: FrameProfile, to frame: FrameProfile, band: Range<Int>, expectedShift: Int?) -> (shift: Int, distance: Double) {
+        let maxShift = band.count - minimumOverlap
+        let width = frame.width
+        let seed = expectedShift ?? lastShift ?? 0
+        return previous.samples.withUnsafeBufferPointer { old in
+            frame.samples.withUnsafeBufferPointer { new in
+                /// The mean difference over the overlapping rows at `shift`, looking at every `rowStep`th row.
+                /// Gives up, answering 255, once the shift is clearly worse than `limit`.
+                func score(_ shift: Int, rowStep: Int, limit: Double) -> Double {
+                    var total = 0, rows = 0
+                    let giveUp = limit + 2 * Self.matchThreshold
+                    for row in stride(from: band.lowerBound, to: band.upperBound - shift, by: rowStep) {
+                        total &+= FrameProfile.rowDistance(new, row, old, row + shift, width: width)
+                        rows += 1
+                        if rows == Self.pruneAfterRows, Double(total) / Double(rows * width) > giveUp { return 255 }
+                    }
+                    return rows > 0 ? Double(total) / Double(rows * width) : 255
+                }
+                /// Every shift scored, nearest the seed first (so the best turns up early and the rest are cheap).
+                func scores(of shifts: [Int], rowStep: Int) -> [(shift: Int, distance: Double)] {
+                    var lowest = 255.0
+                    return shifts.sorted { abs($0 - seed) < abs($1 - seed) }.map { shift in
+                        let distance = score(shift, rowStep: rowStep, limit: lowest)
+                        lowest = min(lowest, distance)
+                        return (shift, distance)
+                    }
+                }
+                /// The lowest score; near-ties go to the expected shift, else the smallest shift.
+                func pick(_ scored: [(shift: Int, distance: Double)]) -> (shift: Int, distance: Double) {
+                    let lowest = scored.map(\.distance).min() ?? 255
+                    let ties = scored.filter { $0.distance <= lowest + Self.tieMargin }
+                    if let expectedShift, let nearest = ties.min(by: { abs($0.shift - expectedShift) < abs($1.shift - expectedShift) }) {
+                        return nearest
+                    }
+                    return ties.min { $0.shift < $1.shift } ?? (shift: 1, distance: 255)
+                }
+                let step = Self.coarseStep
+                let coarse = scores(of: Array(stride(from: step, through: max(step, maxShift), by: step)), rowStep: step)
+                let around = coarse.sorted { $0.distance < $1.distance }.prefix(Self.refined)
+                    .flatMap { max(1, $0.shift - step)...min(maxShift, $0.shift + step) }
+                return pick(scores(of: Array(Set(around)), rowStep: 1))
+            }
+        }
+    }
+
     /// Rows that stayed put at the top and at the bottom (never the whole frame: those frames differ).
-    private func stickyParts(_ previous: [UInt64], _ rows: [UInt64]) -> (top: Int, bottom: Int) {
+    private func stickyParts(_ previous: FrameProfile, _ frame: FrameProfile) -> (top: Int, bottom: Int) {
         var top = 0
-        while top < frameHeight, previous[top] == rows[top] { top += 1 }
+        while top < frameHeight, previous.rowDistance(top, to: frame, top) <= Self.stillRowThreshold { top += 1 }
         var bottom = 0
-        while bottom < frameHeight - top, previous[frameHeight - 1 - bottom] == rows[frameHeight - 1 - bottom] { bottom += 1 }
+        while bottom < frameHeight - top,
+              previous.rowDistance(frameHeight - 1 - bottom, to: frame, frameHeight - 1 - bottom) <= Self.stillRowThreshold {
+            bottom += 1
+        }
         return (top, bottom)
     }
 }

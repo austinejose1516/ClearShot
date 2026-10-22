@@ -150,10 +150,10 @@ final class ScrollingCaptureSession {
             let found = withoutScrollbar(moved)
             band = found
             DiagnosticLog.write("scrolling part: columns \(found.lowerBound)..<\(found.upperBound) of \(image.width) px")
-            keep(first, stitcher.add(FrameSignature.rows(of: first, columns: found)))
+            keep(first, stitcher.add(FrameProfile.of(first, columns: found)))
         }
         guard let band else { return .noChange }
-        let step = stitcher.add(FrameSignature.rows(of: image, columns: band), expectedShift: expectedShift)
+        let step = stitcher.add(FrameProfile.of(image, columns: band), expectedShift: expectedShift)
         if step == .noMatch, !reportedMiss {
             reportedMiss = true
             reportMiss()
@@ -170,11 +170,11 @@ final class ScrollingCaptureSession {
     }
 
     /// The first time a picture does not match the last one kept, the log says how close it came (a see-through
-    /// background, or something that keeps changing, shows up as a low share of equal rows).
+    /// background, or something that keeps changing, shows up as rows that differ a lot at every shift).
     private func reportMiss() {
-        let closest = stitcher.closest.map { "best: moved \($0.shift) rows with \(Int($0.score * 100)) % of rows equal" }
+        let closest = stitcher.closest.map { "best: moved \($0.shift) rows, rows differ by \(Int($0.distance.rounded())) of 255" }
             ?? "nothing to compare"
-        DiagnosticLog.write("scrolling: no overlap with the last picture (\(closest); \(Int((1 - stitcher.tolerance) * 100)) % needed)")
+        DiagnosticLog.write("scrolling: no overlap with the last picture (\(closest); \(Int(ScrollStitcher.matchThreshold)) or less needed)")
     }
 
     /// The scrollbar's thumb moves with the page at the right of the part that scrolls; it is left out.
@@ -235,26 +235,27 @@ final class ScrollingCaptureSession {
         return context.makeImage()
     }
 
-    /// A picture of the region, and its whole-row hashes (for telling when the page has stopped moving).
-    private func shot(_ content: SCShareableContent) async throws -> (image: CGImage, rows: [UInt64]) {
+    /// A picture of the region, and its profile (for telling when the page has stopped moving).
+    private func shot(_ content: SCShareableContent) async throws -> (image: CGImage, profile: FrameProfile) {
         let image = if let window {
             try await ScreenCapturer.captureWindow(window, showsCursor: false, includeShadow: false)
         } else {
             try await ScreenCapturer.captureRegion(region, in: content)
         }
-        return (image, FrameSignature.rows(of: image, ignoringRightPixels: scrollbar))
+        return (image, FrameProfile.of(image, ignoringRightPixels: scrollbar))
     }
 
-    /// After a scroll: looks every few milliseconds until two shots in a row are the same (the page has
-    /// stopped moving), or gives up waiting after the planner's limit.
+    /// After a scroll: looks every few milliseconds until two shots in a row show the same picture (the page
+    /// has stopped moving), or gives up waiting after the planner's limit.
     private func settledShot(_ content: SCShareableContent) async throws -> CGImage {
         let started = ContinuousClock.now
-        var previous: [UInt64]?
+        var previous: FrameProfile?
         while true {
             try await Task.sleep(for: ScrollPlanner.settlePoll)
-            let (image, rows) = try await shot(content)
-            if rows == previous || ContinuousClock.now - started > ScrollPlanner.settleLimit { return image }
-            previous = rows
+            let (image, profile) = try await shot(content)
+            let settled = previous.map { profile.distance(to: $0) <= ScrollStitcher.sameThreshold } ?? false
+            if settled || ContinuousClock.now - started > ScrollPlanner.settleLimit { return image }
+            previous = profile
         }
     }
 }
