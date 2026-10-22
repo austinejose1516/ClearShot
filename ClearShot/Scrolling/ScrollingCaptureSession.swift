@@ -17,6 +17,8 @@ final class ScrollCaptureState {
     /// Scrolling by hand went further than one picture between two looks: nothing overlaps the last kept
     /// picture. Scrolling back up a little lets it carry on.
     var lostTrack = false
+    /// The page was scrolled up: nothing is added until it is scrolled back down past where it was.
+    var scrolledUp = false
     /// The page so far, top to bottom, scaled down for the preview.
     var preview: [CGImage] = []
 
@@ -112,7 +114,7 @@ final class ScrollingCaptureSession {
                 case .noChange:
                     stillFrames += 1
                     if ScrollPlanner.shouldStop(noChangeInARow: stillFrames) { stopAuto("the page stopped moving") }
-                case .noMatch:
+                case .noMatch, .scrolledUp:
                     lostFrames += 1
                     step = ScrollPlanner.stepAfterNoMatch(step)
                     if ScrollPlanner.shouldStop(noMatchInARow: lostFrames) { stopAuto("lost track of the page") }
@@ -161,9 +163,17 @@ final class ScrollingCaptureSession {
         keep(image, step)
         if state.mode == .manual || state.reachedEnd {
             switch step {
-            case .noMatch: state.lostTrack = true
-            case .first, .appended: state.lostTrack = false
-            case .noChange: break
+            case .noMatch:
+                state.lostTrack = true
+                state.scrolledUp = false
+            case .scrolledUp:
+                state.scrolledUp = true
+                state.lostTrack = false
+            case .first, .appended:
+                state.lostTrack = false
+                state.scrolledUp = false
+            case .noChange:
+                break
             }
         }
         return step
@@ -194,6 +204,7 @@ final class ScrollingCaptureSession {
         case .appended(let rows): "added \(rows) rows"
         case .noChange: "the page did not move"
         case .noMatch: "no overlap with the last frame"
+        case .scrolledUp: "the page was scrolled up"
         }
     }
 
@@ -203,7 +214,7 @@ final class ScrollingCaptureSession {
         case .first, .appended:
             frames.append(image)
             updatePreview()
-        case .noChange, .noMatch:
+        case .noChange, .noMatch, .scrolledUp:
             break
         }
     }

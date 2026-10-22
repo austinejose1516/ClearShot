@@ -14,6 +14,9 @@ public struct ScrollStitcher {
         case noChange
         /// No overlap with the last kept frame found (scrolled too far, or something else changed).
         case noMatch
+        /// The frame shows what is above the last kept one: the page was scrolled up. Nothing is added;
+        /// scrolling back down past the last kept frame carries on.
+        case scrolledUp
     }
 
     /// Rows of one kept frame that make up part of the page.
@@ -114,11 +117,15 @@ public struct ScrollStitcher {
         let bandStart = top
         let bandEnd = frameHeight - bottom
         let bandHeight = bandEnd - bandStart
-        guard bandHeight > minimumOverlap else { return .noMatch }
+        // Almost every row stayed put: something changed in place (a GIF, a counter), the page did not move.
+        guard bandHeight > minimumOverlap else { return .noChange }
         closest = nil
         let best = bestShift(from: previous, to: frame, band: bandStart..<bandEnd, expectedShift: expectedShift)
         closest = best
         guard best.distance <= Self.matchThreshold else { return .noMatch }
+        // Lined up without moving: something on the page changed in place (a GIF, a counter), not a scroll.
+        guard best.shift != 0 else { return .noChange }
+        guard best.shift > 0 else { return .scrolledUp }
         if !stickyKnown {
             header = top
             footer = bottom
@@ -133,8 +140,9 @@ public struct ScrollStitcher {
         return .appended(rows: best.shift)
     }
 
-    /// The shift (in rows, 1 or more) at which the new frame's band lines up best with the previous one. A
-    /// shift of `s` means new row `i` shows what previous row `i + s` showed.
+    /// The shift (in rows) at which the new frame's band lines up best with the previous one. A shift of `s`
+    /// means new row `i` shows what previous row `i + s` showed: positive is a scroll down, negative a scroll
+    /// up, 0 no movement.
     private func bestShift(from previous: FrameProfile, to frame: FrameProfile, band: Range<Int>, expectedShift: Int?) -> (shift: Int, distance: Double) {
         let maxShift = band.count - minimumOverlap
         let width = frame.width
@@ -146,7 +154,10 @@ public struct ScrollStitcher {
                 func score(_ shift: Int, rowStep: Int, limit: Double) -> Double {
                     var total = 0, rows = 0
                     let giveUp = limit + 2 * Self.matchThreshold
-                    for row in stride(from: band.lowerBound, to: band.upperBound - shift, by: rowStep) {
+                    // Only rows that both frames have at this shift.
+                    let first = max(band.lowerBound, band.lowerBound - shift)
+                    let last = min(band.upperBound, band.upperBound - shift)
+                    for row in stride(from: first, to: last, by: rowStep) {
                         total &+= FrameProfile.rowDistance(new, row, old, row + shift, width: width)
                         rows += 1
                         if rows == Self.pruneAfterRows, Double(total) / Double(rows * width) > giveUp { return 255 }
@@ -162,20 +173,24 @@ public struct ScrollStitcher {
                         return (shift, distance)
                     }
                 }
-                /// The lowest score; near-ties go to the expected shift, else the smallest shift.
+                /// The lowest score; near-ties go to the expected shift, else to a scroll down over no movement
+                /// over a scroll up, the smallest first (a page of repeating rows fits several shifts).
                 func pick(_ scored: [(shift: Int, distance: Double)]) -> (shift: Int, distance: Double) {
                     let lowest = scored.map(\.distance).min() ?? 255
                     let ties = scored.filter { $0.distance <= lowest + Self.tieMargin }
                     if let expectedShift, let nearest = ties.min(by: { abs($0.shift - expectedShift) < abs($1.shift - expectedShift) }) {
                         return nearest
                     }
-                    return ties.min { $0.shift < $1.shift } ?? (shift: 1, distance: 255)
+                    func rank(_ shift: Int) -> (Int, Int) { (shift > 0 ? 0 : shift == 0 ? 1 : 2, abs(shift)) }
+                    return ties.min { rank($0.shift) < rank($1.shift) } ?? (shift: 1, distance: 255)
                 }
                 let step = Self.coarseStep
-                let coarse = scores(of: Array(stride(from: step, through: max(step, maxShift), by: step)), rowStep: step)
+                let reach = max(step, maxShift)
+                let coarseShifts = Array(stride(from: step, through: reach, by: step)) + Array(stride(from: -step, through: -reach, by: -step))
+                let coarse = scores(of: coarseShifts, rowStep: step)
                 let around = coarse.sorted { $0.distance < $1.distance }.prefix(Self.refined)
-                    .flatMap { max(1, $0.shift - step)...min(maxShift, $0.shift + step) }
-                return pick(scores(of: Array(Set(around)), rowStep: 1))
+                    .flatMap { max(-maxShift, $0.shift - step)...min(maxShift, $0.shift + step) }
+                return pick(scores(of: Array(Set(around + [0])), rowStep: 1))   // 0: changed in place, not scrolled
             }
         }
     }

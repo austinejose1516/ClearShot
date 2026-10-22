@@ -117,6 +117,29 @@ private func randomFrame(height: Int, seed: UInt64) -> FrameProfile {
         #expect(next == .appended(rows: 120) || next == .appended(rows: 119) || next == .appended(rows: 121), "\(next)")
     }
 
+    @Test func scrollingUpIsNoticedAndAddsNothing() {
+        let page = Page(length: 600, frameHeight: 200, header: 0, footer: 0)
+        var stitcher = ScrollStitcher(frameHeight: 200)
+        _ = stitcher.add(page.frame(offset: 200))
+        #expect(stitcher.add(page.frame(offset: 120)) == .scrolledUp)   // 80 rows up
+        #expect(stitcher.totalHeight == 200)
+        #expect(stitcher.closest?.shift == -80)
+        // Back down past the kept frame: it carries on.
+        #expect(stitcher.add(page.frame(offset: 260)) == .appended(rows: 60))
+    }
+
+    @Test func aChangeInPlaceIsNoChange() {
+        // Something on the page changed (a GIF, a counter) but nothing scrolled: 10 of 200 rows are new.
+        let page = Page(length: 600, frameHeight: 200, header: 0, footer: 0)
+        var stitcher = ScrollStitcher(frameHeight: 200)
+        _ = stitcher.add(page.frame(offset: 0))
+        var rows = (0..<200).map { page.frame(offset: 0).row($0) }
+        let noise = randomFrame(height: 10, seed: 3)
+        for (index, row) in (100..<110).enumerated() { rows[row] = noise.row(index) }
+        #expect(stitcher.add(page.profile(rows)) == .noChange)
+        #expect(stitcher.totalHeight == 200)
+    }
+
     @Test func theSameFrameAgainIsNoChange() {
         let page = Page()
         var stitcher = ScrollStitcher(frameHeight: page.frameHeight)

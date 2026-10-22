@@ -66,6 +66,7 @@ struct ScrollBarView: View {
             .animation(.snappy(duration: 0.2), value: state.pages)
             .animation(.snappy(duration: 0.2), value: state.reachedEnd)
             .animation(.snappy(duration: 0.2), value: state.lostTrack)
+            .animation(.snappy(duration: 0.2), value: state.scrolledUp)
             ToolbarActionButton(fill: AnyShapeStyle(.tint), help: "Finish and save (Enter)", action: onDone) {
                 Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
                 Text("Done")
@@ -77,6 +78,7 @@ struct ScrollBarView: View {
 
     private var symbol: String {
         if state.lostTrack { return "exclamationmark.triangle" }
+        if state.scrolledUp { return "arrow.down.circle" }
         if state.reachedEnd { return "checkmark.circle" }
         return state.mode == .automatic ? "arrow.down" : "arrow.up.and.down"
     }
@@ -84,6 +86,7 @@ struct ScrollBarView: View {
     private var status: String {
         let pages = "\(state.pages) \(state.pages == 1 ? "page" : "pages")"
         if state.lostTrack { return "Too fast · scroll back up a little" }
+        if state.scrolledUp { return "Scrolled up · scroll down to carry on" }
         if state.reachedEnd { return "End of page · \(pages)" }
         return state.mode == .automatic ? "Scrolling · \(pages)" : "\(pages) · scroll down"
     }
