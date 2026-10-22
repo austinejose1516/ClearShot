@@ -30,6 +30,17 @@ public struct R2Config: Equatable, Sendable {
         return URL(string: "https://\(account).r2.cloudflarestorage.com/\(bucket)/\(key)")
     }
 
+    /// The listing call: https://<account>.r2.cloudflarestorage.com/<bucket>?list-type=2&max-keys=1000, plus the
+    /// continuation token for the pages after the first.
+    public func listEndpoint(continuationToken: String?) -> URL? {
+        guard var components = endpoint(key: "").flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return nil }
+        components.path = String(components.path.dropLast())   // "/bucket/" → "/bucket"
+        var query = [URLQueryItem(name: "list-type", value: "2"), URLQueryItem(name: "max-keys", value: "1000")]
+        if let continuationToken { query.append(URLQueryItem(name: "continuation-token", value: continuationToken)) }
+        components.queryItems = query
+        return components.url
+    }
+
     /// The link people open: Public URL + "/" + name. A missing "https://" and a trailing "/" are forgiven.
     public func link(name: String) -> URL? {
         var base = publicURL.trimmingCharacters(in: .whitespacesAndNewlines)
