@@ -137,21 +137,23 @@ final class ScrollingCaptureSession {
             DiagnosticLog.write("scrolling capture: the page never moved, kept one picture")
             return Result(image: first, pages: 1)
         }
-        guard let page = ScrollAssembler.assemble(frames: frames, slices: stitcher.slices, columns: band) else { throw Failure.nothingCaptured }
+        // The whole width of what was picked, like other tools: a fixed sidebar repeats down the page, and picking a
+        // narrower area avoids that. Only the matching looks at the moving columns alone.
+        guard let page = ScrollAssembler.assemble(frames: frames, slices: stitcher.slices, columns: nil) else { throw Failure.nothingCaptured }
         DiagnosticLog.write("scrolling capture: \(frames.count) frames, \(stitcher.pages) pages, \(page.width)x\(page.height) px, "
                             + "header \(stitcher.header) footer \(stitcher.footer), in \((ContinuousClock.now - started).formatted(.units(allowed: [.seconds, .milliseconds])))")
         return Result(image: page, pages: stitcher.pages)
     }
 
     /// One picture for the stitcher. Until the page moves there is nothing to stitch: the first picture waits,
-    /// and the first one that differs tells which columns scroll. From then on only those are compared (and
-    /// kept), so a sidebar or toolbar that stays put cannot stop the rows from matching.
+    /// and the first one that differs tells which columns scroll. From then on only those are compared, so a
+    /// sidebar or toolbar that stays put cannot stop the rows from matching; the whole width is kept.
     private func add(_ image: CGImage, expectedShift: Int? = nil) -> ScrollStitcher.Step {
         if band == nil {
             guard let first = firstImage, let moved = ScrollBand.columns(between: first, and: image) else { return .noChange }
             let found = withoutScrollbar(moved)
             band = found
-            DiagnosticLog.write("scrolling part: columns \(found.lowerBound)..<\(found.upperBound) of \(image.width) px")
+            DiagnosticLog.write("scrolling matched on columns \(found.lowerBound)..<\(found.upperBound) of \(image.width) px")
             keep(first, stitcher.add(FrameProfile.of(first, columns: found)))
         }
         guard let band else { return .noChange }
@@ -225,7 +227,7 @@ final class ScrollingCaptureSession {
         var cache: [String: CGImage] = [:]
         state.preview = stitcher.slices.compactMap { slice in
             let key = "\(slice.frame):\(slice.rows.lowerBound)-\(slice.rows.upperBound)"
-            let small = previewCache[key] ?? Self.scaledDown(frames[slice.frame], rows: slice.rows, columns: band ?? 0..<frames[slice.frame].width)
+            let small = previewCache[key] ?? Self.scaledDown(frames[slice.frame], rows: slice.rows, columns: 0..<frames[slice.frame].width)
             cache[key] = small
             return small
         }
