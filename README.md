@@ -67,7 +67,8 @@ Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no acco
 - A 3-2-1 countdown, a start sound, and the toolbar turns into a bar with the time, **Pause** / **Resume** and **Stop**. The menu bar icon shows a record dot (a pause sign while paused). Stop with the bar, ⌃⇧R or **Stop** under Record in the menu (⌃⇧P pauses). ClearShot's toolbar, bar, frame and countdown never show in the video; the click rings do.
 - A window is recorded as its spot on screen, so if you move the window the video does not follow.
 - When you stop, the recording is saved to your folder like a screenshot and gets a card in the same row: the first frame, its length, a short "Saving" ring while it is made small, and a muted preview while the mouse is over it. The card has **Edit**, **Copy** (the file, ready to paste into Slack or Mail), **Share**, **Upload**, Reveal and Trash. The file goes to the clipboard too when "Copy to the clipboard" is on.
-- **Edit** grows the card into the video editor: a filmstrip with two handles to trim, and **Done** (⌘S), which writes the trimmed cut into the recording's file. The editor shrinks back into the card, which shows the new length. Closing without Done keeps the trim while the card is open.
+- **Edit** grows the card into the video editor: a filmstrip with two handles to trim, a **Blur** switch, and **Done** (⌘S), which writes the result into the recording's file. The editor shrinks back into the card, which shows the new length. Closing without Done keeps the trim and the blur boxes while the card is open.
+- **Blur** hides part of a recording for the whole clip. Turn the switch on and drag a box over the part to hide; the player shows it blurred at once. Click a box to select it, drag it to move, drag a corner dot to resize, and pick **Blur** or **Pixelate** in the top bar; **Remove** or ⌫ takes it away, Esc turns the switch off. Boxes can overlap. While the switch is on the drawing layer covers the player's controls; turn it off to use them.
 - Files stay small. Recordings are encoded at normal (1x) size, 30 frames per second, H.264 with a bitrate set from the picture size, so a minute of ordinary work is a few megabytes and the file plays anywhere, including in a browser. Settings → Recording has **Smaller** (default), **Better** and **Retina** (every pixel, about four times bigger).
 
 ### Quick Access card
@@ -78,6 +79,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 
 - **Share** (card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
 - **Upload** (card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png` (recordings go to `videos/`), and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
+- **Uploads…** (menu bar, and **Show Uploads** in Settings → Cloud) opens a window with everything in the bucket, newest first, with a switch for **All · Images · Videos**. Hover a card for **Copy link**, **Open in browser** and **Delete** (right-click works too); Delete asks once and then removes the file from the bucket. The pictures come from the public links each time the window opens: nothing is kept on your Mac.
 
 ### Editor
 
@@ -107,7 +109,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 - Save folder, file format, clipboard, shutter sound, mouse pointer in captures, card duration, launch at login.
 - **Compress files** (on by default): much smaller files that look the same. A PNG is saved with 256 colours when that is enough, which makes a typical screenshot about a fifth of the size. If a file would still be over 1 MB, for example with a photo or the wallpaper in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.
 - **Recording**: quality (Smaller, Better, Retina), microphone (and which one), the Mac's sound, the pointer and clicks. The same switches are on the toolbar before each recording.
-- **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect.
+- **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect and **Show Uploads**.
 - Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (full screen, area and the capture bar; turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 
 ## Keyboard shortcuts
@@ -124,6 +126,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Scrolling toolbar / bar | Enter / Esc | Start, then Done / cancel |
 | Record toolbar | Enter / Esc | Record / cancel (Esc also stops the countdown) |
 | Video editor | ⌘S | Done: back to the card |
+| Video editor | ⌫ / Esc | Remove the selected blur box / clear the selection and turn Blur off |
 | Editor | ⌘Z / ⇧⌘Z | Undo / redo |
 | Editor | ⌫ | Delete the selection |
 | Editor | ⌘A | Select all |
@@ -151,7 +154,7 @@ make dmg        # Release build + build/ClearShot-<version>.dmg
 ### Project layout
 
 - `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
-- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click rings, the video editor and exporter) and `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session).
+- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click bubbles, the video editor with its blur boxes, and the exporter), `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session) and `Uploads/` (the Uploads window: the listing, the cards and their pictures).
 - `scripts/make-icon.swift` — draws the app icon (`ClearShot/Resources/AppIcon-source.png`) and the menu bar glyph (`MenuBarIcon.png`, `@2x`); `scripts/make-icns.sh` then builds `AppIcon.icns` from the source PNG.
 - `~/Library/Logs/ClearShot.log` — a small diagnostics log (Settings → Show Log in Finder).
 
