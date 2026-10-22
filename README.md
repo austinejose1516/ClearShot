@@ -54,15 +54,16 @@ Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no acco
 
 ### Capture
 
+- **The bar** — **Screenshot**, **Scrolling Capture** or **Record** in the menu freezes the screen and shows a bar at the bottom, like the Mac's own ⇧⌘5 bar: pick what to make and how (**Area**, **Window** or **Full screen**), then drag, click a window or click a screen. Both choices are remembered. Space switches Area and Window, Esc cancels. Give the bar a key in Settings → Shortcuts; **Use the macOS shortcuts** makes it ⇧⌘5.
 - **Area** — the screen freezes and dims; drag a box and see its size as you go. Press **Space** to switch to window mode, **Esc** to cancel.
 - **Window** — hover to highlight a window, click to capture it with its shadow and rounded corners.
 - **Full screen** — the display under the mouse.
-- **Scrolling** — one tall screenshot of a long page. **Scrolling Capture ▸ Area / Window / Full Screen** in the menu, or ⌃⇧S for an area (Space switches to a window). A toolbar like the record one shows at the bottom: pick **By hand** (you scroll) or **Auto** (ClearShot scrolls; needs the Accessibility permission), **Change Area**, then **Start** or Enter. The bar counts the pages and a live preview beside the area shows the tall picture growing. Auto stops at the end of the page and waits. **Done** or Enter finishes, **Esc** cancels. A sticky header or footer is kept once. The result goes through the card, clipboard, file and editor (crop it there) like any screenshot.
+- **Scrolling** — one tall screenshot of a long page. **Scrolling Capture** in the menu (then pick on the bar), or ⌃⇧S for an area (Space switches to a window). A toolbar like the record one shows at the bottom: pick **By hand** (you scroll) or **Auto** (ClearShot scrolls; needs the Accessibility permission), **Change Area**, then **Start** or Enter. The bar counts the pages and a live preview beside the area shows the tall picture growing. Auto stops at the end of the page and waits. **Done** or Enter finishes, **Esc** cancels. A sticky header or footer is kept once. The result goes through the card, clipboard, file and editor (crop it there) like any screenshot.
 - Every capture flashes the screen, plays the shutter sound, goes to the clipboard and is saved to the Desktop as PNG or JPEG (change the folder and format in Settings).
 
 ### Record the screen
 
-- **Record ▸ Area / Window / Full Screen** in the menu, or **⌃⇧R** for an area (Space switches to a window). Nothing records yet: a toolbar shows at the bottom of the screen with **Mic** (and ▾ to pick a microphone), **Sound** (the Mac's audio), **Pointer**, **Clicks** (a ring where you click), the quality, and **Change Area** / **Change Window**. Press **Record** or Enter; Esc cancels.
+- **Record** in the menu (then pick on the bar), or **⌃⇧R** for an area (Space switches to a window). Nothing records yet: a toolbar shows at the bottom of the screen with **Mic** (and ▾ to pick a microphone), **Sound** (the Mac's audio), **Pointer**, **Clicks** (a ring where you click), the quality, and **Change Area** / **Change Window**. Press **Record** or Enter; Esc cancels.
 - A 3-2-1 countdown, a start sound, and the toolbar turns into a bar with the time, **Pause** / **Resume** and **Stop**. The menu bar icon shows a record dot (a pause sign while paused). Stop with the bar, ⌃⇧R or **Stop** under Record in the menu (⌃⇧P pauses). ClearShot's toolbar, bar, frame and countdown never show in the video; the click rings do.
 - A window is recorded as its spot on screen, so if you move the window the video does not follow.
 - When you stop, the recording is saved to your folder like a screenshot and gets a card in the same row: the first frame, its length, a short "Saving" ring while it is made small, and a muted preview while the mouse is over it. The card has **Edit**, **Copy** (the file, ready to paste into Slack or Mail), **Share**, **Upload**, Reveal and Trash. The file goes to the clipboard too when "Copy to the clipboard" is on.
@@ -107,7 +108,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 - **Compress files** (on by default): much smaller files that look the same. A PNG is saved with 256 colours when that is enough, which makes a typical screenshot about a fifth of the size. If a file would still be over 1 MB, for example with a photo or the wallpaper in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.
 - **Recording**: quality (Smaller, Better, Retina), microphone (and which one), the Mac's sound, the pointer and clicks. The same switches are on the toolbar before each recording.
 - **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect.
-- Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
+- Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (full screen, area and the capture bar; turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
 
 ## Keyboard shortcuts
 
@@ -119,6 +120,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Anywhere | ⌃⇧S / ⌃⌥⇧S / ⌃⇧⌘S | Scrolling capture of an area (Space switches to window) / a window / the full screen; press again to start from the toolbar, again to finish |
 | Anywhere | ⌃⇧R / ⌃⌥⇧R / ⌃⇧⌘R | Record an area (Space switches to window) / a window / the full screen; press again to start from the toolbar, again to stop |
 | Anywhere | ⌃⇧P | Pause or resume a recording |
+| Anywhere | none until you set one | Open the capture bar (**Use the macOS shortcuts** makes it ⇧⌘5) |
 | Scrolling toolbar / bar | Enter / Esc | Start, then Done / cancel |
 | Record toolbar | Enter / Esc | Record / cancel (Esc also stops the countdown) |
 | Video editor | ⌘S | Done: back to the card |
