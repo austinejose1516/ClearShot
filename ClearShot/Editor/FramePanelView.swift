@@ -3,11 +3,21 @@ import ClearShotCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Right-side panel: everything around the image.
+/// What the Frame panel edits: the screenshot editor's document, or a recording's frame.
+@MainActor protocol FrameEditing: AnyObject {
+    var frame: FrameStyle { get }
+    /// Live change (sliders); `commit()` settles it.
+    func setFrame(_ frame: FrameStyle)
+    func commit()
+}
+
+extension EditorDocument: FrameEditing {}
+
+/// Right-side panel: everything around the image (or the video).
 struct FramePanelView: View {
     static let width: CGFloat = 272
 
-    let document: EditorDocument
+    let document: any FrameEditing
 
     /// The colour panel reports every small move; one undo step once it settles.
     @State private var colourCommit: Task<Void, Never>?

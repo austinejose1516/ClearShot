@@ -41,7 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.quickAccess.editorDone(captureID, image: image)
         }
         VideoEditorStore.shared.onSaved = { [weak self] captureID, result in
-            self?.quickAccess.savedVideo(captureID, duration: result.duration, poster: result.poster, at: result.url)
+            self?.quickAccess.savedVideo(captureID, duration: result.duration, poster: result.poster,
+                                         encoding: result.encoding, at: result.url)
         }
         CardTransition.cards = quickAccess
         quickAccess.onDismissed = { captureID in

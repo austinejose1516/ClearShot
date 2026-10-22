@@ -16,6 +16,7 @@ struct VideoView: View {
     let state: VideoState
     let player: AVPlayer
     let encoding: VideoEncoding.Settings
+    let frameEditing: VideoFrameEditing
     let onCommand: (VideoCommand) -> Void
     let onRangeChanged: (TrimRange) -> Void
     let onSeek: (Double) -> Void
@@ -27,17 +28,32 @@ struct VideoView: View {
         VStack(spacing: 0) {
             actions
             Divider()
-            ZStack {
-                PlayerView(player: player)
-                VideoBlurOverlay(state: state, videoSize: CGSize(width: encoding.width, height: encoding.height),
-                                 onChanged: onBlursChanged)
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    ZStack {
+                        PlayerView(player: player)
+                        VideoBlurOverlay(state: state, layout: state.layout, canvas: canvasSize, onChanged: onBlursChanged)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.black)
+                    Divider()
+                    trim
+                }
+                if state.showsFramePanel {
+                    Divider()
+                    FramePanelView(document: frameEditing)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.black)
-            Divider()
-            trim
+            .animation(.snappy(duration: 0.25), value: state.showsFramePanel)
         }
         .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height)
+    }
+
+    /// The output's size: the video plus padding, even-sided like the file will be.
+    private var canvasSize: CGSize {
+        let output = encoding.resized(to: state.layout.canvasSize)
+        return CGSize(width: output.width, height: output.height)
     }
 
     private var busy: Bool { state.exportProgress != nil }
@@ -60,6 +76,12 @@ struct VideoView: View {
             .help("Drag a box over the part to hide, for the whole clip (Esc turns it off)")
             blurOptions
             Spacer(minLength: 12)
+            Toggle(isOn: Binding(get: { state.showsFramePanel }, set: { _ in onCommand(.toggleFramePanel) })) {
+                Label("Frame", systemImage: "sidebar.right").labelStyle(.titleAndIcon)
+            }
+            .toggleStyle(.button)
+            .buttonBorderShape(.capsule)
+            .help("Background, padding, corners and shadow around the video")
             DoneButton { onCommand(.done) }
         }
         .disabled(busy)

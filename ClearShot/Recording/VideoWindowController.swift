@@ -13,12 +13,15 @@ enum VideoCommand {
     case deleteSelection
     /// Esc: the selection clears and the Blur switch turns off.
     case escape
+    /// The Frame switch: the panel on the right.
+    case toggleFramePanel
 }
 
-/// What the card needs after the video editor saved: the new length and first frame, and where the file is.
+/// What the card needs after the video editor saved: the new length, first frame and size, and where the file is.
 struct VideoSaveResult {
     let duration: Double
     let poster: CGImage
+    let encoding: VideoEncoding.Settings
     let url: URL
 }
 
@@ -37,14 +40,45 @@ final class VideoState {
     var blurToolOn = false
     /// What a new box gets: the last mode picked.
     var blurMode: BlurMode = .blur
+    /// The recording's size in pixels.
+    let videoSize: CGSize
+    /// Background, padding, corners and shadow around the video, for the whole clip.
+    var frame = FrameStyle()
+    var showsFramePanel = false
 
     init(total: Double, frame: CGSize) {
         self.total = total
         range = .whole(total: total)
         blurs = VideoBlurs(frame: frame)
+        videoSize = frame
     }
 
-    var hasEdits: Bool { !range.isWhole || !blurs.isEmpty }
+    var hasEdits: Bool { !range.isWhole || !blurs.isEmpty || frame != FrameStyle() }
+
+    /// Where the video sits on the output: padding grows the picture around it.
+    var layout: CanvasLayout { CanvasLayout(imageSize: videoSize, frame: frame) }
+}
+
+/// The Frame panel's view of a recording: live changes go to the state, and the editor redraws.
+final class VideoFrameEditing: FrameEditing {
+    private let state: VideoState
+    /// `committed` is false for a slider mid-drag, true once it settles (or for a button).
+    var onChanged: ((_ committed: Bool) -> Void)?
+
+    init(state: VideoState) {
+        self.state = state
+    }
+
+    var frame: FrameStyle { state.frame }
+
+    func setFrame(_ frame: FrameStyle) {
+        state.frame = frame
+        onChanged?(false)
+    }
+
+    func commit() {
+        onChanged?(true)
+    }
 }
 
 /// The video editor, opened with Edit on a recording's card: play, trim, blur, then Done, which writes the
@@ -63,12 +97,13 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
     private let onCloseRequest: () -> Void
     private let onWindowClosed: () -> Void
     private var exportTask: Task<URL, any Error>?
-    private var lastExport: (range: TrimRange, blurs: VideoBlurs, url: URL)?
+    private var lastExport: (range: TrimRange, blurs: VideoBlurs, frame: FrameStyle, url: URL)?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var saved = false
     /// What the player draws (boxes, frame); it reads the latest on every frame.
     private let composer: VideoComposer
+    private let frameEditing: VideoFrameEditing
     private var previewTask: Task<Void, Never>?
 
     /// A trim or blur boxes not saved yet; they are kept while the card can reopen the editor.
@@ -85,6 +120,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         self.onWindowClosed = onWindowClosed
         state = VideoState(total: video.duration, frame: CGSize(width: video.encoding.width, height: video.encoding.height))
         composer = VideoComposer(blurs: state.blurs, frame: FrameStyle())
+        frameEditing = VideoFrameEditing(state: state)
         player = AVPlayer(url: fileURL)
         let window = VideoWindow(
             contentRect: NSRect(origin: .zero, size: VideoView.defaultSize),
@@ -100,10 +136,12 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
         window.onCommand = { [weak self] in self?.perform($0) }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
+        frameEditing.onChanged = { [weak self] committed in self?.refreshPreview(resizing: committed) }
         let host = NSHostingController(rootView: VideoView(
             state: state,
             player: player,
             encoding: encoding,
+            frameEditing: frameEditing,
             onCommand: { [weak self] in self?.perform($0) },
             onRangeChanged: { [weak self] in self?.rangeChanged($0) },
             onSeek: { [weak self] in self?.seek(to: $0) },
@@ -137,8 +175,19 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         case .escape:
             state.selectedBlur = nil
             state.blurToolOn = false
+        case .toggleFramePanel:
+            state.showsFramePanel.toggle()
+            // Opened on an untouched frame: the starter, so every control shows an effect (as for screenshots).
+            if state.showsFramePanel, state.frame == FrameStyle() {
+                state.frame = .starter
+                refreshPreview()
+            }
         }
     }
+
+    /// The output: the video plus the frame's padding, at even sizes, with the bitrate to match.
+    private var outputEncoding: VideoEncoding.Settings { encoding.resized(to: state.layout.canvasSize) }
+    private var outputSize: CGSize { CGSize(width: outputEncoding.width, height: outputEncoding.height) }
 
     /// ⌫ and Esc while blurring; everything else goes on to the player.
     private func handleKey(_ keyCode: UInt16) -> Bool {
@@ -161,9 +210,10 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         guard let window else { return nil }
         let content = window.contentLayoutRect
         let bottom = VideoView.trimAreaHeight + 1
+        let panel = state.showsFramePanel ? FramePanelView.width + 1 : 0
         let player = CGRect(x: content.minX, y: content.minY + bottom,
-                            width: content.width, height: content.height - bottom - VideoView.actionsHeight - 1)
-        return window.convertToScreen(AspectFit.rect(for: CGSize(width: encoding.width, height: encoding.height), in: player))
+                            width: content.width - panel, height: content.height - bottom - VideoView.actionsHeight - 1)
+        return window.convertToScreen(AspectFit.rect(for: state.layout.canvasSize, in: player))
     }
 
     // MARK: - Playback
@@ -199,18 +249,20 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
 
     // MARK: - Blur preview
 
-    /// The player draws the boxes through a video composition. A paused player does not redraw by itself, so
-    /// the frame is sought again at the same time.
-    private func refreshPreview() {
-        composer.update(blurs: state.blurs, frame: FrameStyle())
+    /// The player draws the boxes and the frame through a video composition. A paused player does not redraw by
+    /// itself, so the frame is sought again at the same time. The composition carries the output size, so when
+    /// padding changed it it is made again; `resizing` false (a slider mid-drag) waits for the drag to settle.
+    private func refreshPreview(resizing: Bool = true) {
+        composer.update(blurs: state.blurs, frame: state.frame)
         guard let item = player.currentItem else { return }
         previewTask?.cancel()
         let needsComposition = !composer.edits.isEmpty
-        let renderSize = CGSize(width: encoding.width, height: encoding.height)
+        let renderSize = outputSize
         let player = player
         let composer = composer
+        let sizeChanged = item.videoComposition.map { $0.renderSize != renderSize } ?? true
         previewTask = Task {
-            if needsComposition, item.videoComposition == nil {
+            if needsComposition, sizeChanged, resizing || item.videoComposition == nil {
                 guard let composition = try? await VideoComposer.composition(for: item.asset, composer: composer, renderSize: renderSize),
                       !Task.isCancelled else { return }
                 item.videoComposition = composition
@@ -245,11 +297,14 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
     /// folder. The last cut is reused while nothing changed, so pressing Done again does not encode twice.
     private func result() async throws -> URL {
         if !state.hasEdits { return fileURL }
-        if let lastExport, lastExport.range == state.range, lastExport.blurs == state.blurs { return lastExport.url }
+        if let lastExport, lastExport.range == state.range, lastExport.blurs == state.blurs, lastExport.frame == state.frame {
+            return lastExport.url
+        }
         exportTask?.cancel()
         let range = state.range
         let blurs = state.blurs
-        let encoding = encoding
+        let frame = state.frame
+        let encoding = outputEncoding
         let source = fileURL
         let target = TemporaryFiles.recordingsFolder.appending(path: "\(UUID().uuidString) trim.mp4")
         let state = state
@@ -258,7 +313,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         let task = Task.detached(priority: .userInitiated) {
             try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             try await VideoExporter.export(from: AVURLAsset(url: source), range: range, encoding: encoding,
-                                           composer: VideoComposer(blurs: blurs, frame: FrameStyle()), to: target) { fraction in
+                                           composer: VideoComposer(blurs: blurs, frame: frame), to: target) { fraction in
                 Task { @MainActor in state.exportProgress = fraction }
             }
             return target
@@ -271,10 +326,11 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         let url = try await task.value
         let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path(percentEncoded: false))[.size] as? Int) ?? 0
         DiagnosticLog.write("trimmed \(VideoTime.length(range.duration)) at \(encoding.width)x\(encoding.height)"
-                            + "\(blurs.isEmpty ? "" : ", \(blurs.regions.count) blur boxes"): \(bytes / 1024) KB in "
+                            + "\(blurs.isEmpty ? "" : ", \(blurs.regions.count) blur boxes")\(frame == FrameStyle() ? "" : ", framed")"
+                            + ": \(bytes / 1024) KB in "
                             + "\((ContinuousClock.now - started).formatted(.units(allowed: [.seconds, .milliseconds])))")
         if let lastExport { try? FileManager.default.removeItem(at: lastExport.url) }
-        lastExport = (range, blurs, url)
+        lastExport = (range, blurs, frame, url)
         return url
     }
 
@@ -296,7 +352,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         saved = true
         let duration = try await CMTimeGetSeconds(AVURLAsset(url: url).load(.duration))
         guard let poster = await RecordingFinisher.poster(of: url) else { return onSaved(nil) }
-        onSaved(VideoSaveResult(duration: duration, poster: poster, url: url))
+        onSaved(VideoSaveResult(duration: duration, poster: poster, encoding: outputEncoding, url: url))
     }
 
     /// Runs an output step; a cancelled export is quiet, anything else is shown.

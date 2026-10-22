@@ -94,9 +94,9 @@ final class QuickAccessController {
     }
 
     /// The video editor saved a trim (it writes the file itself): the new length and first frame.
-    func savedVideo(_ id: Capture.ID, duration: Double, poster: CGImage, at url: URL) {
+    func savedVideo(_ id: Capture.ID, duration: Double, poster: CGImage, encoding: VideoEncoding.Settings, at url: URL) {
         guard let index = entries.firstIndex(where: { $0.capture.id == id }) else { return }
-        entries[index].capture.saved(videoDuration: duration, poster: poster, at: url)
+        entries[index].capture.saved(videoDuration: duration, poster: poster, encoding: encoding, at: url)
         entries[index].presentation.videoDuration = duration
         entries[index].presentation.fileURL = url
         refresh(index, image: poster)

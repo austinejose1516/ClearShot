@@ -7,7 +7,10 @@ import SwiftUI
 /// selection. With the switch off the boxes are only drawn and the mouse goes to the player.
 struct VideoBlurOverlay: View {
     let state: VideoState
-    let videoSize: CGSize
+    /// Where the video sits inside the frame's padding.
+    let layout: CanvasLayout
+    /// The output's size (the frame's canvas, even-sided).
+    let canvas: CGSize
     /// After a box was added, moved, resized: the controller redraws the blurred frame.
     let onChanged: () -> Void
 
@@ -26,20 +29,24 @@ struct VideoBlurOverlay: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let fitted = AspectFit.rect(for: videoSize, in: CGRect(origin: .zero, size: proxy.size))
-            let scale = videoSize.width > 0 ? fitted.width / videoSize.width : 1
+            let fitted = AspectFit.rect(for: canvas, in: CGRect(origin: .zero, size: proxy.size))
+            let scale = canvas.width > 0 ? fitted.width / canvas.width : 1
+            // The video is centred on the canvas, as the compositor draws it.
+            let video = CGRect(x: fitted.minX + (canvas.width - layout.imageSize.width) / 2 * scale,
+                               y: fitted.minY + (canvas.height - layout.imageSize.height) / 2 * scale,
+                               width: layout.imageSize.width * scale, height: layout.imageSize.height * scale)
             ZStack(alignment: .topLeading) {
                 Color.clear
                 ForEach(state.blurs.regions) { region in
-                    box(region.rect, on: fitted, scale: scale, selected: region.id == state.selectedBlur)
+                    box(region.rect, on: video, scale: scale, selected: region.id == state.selectedBlur)
                 }
                 if let pending {
-                    box(pending, on: fitted, scale: scale, selected: false).opacity(0.8)
+                    box(pending, on: video, scale: scale, selected: false).opacity(0.8)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .contentShape(Rectangle())
-            .gesture(gesture(on: fitted, scale: scale))
+            .gesture(gesture(on: video, scale: scale))
             .onContinuousHover { phase in
                 switch phase {
                 case .active: NSCursor.crosshair.set()
