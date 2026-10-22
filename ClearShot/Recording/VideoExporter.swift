@@ -18,8 +18,9 @@ nonisolated enum VideoExporter {
         }
     }
 
-    /// `blurs`, when it has boxes, are drawn into every frame on the way through.
-    static func export(from asset: AVAsset, range: TrimRange, encoding: VideoEncoding.Settings, blurs: VideoBlurs? = nil,
+    /// `composer`, when it has edits (blur boxes, a frame), draws every frame on the way through; `encoding` is
+    /// then the framed size.
+    static func export(from asset: AVAsset, range: TrimRange, encoding: VideoEncoding.Settings, composer: VideoComposer? = nil,
                        to destination: URL, progress: @escaping @Sendable (Double) -> Void) async throws {
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else { throw Failure.noVideoTrack }
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
@@ -30,9 +31,10 @@ nonisolated enum VideoExporter {
         reader.timeRange = timeRange
         let pixelFormat = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         let videoOutput: AVAssetReaderOutput
-        if let blurs, !blurs.isEmpty {
+        if let composer, !composer.edits.isEmpty {
             let composed = AVAssetReaderVideoCompositionOutput(videoTracks: [videoTrack], videoSettings: pixelFormat)
-            composed.videoComposition = try await VideoBlurComposition(blurs: blurs).composition(for: asset)
+            composed.videoComposition = try await VideoComposer.composition(
+                for: asset, composer: composer, renderSize: CGSize(width: encoding.width, height: encoding.height))
             videoOutput = composed
         } else {
             videoOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: pixelFormat)

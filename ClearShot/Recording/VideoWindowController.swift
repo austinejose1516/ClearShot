@@ -67,8 +67,8 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var saved = false
-    /// The boxes the player draws; it reads the latest on every frame.
-    private let liveBlurs: VideoBlurComposition
+    /// What the player draws (boxes, frame); it reads the latest on every frame.
+    private let composer: VideoComposer
     private var previewTask: Task<Void, Never>?
 
     /// A trim or blur boxes not saved yet; they are kept while the card can reopen the editor.
@@ -84,7 +84,7 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         self.onCloseRequest = onCloseRequest
         self.onWindowClosed = onWindowClosed
         state = VideoState(total: video.duration, frame: CGSize(width: video.encoding.width, height: video.encoding.height))
-        liveBlurs = VideoBlurComposition(blurs: state.blurs)
+        composer = VideoComposer(blurs: state.blurs, frame: FrameStyle())
         player = AVPlayer(url: fileURL)
         let window = VideoWindow(
             contentRect: NSRect(origin: .zero, size: VideoView.defaultSize),
@@ -202,15 +202,17 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
     /// The player draws the boxes through a video composition. A paused player does not redraw by itself, so
     /// the frame is sought again at the same time.
     private func refreshPreview() {
-        liveBlurs.update(state.blurs)
+        composer.update(blurs: state.blurs, frame: FrameStyle())
         guard let item = player.currentItem else { return }
         previewTask?.cancel()
-        let needsComposition = !state.blurs.isEmpty
+        let needsComposition = !composer.edits.isEmpty
+        let renderSize = CGSize(width: encoding.width, height: encoding.height)
         let player = player
-        let liveBlurs = liveBlurs
+        let composer = composer
         previewTask = Task {
             if needsComposition, item.videoComposition == nil {
-                guard let composition = try? await liveBlurs.composition(for: item.asset), !Task.isCancelled else { return }
+                guard let composition = try? await VideoComposer.composition(for: item.asset, composer: composer, renderSize: renderSize),
+                      !Task.isCancelled else { return }
                 item.videoComposition = composition
             } else if !needsComposition {
                 item.videoComposition = nil
@@ -255,7 +257,8 @@ final class VideoWindowController: NSWindowController, NSWindowDelegate {
         let started = ContinuousClock.now
         let task = Task.detached(priority: .userInitiated) {
             try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try await VideoExporter.export(from: AVURLAsset(url: source), range: range, encoding: encoding, blurs: blurs, to: target) { fraction in
+            try await VideoExporter.export(from: AVURLAsset(url: source), range: range, encoding: encoding,
+                                           composer: VideoComposer(blurs: blurs, frame: FrameStyle()), to: target) { fraction in
                 Task { @MainActor in state.exportProgress = fraction }
             }
             return target
