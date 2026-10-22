@@ -37,6 +37,7 @@ struct CloudSettingsTab: View {
                                 Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                             }
                             Spacer(minLength: 8)
+                            Button("Show Uploads") { (NSApp.delegate as? AppDelegate)?.showUploads() }
                             Button("Disconnect") { settings.cloudConnected = false }
                         }
                     }

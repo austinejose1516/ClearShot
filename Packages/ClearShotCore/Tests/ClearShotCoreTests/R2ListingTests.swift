@@ -81,6 +81,8 @@ import Testing
                 == "https://abc123.r2.cloudflarestorage.com/shots?list-type=2&max-keys=1000")
         #expect(config.listEndpoint(continuationToken: "a b")?.absoluteString
                 == "https://abc123.r2.cloudflarestorage.com/shots?list-type=2&max-keys=1000&continuation-token=a%20b")
+        #expect(config.listEndpoint(continuationToken: "x+y/z=")?.absoluteString
+                == "https://abc123.r2.cloudflarestorage.com/shots?list-type=2&max-keys=1000&continuation-token=x%2By%2Fz%3D")
         #expect(R2Config().listEndpoint(continuationToken: nil) == nil)
     }
 }

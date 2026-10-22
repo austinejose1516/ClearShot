@@ -38,6 +38,19 @@ struct R2Uploader {
         return link
     }
 
+    /// Every image and video in the bucket, page by page (R2 answers up to 1000 keys at a time).
+    func list() async throws -> [UploadedItem] {
+        var items: [UploadedItem] = []
+        var token: String?
+        repeat {
+            guard let url = config.listEndpoint(continuationToken: token) else { throw R2Failure.badSettings }
+            let page = try await R2Listing.parse(send("GET", url))
+            items += page.items
+            token = page.nextToken
+        } while token != nil
+        return items
+    }
+
     func delete(key: String) async throws {
         guard let url = config.endpoint(key: key) else { throw R2Failure.badSettings }
         _ = try await send("DELETE", url)

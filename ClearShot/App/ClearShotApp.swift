@@ -8,7 +8,8 @@ struct ClearShotApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarMenu(onAbout: appDelegate.showAbout, onSettings: { appDelegate.showSettings() })
+            MenuBarMenu(onAbout: appDelegate.showAbout, onSettings: { appDelegate.showSettings() },
+                        onUploads: appDelegate.showUploads)
                 .environment(appDelegate.captureCoordinator)
                 .environment(appDelegate.recording)
                 .environment(appDelegate.scrolling)

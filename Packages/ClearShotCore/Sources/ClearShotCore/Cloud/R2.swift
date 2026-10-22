@@ -36,8 +36,11 @@ public struct R2Config: Equatable, Sendable {
         guard var components = endpoint(key: "").flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return nil }
         components.path = String(components.path.dropLast())   // "/bucket/" → "/bucket"
         var query = [URLQueryItem(name: "list-type", value: "2"), URLQueryItem(name: "max-keys", value: "1000")]
-        if let continuationToken { query.append(URLQueryItem(name: "continuation-token", value: continuationToken)) }
-        components.queryItems = query
+        if let continuationToken {
+            // Tokens can hold "+", "/" and "=": encoded the SigV4 way, so the wire and the signature agree.
+            query.append(URLQueryItem(name: "continuation-token", value: SigV4Signer.uriEncode(continuationToken)))
+        }
+        components.percentEncodedQueryItems = query
         return components.url
     }
 

@@ -12,6 +12,7 @@ struct MenuBarMenu: View {
     @Environment(UpdateChecker.self) private var updates
     let onAbout: () -> Void
     let onSettings: () -> Void
+    let onUploads: () -> Void
 
     var body: some View {
         if let version = updates.availableVersion {
@@ -30,6 +31,7 @@ struct MenuBarMenu: View {
             .disabled(scrolling.state != .idle)
         item("Record", CaptureAction.recording.symbol) { launcher.open(.recording) }
             .disabled(recording.state != .idle)
+        item("Uploads…", "photo.on.rectangle.angled", action: onUploads)
 
         Divider()
         item("About ClearShot", "info.circle", action: onAbout)

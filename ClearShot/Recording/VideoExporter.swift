@@ -38,6 +38,7 @@ nonisolated enum VideoExporter {
         let partURL = destination.deletingLastPathComponent().appending(path: ".\(destination.lastPathComponent).part")
         try? FileManager.default.removeItem(at: partURL)
         let writer = try AVAssetWriter(outputURL: partURL, fileType: .mp4)
+        writer.shouldOptimizeForNetworkUse = true   // the index first, so a browser (or the Uploads window) starts at once
         let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings(encoding))
         videoInput.expectsMediaDataInRealTime = false
         writer.add(videoInput)

@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboarding: PermissionOnboardingWindowController?
     private(set) lazy var updates = UpdateChecker(settings: settings)
     private lazy var settingsWindow = SettingsWindowController(settings: settings, updates: updates)
+    private lazy var uploadsWindow = UploadsWindowController(settings: settings)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
@@ -77,6 +78,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showSettings(tab: SettingsWindowController.Tab? = nil) {
         if let tab { settingsWindow.show(tab) }
         settingsWindow.window.map(WindowPresenter.show)
+    }
+
+    /// The Uploads window: what is in the cloud bucket, with copy link, open and delete.
+    func showUploads() {
+        uploadsWindow.show()
     }
 
     func showAbout() {
