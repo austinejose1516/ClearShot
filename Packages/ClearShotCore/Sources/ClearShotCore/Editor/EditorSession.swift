@@ -134,15 +134,20 @@ public final class EditorSession {
 
     // MARK: - Mouse (image coordinates; `tolerance` is how near counts as a hit, in image pixels)
 
-    public func dragChanged(to point: CGPoint, tolerance: CGFloat) {
+    /// `modifiers` are the keys held now; `clickCount` 2 is the second press of a double-click.
+    public func dragChanged(to point: CGPoint, tolerance: CGFloat, modifiers: EditorModifiers = [], clickCount: Int = 1) {
         guard let gesture else {
-            press(at: point, tolerance: tolerance)
+            if clickCount == 2 {
+                doubleClick(at: point, tolerance: tolerance, modifiers: modifiers)
+            } else {
+                press(at: point, tolerance: tolerance, modifiers: modifiers)
+            }
             return
         }
         switch gesture {
         case .drawing(let id, let start):
             guard var annotation = document.annotation(id: id),
-                  let figure = tool.figure(from: start, to: point, values: defaults) else { return }
+                  let figure = tool.figure(from: start, to: point, values: defaults, constrained: modifiers.contains(.shift)) else { return }
             annotation.kind = figure.asKind
             document.update(annotation)
         case .scribbling(let id):
@@ -156,7 +161,7 @@ public final class EditorSession {
             self.gesture = .moving(last: point)
         case .reshaping(let initial, let handle):
             var annotation = initial
-            annotation.drag(handle, to: point)
+            annotation.drag(handle, to: point, proportional: modifiers.contains(.shift))
             document.update(annotation)
         case .pressedOnSelectedText(_, let start):
             guard hypot(point.x - start.x, point.y - start.y) > tolerance / 2 else { return }
@@ -202,18 +207,39 @@ public final class EditorSession {
         }
     }
 
-    public func cursor(at point: CGPoint, tolerance: CGFloat) -> CursorHint {
+    public func cursor(at point: CGPoint, tolerance: CGFloat, modifiers: EditorModifiers = []) -> CursorHint {
         if let hit = handle(at: point, tolerance: tolerance) {
             return hit.kind.isCorner ? .resize(hit.kind) : .moveHandle
         }
-        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance, includingInterior: tool == .select),
+        if grabsExisting(with: modifiers), let id = document.hitTest(point, tolerance: tolerance, includingInterior: true),
            let annotation = document.annotation(id: id) {
             return annotation.editableText != nil && document.selection == [id] ? .editText : .move
         }
         return .tool(tool)
     }
 
-    private func press(at point: CGPoint, tolerance: CGFloat) {
+    /// Whether a press on an existing annotation (its outline or its inside) picks it up: always for Select,
+    /// and for a drawing tool unless ⌥ is held, which draws over or inside it instead. Pen, Highlighter and
+    /// Crop never grab.
+    private func grabsExisting(with modifiers: EditorModifiers) -> Bool {
+        tool == .select || (tool.grabsExisting && !modifiers.contains(.option))
+    }
+
+    /// A double-click on a curve's middle dot makes it straight again; anywhere else it is an ordinary press.
+    private func doubleClick(at point: CGPoint, tolerance: CGFloat, modifiers: EditorModifiers) {
+        if let hit = handle(at: point, tolerance: tolerance), hit.kind == .middle,
+           var annotation = document.annotation(id: hit.id), case .curve(var curve) = annotation.kind {
+            curve.straighten()
+            annotation.kind = .curve(curve)
+            document.update(annotation)
+            document.commit()
+            gesture = .idle
+            return
+        }
+        press(at: point, tolerance: tolerance, modifiers: modifiers)
+    }
+
+    private func press(at point: CGPoint, tolerance: CGFloat, modifiers: EditorModifiers) {
         if editingTextID != nil {
             finishTextEditing()
             gesture = .idle
@@ -224,7 +250,7 @@ public final class EditorSession {
             gesture = .reshaping(annotation, hit.kind)
             return
         }
-        if tool.grabsExisting, let id = document.hitTest(point, tolerance: tolerance, includingInterior: tool == .select) {
+        if grabsExisting(with: modifiers), let id = document.hitTest(point, tolerance: tolerance, includingInterior: true) {
             grab(id, at: point)
             return
         }

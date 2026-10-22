@@ -83,12 +83,12 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 
 | Tool | What it does |
 |---|---|
-| Select | Click to select (inside rectangles and ellipses too), drag to move, drag a dot to resize |
-| Line | A straight line, with or without an arrowhead |
-| Arrow | Drag to draw; drag the middle dot anywhere to bend it, and the head follows the curve; **Both ends** puts a head at each end |
+| Select | Click to select (inside shapes too), drag to move, drag a dot to resize; **⇧** keeps the proportions |
+| Line | A straight line, with or without an arrowhead; **⇧** snaps it to 45° |
+| Arrow | Drag to draw (**⇧** snaps to 45°); drag the middle dot anywhere to bend it, and the head follows the curve; double-click the dot to straighten it; **Both ends** puts a head at each end |
 | Pen | Freehand, smoothed |
 | Highlighter | A wide, see-through marker that keeps the text under it crisp; remembers its own colour and width |
-| Rectangle, Ellipse | Outline or filled; rectangles can have rounded corners |
+| Rectangle, Ellipse | Outline or filled; **⇧** draws a square or a circle; rectangles can have rounded corners |
 | Text | Drag a box to set the size, or click; type; **Enter** finishes, **⌘Enter** adds a line; bold, italic, underline and boxed styles |
 | Speech bubble | Draw the bubble, type, drag its tail |
 | Step number | Click to place 1, 2, 3…; pick the size or drag a corner dot |
@@ -96,7 +96,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Crop | Drag the part to keep, then **Crop** or **Enter** |
 
 - The toolbar only shows the settings that apply: colour (a dropdown with presets and any custom colour), opacity, width slider, fill, corners, arrowhead, both ends, text size, bold / italic / underline, boxed, step size, blur mode.
-- A tool stays on until you press Esc or pick Select, so you can draw several shapes in a row. The shape you just drew stays selected, so colour and width changes apply to it. Over an existing shape the pointer takes over: drag to move it, drag a dot to resize it.
+- A tool stays on until you press Esc or pick Select, so you can draw several shapes in a row. The shape you just drew stays selected, so colour and width changes apply to it. Over an existing shape, inside it too, the pointer takes over: drag to move it, drag a dot to resize it. Hold **⌥** to draw inside a shape instead.
 - Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot. Zoom with ⌘+ / ⌘−, the zoom menu or a trackpad pinch.
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider.
 - **Edit** on a card grows the card into the editor. **Done** (⌘S) shrinks it back into the card, which shows the edited picture, says "Saved" and writes it into the same file; **Copy**, **Share** and **Upload** are on the card. Closing the editor goes back to the card too. **Edit** again brings back your drawings, still movable, while the card is open. The same goes for every kind of capture: area, window, full screen, scrolling and recordings.

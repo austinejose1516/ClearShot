@@ -54,7 +54,7 @@ public struct TextContent: Figure {
     }
 
     /// A corner drag scales the font; the opposite corner stays where it is.
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
         let current = frame
         guard let anchor = current.anchor(opposite: handle), current.width > 0 else { return }
         fontSize = max(Self.minimumFontSize, fontSize * max(1, abs(point.x - anchor.x)) / current.width)

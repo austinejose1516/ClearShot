@@ -44,7 +44,8 @@ public protocol Figure: Equatable, Sendable {
     /// Inside an outline shape (unfilled rectangle or ellipse). The pointer selects by clicking inside.
     func interiorContains(_ point: CGPoint) -> Bool
     mutating func move(by delta: CGVector)
-    mutating func drag(_ handle: HandleKind, to point: CGPoint)
+    /// `proportional` (⇧ held): a corner drag keeps the shape's proportions.
+    mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool)
     /// This type's own part of a toolbar change (arrowhead, font size, …). Colour, width and fill live on the style.
     mutating func apply(_ change: StyleChange)
     /// Writes this type's own values into the toolbar values.
@@ -58,7 +59,8 @@ extension Figure {
     public var isTooSmall: Bool { max(bounds.width, bounds.height) < 3 }
     public var editableText: String? { nil }
     public func interiorContains(_ point: CGPoint) -> Bool { false }
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {}
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {}
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint) { drag(handle, to: point, proportional: false) }
     public mutating func apply(_ change: StyleChange) {}
     public func read(into values: inout StyleValues) {}
     public mutating func setEditableText(_ text: String) {}
@@ -144,8 +146,8 @@ public struct Annotation: Identifiable, Equatable, Sendable {
         kind.modify { $0.move(by: delta) }
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
-        kind.modify { $0.drag(handle, to: point) }
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool = false) {
+        kind.modify { $0.drag(handle, to: point, proportional: proportional) }
     }
 
     public mutating func setEditableText(_ text: String) {

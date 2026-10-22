@@ -52,13 +52,13 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
     /// One line of help, shown when the tool is picked.
     public var hint: String {
         switch self {
-        case .select: "Click to select · drag to move · drag a dot to resize · Delete removes"
-        case .line: "Drag to draw"
-        case .arrow: "Drag to draw · drag the middle dot anywhere to bend it · Both ends puts a head at each end"
+        case .select: "Click to select · drag to move · drag a dot to resize (⇧ keeps the shape) · Delete removes"
+        case .line: "Drag to draw · ⇧ snaps to 45°"
+        case .arrow: "Drag to draw · drag the middle dot to bend it, double-click it to straighten · ⇧ snaps to 45° · Both ends adds a head"
         case .pen: "Drag to draw freehand"
         case .highlight: "Drag over the text to mark it"
-        case .rect: "Drag to draw · Fill makes it solid · Corners rounds it"
-        case .ellipse: "Drag to draw · Fill makes it solid"
+        case .rect: "Drag to draw · ⇧ for a square · Fill makes it solid · Corners rounds it"
+        case .ellipse: "Drag to draw · ⇧ for a circle · Fill makes it solid"
         case .text: "Click and type · Enter finishes · ⌘Enter adds a line · Box turns the background on or off"
         case .bubble: "Drag to draw the bubble, type, then drag its tail"
         case .step: "Click to place the next number · drag a corner dot to resize"
@@ -88,11 +88,14 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
     public var grabsExisting: Bool { ![.pen, .highlight, .crop].contains(self) }
 
     /// What a drag from `start` to `end` draws with this tool; nil for tools that do not draw by dragging.
-    public func figure(from start: CGPoint, to end: CGPoint, values: StyleValues) -> (any Figure)? {
-        let area = SelectionGeometry.normalizedRect(from: start, to: end)
+    /// `constrained` (⇧ held): a square or a circle, and a line at the nearest 45°.
+    public func figure(from start: CGPoint, to end: CGPoint, values: StyleValues, constrained: Bool = false) -> (any Figure)? {
+        let squareEnd = constrained ? ConstrainedGeometry.squareEnd(from: start, to: end) : end
+        let snappedEnd = constrained ? ConstrainedGeometry.snappedEnd(from: start, to: end) : end
+        let area = SelectionGeometry.normalizedRect(from: start, to: squareEnd)
         return switch self {
-        case .line: Line(start: start, end: end)
-        case .arrow: Curve(start: start, end: end, arrow: true, bothEnds: values.bothEnds)
+        case .line: Line(start: start, end: snappedEnd)
+        case .arrow: Curve(start: start, end: snappedEnd, arrow: true, bothEnds: values.bothEnds)
         case .rect: Box(rect: area, form: .rectangle, cornerRadius: values.cornerRadius)
         case .ellipse: Box(rect: area, form: .ellipse)
         case .bubble: Bubble.drawn(from: start, to: end, fontSize: values.fontSize)

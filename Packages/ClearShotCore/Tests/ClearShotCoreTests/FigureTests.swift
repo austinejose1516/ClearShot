@@ -52,6 +52,21 @@ import Testing
         #expect(curve.start == CGPoint(x: 10, y: 10))
     }
 
+    @Test func boxCornerDragWithShiftKeepsTheProportions() {
+        var box = Box(rect: CGRect(x: 0, y: 0, width: 100, height: 50), form: .rectangle)
+        box.drag(.bottomRight, to: CGPoint(x: 300, y: 300), proportional: true)
+        #expect(box.rect == CGRect(x: 0, y: 0, width: 600, height: 300))
+        box = Box(rect: CGRect(x: 0, y: 0, width: 100, height: 50), form: .rectangle)
+        box.drag(.topLeft, to: CGPoint(x: -100, y: 40), proportional: true)   // pulled 200 left: the height follows
+        #expect(box.rect == CGRect(x: -100, y: -50, width: 200, height: 100))
+    }
+
+    @Test func straighteningACurveResetsItsBendAndLean() {
+        var curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, lean: 10, arrow: true)
+        curve.straighten()
+        #expect(curve == Curve(start: .zero, end: CGPoint(x: 100, y: 0), arrow: true))
+    }
+
     @Test func aReversedCurveSwapsItsEndsAndKeepsItsShape() {
         let curve = Curve(start: .zero, end: CGPoint(x: 100, y: 0), bend: 30, lean: 10, arrow: true)
         let reversed = curve.reversed

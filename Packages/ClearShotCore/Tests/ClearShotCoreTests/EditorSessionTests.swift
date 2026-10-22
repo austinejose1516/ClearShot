@@ -9,9 +9,9 @@ import Testing
 
     private func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
 
-    /// One mouse drag through the points (a single point is a click).
-    private func drag(_ session: EditorSession, _ points: CGPoint...) {
-        for point in points { session.dragChanged(to: point, tolerance: 4) }
+    /// One mouse drag through the points (a single point is a click), with `modifiers` held throughout.
+    private func drag(_ session: EditorSession, _ points: CGPoint..., modifiers: EditorModifiers = []) {
+        for point in points { session.dragChanged(to: point, tolerance: 4, modifiers: modifiers) }
         session.dragEnded()
     }
 
@@ -376,13 +376,62 @@ import Testing
         #expect(s.document.annotations[0].bounds.origin == p(30, 10))
     }
 
-    @Test func aDrawingToolStillDrawsInsideAnUnfilledBox() {
+    @Test func insideABoxThePointerTakesOverWithAnyToolUnlessOptionIsHeld() {
         let s = session()
         s.tool = .rect
         drag(s, p(10, 10), p(200, 200))
-        s.tool = .rect
-        drag(s, p(50, 50), p(100, 100))
+        s.tool = .arrow
+        #expect(s.cursor(at: p(100, 100), tolerance: 4) == .move)
+        #expect(s.cursor(at: p(100, 100), tolerance: 4, modifiers: .option) == .tool(.arrow))
+        // A drag inside moves the box…
+        drag(s, p(100, 100), p(120, 130))
+        #expect(s.document.annotations.count == 1)
+        #expect(s.document.annotations[0].bounds.origin == p(30, 40))
+        // …and with ⌥ held it draws inside instead.
+        drag(s, p(60, 60), p(90, 90), modifiers: .option)
         #expect(s.document.annotations.count == 2)
+    }
+
+    @Test func shiftMakesSquaresCirclesAndFortyFiveDegreeLines() {
+        let s = session()
+        s.tool = .rect
+        drag(s, p(10, 10), p(110, 60), modifiers: .shift)
+        #expect(s.document.annotations[0].bounds == CGRect(x: 10, y: 10, width: 100, height: 100))
+        s.tool = .ellipse
+        drag(s, p(300, 300), p(240, 360), modifiers: .shift)
+        #expect(s.document.annotations[1].bounds == CGRect(x: 240, y: 300, width: 60, height: 60))
+        s.tool = .line
+        drag(s, p(0, 200), p(100, 210), modifiers: .shift)
+        guard case .line(let line) = s.document.annotations[2].kind else {
+            Issue.record("no line")
+            return
+        }
+        #expect(abs(line.end.y - 200) < 0.001 && abs(line.end.x - hypot(100, 10)) < 0.001)
+    }
+
+    @Test func shiftKeepsTheProportionsWhileResizing() {
+        let s = session()
+        s.document.add(Annotation(kind: .box(Box(rect: CGRect(x: 0, y: 0, width: 100, height: 50), form: .rectangle))))
+        s.selectAll()
+        drag(s, p(100, 50), p(300, 300), modifiers: .shift)
+        #expect(s.document.annotations[0].bounds == CGRect(x: 0, y: 0, width: 600, height: 300))
+    }
+
+    @Test func doubleClickingTheMiddleDotStraightensTheArrow() {
+        let s = session()
+        s.tool = .arrow
+        drag(s, p(0, 100), p(200, 100))
+        drag(s, p(100, 100), p(100, 40))   // bend it
+        guard case .curve(let bent) = s.document.annotations[0].kind else {
+            Issue.record("no curve")
+            return
+        }
+        #expect(bent.bend != 0)
+        s.dragChanged(to: p(100, 40), tolerance: 4, clickCount: 2)
+        s.dragEnded()
+        #expect(s.document.annotations[0].kind == .curve(Curve(start: p(0, 100), end: p(200, 100), arrow: true)))
+        s.document.undo()
+        #expect(s.document.annotations[0].kind == .curve(bent))
     }
 
     @Test func newRectanglesUseTheChosenCorners() {

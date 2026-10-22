@@ -37,6 +37,18 @@ import Testing
             == .curve(Curve(start: start, end: end, arrow: true, bothEnds: true)))
     }
 
+    @Test func shiftConstrainsWhatADragDraws() {
+        let values = StyleValues()
+        #expect(EditorTool.rect.figure(from: CGPoint(x: 10, y: 10), to: CGPoint(x: 110, y: 60), values: values, constrained: true)?.bounds
+            == CGRect(x: 10, y: 10, width: 100, height: 100))
+        #expect(EditorTool.ellipse.figure(from: CGPoint(x: 100, y: 100), to: CGPoint(x: 40, y: 160), values: values, constrained: true)?.bounds
+            == CGRect(x: 40, y: 100, width: 60, height: 60))
+        let line = EditorTool.line.figure(from: .zero, to: CGPoint(x: 100, y: 90), values: values, constrained: true) as? Line
+        #expect(line.map { abs($0.end.x - $0.end.y) < 0.001 && abs(hypot($0.end.x, $0.end.y) - hypot(100, 90)) < 0.001 } == true)
+        // Bubbles are not constrained.
+        #expect(EditorTool.bubble.figure(from: .zero, to: CGPoint(x: 100, y: 50), values: values, constrained: true)?.bounds.width == 100)
+    }
+
     @Test func clickAndSpecialToolsDoNotDrawByDragging() {
         for tool in [EditorTool.select, .pen, .highlight, .text, .step, .crop] {
             #expect(tool.figure(from: start, to: end, values: StyleValues()) == nil)

@@ -64,7 +64,7 @@ struct EditorCanvasView: View {
         .onContinuousHover { phase in
             switch phase {
             case .active(let location):
-                NSCursor.for(session.cursor(at: transform.fromCanvas(location), tolerance: tolerance)).set()
+                NSCursor.for(session.cursor(at: transform.fromCanvas(location), tolerance: tolerance, modifiers: .held)).set()
             case .ended:
                 NSCursor.arrow.set()
             }
@@ -73,7 +73,9 @@ struct EditorCanvasView: View {
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
                 .onChanged { value in
                     viewState.dismissTip()
-                    session.dragChanged(to: transform.fromCanvas(value.location), tolerance: tolerance)
+                    // The press's own event: its click count tells a double-click apart.
+                    session.dragChanged(to: transform.fromCanvas(value.location), tolerance: tolerance,
+                                        modifiers: .held, clickCount: NSApp.currentEvent?.clickCount ?? 1)
                     if session.isMovingSelection { NSCursor.closedHand.set() }
                 }
                 .onEnded { _ in session.dragEnded() }
@@ -100,6 +102,17 @@ struct EditorCanvasView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .allowsHitTesting(false)
         }
+    }
+}
+
+extension EditorModifiers {
+    /// The keys held right now.
+    static var held: EditorModifiers {
+        let flags = NSEvent.modifierFlags
+        var held: EditorModifiers = []
+        if flags.contains(.shift) { held.insert(.shift) }
+        if flags.contains(.option) { held.insert(.option) }
+        return held
     }
 }
 

@@ -27,7 +27,7 @@ public struct Line: Figure {
         end = end.offset(delta)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
         if handle == .start { start = point }
         if handle == .end { end = point }
     }
@@ -76,6 +76,12 @@ public struct Curve: Figure {
         Curve(start: end, end: start, bend: -bend, lean: -lean, arrow: arrow, bothEnds: bothEnds)
     }
 
+    /// Back to a straight line between the ends (a double-click on the middle dot).
+    public mutating func straighten() {
+        bend = 0
+        lean = 0
+    }
+
     /// The straight line between the ends: its midpoint, a unit vector along it and one at right angles to it.
     private var chord: (mid: CGPoint, along: CGVector, across: CGVector) {
         let dx = end.x - start.x, dy = end.y - start.y
@@ -115,7 +121,7 @@ public struct Curve: Figure {
         end = end.offset(delta)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
         switch handle {
         case .start: start = point
         case .end: end = point
@@ -266,8 +272,8 @@ public struct Box: Figure {
         rect = rect.offsetBy(dx: delta.dx, dy: delta.dy)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
-        rect = rect.resized(dragging: handle, to: point)
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
+        rect = rect.resized(dragging: handle, to: point, proportional: proportional)
     }
 }
 
@@ -338,8 +344,8 @@ public struct Bubble: Figure {
         tail = tail.offset(delta)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
-        if handle == .tail { tail = point } else { rect = rect.resized(dragging: handle, to: point) }
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
+        if handle == .tail { tail = point } else { rect = rect.resized(dragging: handle, to: point, proportional: proportional) }
     }
 
     public mutating func apply(_ change: StyleChange) {
@@ -381,7 +387,7 @@ public struct Step: Figure {
         center = center.offset(delta)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
         guard handle.isCorner else { return }
         radius = max(Self.minimumRadius, max(abs(point.x - center.x), abs(point.y - center.y)))
     }
@@ -416,8 +422,8 @@ public struct Blur: Figure {
         rect = rect.offsetBy(dx: delta.dx, dy: delta.dy)
     }
 
-    public mutating func drag(_ handle: HandleKind, to point: CGPoint) {
-        rect = rect.resized(dragging: handle, to: point)
+    public mutating func drag(_ handle: HandleKind, to point: CGPoint, proportional: Bool) {
+        rect = rect.resized(dragging: handle, to: point, proportional: proportional)
     }
 
     public mutating func apply(_ change: StyleChange) {
@@ -447,9 +453,16 @@ extension CGRect {
         }
     }
 
-    /// This rect after dragging one corner to `point`; the opposite corner stays.
-    func resized(dragging corner: HandleKind, to point: CGPoint) -> CGRect {
+    /// This rect after dragging one corner to `point`; the opposite corner stays. `proportional` keeps this rect's
+    /// shape: the side the pointer pulled further wins and the other follows.
+    func resized(dragging corner: HandleKind, to point: CGPoint, proportional: Bool = false) -> CGRect {
         guard let anchor = anchor(opposite: corner) else { return standardized }
-        return SelectionGeometry.normalizedRect(from: anchor, to: point)
+        let shape = standardized
+        guard proportional, shape.width > 0, shape.height > 0 else { return SelectionGeometry.normalizedRect(from: anchor, to: point) }
+        let aspect = shape.width / shape.height
+        let dx = point.x - anchor.x, dy = point.y - anchor.y
+        let (width, height) = abs(dx) / aspect >= abs(dy) ? (abs(dx), abs(dx) / aspect) : (abs(dy) * aspect, abs(dy))
+        let end = CGPoint(x: anchor.x + (dx < 0 ? -width : width), y: anchor.y + (dy < 0 ? -height : height))
+        return SelectionGeometry.normalizedRect(from: anchor, to: end)
     }
 }
