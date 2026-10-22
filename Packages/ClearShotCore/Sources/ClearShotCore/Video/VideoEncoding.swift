@@ -46,6 +46,16 @@ public enum VideoEncoding {
         public func estimatedBytes(seconds: Double) -> Int {
             Int((Double(videoBitrate + audioBitrate) * seconds / 8).rounded())
         }
+
+        /// The same quality at another size (a frame's padding grows the picture): even sides, the bitrate scaled
+        /// by the pixel count, within the usual limits.
+        public func resized(to size: CGSize) -> Settings {
+            let newWidth = VideoEncoding.even(size.width), newHeight = VideoEncoding.even(size.height)
+            let pixels = Double(max(1, width * height))
+            let wanted = Double(videoBitrate) * Double(newWidth * newHeight) / pixels
+            let bitrate = min(max(Int(wanted.rounded()), VideoEncoding.minimumVideoBitrate), VideoEncoding.maximumVideoBitrate)
+            return Settings(width: newWidth, height: newHeight, fps: fps, videoBitrate: bitrate, audioBitrate: audioBitrate)
+        }
     }
 
     /// `pixelSize` is the captured size in pixels and `scale` its points-to-pixels factor (2 on Retina).

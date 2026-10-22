@@ -44,6 +44,16 @@ import Testing
         #expect(capture.fileURL?.lastPathComponent == "ClearShot.mp4")
     }
 
+    @Test func savingAVideoCanChangeItsSize() {
+        let encoding = VideoEncoding.settings(for: CGSize(width: 1000, height: 500), scale: 1, quality: .smaller)
+        var capture = Capture(kind: .area, image: blankImage(), video: Capture.Video(duration: 3, encoding: encoding))
+        let framed = encoding.resized(to: CGSize(width: 1128, height: 628))
+        capture.saved(videoDuration: 3, poster: blankImage(), encoding: framed, at: URL(filePath: "/tmp/ClearShot.mp4"))
+        #expect(capture.video?.encoding == framed)
+        capture.saved(videoDuration: 2, poster: blankImage(), at: URL(filePath: "/tmp/ClearShot.mp4"))
+        #expect(capture.video?.encoding == framed && capture.video?.duration == 2)
+    }
+
     @Test func scrollingIsOneOfTheKinds() {
         #expect(CaptureKind.allCases.contains(.scrolling))
         #expect(CaptureKind.scrolling.rawValue == "scrolling")

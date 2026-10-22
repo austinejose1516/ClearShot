@@ -34,6 +34,23 @@ import Testing
         #expect(smaller.audioBitrate == 96_000)
     }
 
+    @Test func resizedKeepsSidesEvenAndScalesTheBitrate() {
+        let base = VideoEncoding.Settings(width: 1000, height: 500, fps: 30, videoBitrate: 4_000_000, audioBitrate: 96_000)
+        // 64 px of padding on each side, then one side made odd: both come out even.
+        let framed = base.resized(to: CGSize(width: 1128, height: 629))
+        #expect(framed.width == 1128 && framed.height == 628)
+        #expect(framed.fps == 30 && framed.audioBitrate == 96_000)
+        #expect(framed.videoBitrate == 5_667_072)   // 4_000_000 × (1128 × 628) / (1000 × 500)
+        #expect(base.resized(to: CGSize(width: 1000, height: 500)) == base)
+    }
+
+    @Test func resizedClampsTheBitrate() {
+        let big = VideoEncoding.Settings(width: 3000, height: 2000, fps: 30, videoBitrate: 18_000_000, audioBitrate: 96_000)
+        #expect(big.resized(to: CGSize(width: 3480, height: 2480)).videoBitrate == VideoEncoding.maximumVideoBitrate)
+        let small = VideoEncoding.Settings(width: 400, height: 300, fps: 30, videoBitrate: 1_000_000, audioBitrate: 96_000)
+        #expect(small.resized(to: CGSize(width: 200, height: 150)).videoBitrate == VideoEncoding.minimumVideoBitrate)
+    }
+
     @Test func bitrateIsClampedToASaneRange() {
         let tiny = VideoEncoding.settings(for: CGSize(width: 200, height: 100), scale: 1, quality: .smaller)
         #expect(tiny.videoBitrate == 1_000_000)

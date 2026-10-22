@@ -47,9 +47,9 @@ public struct Capture: Identifiable, Sendable {
         windowImage = nil
     }
 
-    /// The video editor saved a trim: a new length and first frame.
-    public mutating func saved(videoDuration: Double, poster: CGImage, at url: URL) {
-        if let video { self.video = Video(duration: videoDuration, encoding: video.encoding) }
+    /// The video editor saved: a new length and first frame, and a new size when a frame was added.
+    public mutating func saved(videoDuration: Double, poster: CGImage, encoding: VideoEncoding.Settings? = nil, at url: URL) {
+        if let video { self.video = Video(duration: videoDuration, encoding: encoding ?? video.encoding) }
         image = poster
         fileURL = url
     }
