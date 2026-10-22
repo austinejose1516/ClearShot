@@ -177,16 +177,14 @@ public final class EditorSession {
         case .drawing(let id, _), .scribbling(let id):
             guard let annotation = document.annotation(id: id) else { return }
             guard !annotation.isTooSmall else {
-                // A plain click draws nothing: it clears the selection and hands back to the pointer.
+                // A plain click draws nothing: it clears the selection. The tool stays on.
                 document.revert()
                 document.selection = []
-                tool = .select
                 return
             }
             document.commit()
             document.selection = [id]
             if annotation.editableText != nil { startEditing(id, isNew: false) }
-            handBackIfSingleUse()
         case .moving, .reshaping:
             document.commit()
         case .pressedOnSelectedText(let id, _):
@@ -292,11 +290,6 @@ public final class EditorSession {
         document.insert(annotation)
         document.selection = [annotation.id]
         startEditing(annotation.id, isNew: true)
-        handBackIfSingleUse()
-    }
-
-    private func handBackIfSingleUse() {
-        if !tool.staysActive { tool = .select }
     }
 
     private func startEditing(_ id: Annotation.ID, isNew: Bool) {

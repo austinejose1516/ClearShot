@@ -23,24 +23,30 @@ import Testing
         let arrow = s.document.annotations[0]
         #expect(arrow.kind == .curve(Curve(start: p(10, 10), end: p(100, 100), arrow: true)))
         #expect(s.document.selection == [arrow.id])
-        #expect(s.tool == .select)
+        #expect(s.tool == .arrow)   // the tool stays on
         s.document.undo()
         #expect(s.document.annotations.isEmpty)
     }
 
-    @Test func aClickWithADrawingToolAddsNothingAndHandsBackToThePointer() {
-        for tool in [EditorTool.line, .arrow, .pen, .highlight, .rect, .ellipse, .bubble, .blur, .crop] {
+    @Test func aClickWithADrawingToolAddsNothingAndKeepsTheTool() {
+        for tool in [EditorTool.line, .arrow, .pen, .highlight, .rect, .ellipse, .bubble, .blur] {
             let s = session()
             s.tool = tool
             drag(s, p(10, 10))
             #expect(s.document.annotations.isEmpty, "\(tool)")
             #expect(s.document.canUndo == false, "\(tool)")
-            #expect(s.tool == .select, "\(tool) should hand back to Select")
-            #expect(s.cropDraft == nil)
+            #expect(s.tool == tool, "\(tool) should stay on")
         }
     }
 
-    @Test func clickingAwayFromAPenStrokeDeselectsItAndHandsBackToThePointer() {
+    @Test func aClickWithCropPicksNothingAndGoesBackToSelect() {
+        let s = session()
+        s.tool = .crop
+        drag(s, p(10, 10))
+        #expect(s.cropDraft == nil && s.tool == .select)
+    }
+
+    @Test func clickingAwayFromAPenStrokeDeselectsItAndKeepsThePen() {
         let s = session()
         s.tool = .pen
         drag(s, p(10, 10), p(60, 10), p(110, 10))
@@ -48,6 +54,22 @@ import Testing
         drag(s, p(200, 200))
         #expect(s.document.annotations.count == 1)
         #expect(s.document.selection.isEmpty)
+        #expect(s.tool == .pen)
+    }
+
+    @Test func aPlainClickKeepsTheToolAndClearsTheSelection() {
+        let s = session()
+        s.tool = .rect
+        drag(s, p(10, 10), p(100, 80))
+        #expect(s.document.selection.count == 1)
+        drag(s, p(300, 250))
+        #expect(s.document.selection.isEmpty && s.tool == .rect && s.document.annotations.count == 1)
+    }
+
+    @Test func escapeGoesBackToSelect() {
+        let s = session()
+        s.tool = .rect
+        s.cancel()
         #expect(s.tool == .select)
     }
 
@@ -288,35 +310,35 @@ import Testing
         #expect(s.cursor(at: p(200, 200), tolerance: 4) == .tool(.rect))
     }
 
-    @Test func finishingTextGoesBackToSelectSoTheNextClickAddsNothing() {
+    @Test func finishingTextKeepsTheTextToolSoTheNextClickStartsNewText() {
         let s = session()
         s.tool = .text
         drag(s, p(10, 10))
         s.editText("Hi")
         s.finishTextEditing()
-        #expect(s.tool == .select)
+        #expect(s.tool == .text)
         drag(s, p(300, 200))
-        #expect(s.document.annotations.count == 1)
+        #expect(s.document.annotations.count == 2 && s.editingTextID == s.document.annotations[1].id)
     }
 
-    @Test func clickingAwayFromNewTextAlsoGoesBackToSelect() {
+    @Test func clickingAwayFromNewTextEndsEditingAndKeepsTheTextTool() {
         let s = session()
         s.tool = .text
         drag(s, p(10, 10))
         s.editText("Hi")
         drag(s, p(300, 200))
         #expect(s.editingTextID == nil)
-        #expect(s.tool == .select)
+        #expect(s.tool == .text)
         #expect(s.document.annotations.count == 1)
     }
 
-    @Test func finishingABubbleGoesBackToSelect() {
+    @Test func finishingABubbleKeepsTheBubbleTool() {
         let s = session()
         s.tool = .bubble
         drag(s, p(10, 10), p(110, 60))
         s.editText("Hi")
         s.finishTextEditing()
-        #expect(s.tool == .select)
+        #expect(s.tool == .bubble)
     }
 
     @Test func textCanSitInThePaddingOutsideTheImage() {
@@ -331,19 +353,14 @@ import Testing
         #expect(s.editingTextID == s.document.annotations[0].id)
     }
 
-    @Test func shapeToolsHandBackToSelectButStrokesStepAndBlurStayOn() {
-        for tool in [EditorTool.line, .arrow, .rect, .ellipse, .bubble] {
+    @Test func everyToolStaysOnAfterUse() {
+        for tool in [EditorTool.line, .arrow, .rect, .ellipse, .bubble, .pen, .highlight, .step, .blur] {
             let s = session()
             s.tool = tool
             drag(s, p(10, 10), p(120, 80))
             s.finishTextEditing()
-            #expect(s.tool == .select, "\(tool) should hand back to Select")
-        }
-        for tool in [EditorTool.pen, .highlight, .step, .blur] {
-            let s = session()
-            s.tool = tool
-            drag(s, p(10, 10), p(120, 80))
             #expect(s.tool == tool, "\(tool) should stay on")
+            #expect(s.document.selection.count == 1, "\(tool): the new shape stays selected")
         }
     }
 
@@ -352,6 +369,7 @@ import Testing
         s.tool = .ellipse
         drag(s, p(10, 10), p(110, 110))
         s.document.selection = []
+        s.tool = .select   // the ellipse tool stays on, so pick the pointer
         drag(s, p(60, 60))
         #expect(s.document.selection == [s.document.annotations[0].id])
         drag(s, p(60, 60), p(80, 60))

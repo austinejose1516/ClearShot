@@ -82,16 +82,8 @@ public enum EditorTool: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Pen, Highlighter, Step and Blur are used several times in a row; the other drawing tools hand back to
-    /// Select after one annotation, so it can be adjusted straight away.
-    public var staysActive: Bool {
-        switch self {
-        case .select, .pen, .highlight, .step, .blur, .crop: true
-        case .line, .arrow, .rect, .ellipse, .text, .bubble: false
-        }
-    }
-
-    /// Pressing on an existing annotation selects it instead of starting a new one. The strokes and the crop
+    /// Pressing on an existing annotation selects it instead of starting a new one, so every tool stays on
+    /// (until Esc or Select) and shapes can still be moved and resized while it is. The strokes and the crop
     /// start anywhere, even over an annotation.
     public var grabsExisting: Bool { ![.pen, .highlight, .crop].contains(self) }
 

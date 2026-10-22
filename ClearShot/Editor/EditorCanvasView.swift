@@ -111,7 +111,7 @@ extension NSCursor {
         case .resize(.bottomLeft): .frameResize(position: .bottomLeft, directions: .all)
         case .resize: .frameResize(position: .bottomRight, directions: .all)
         case .moveHandle: .crosshair
-        case .move: .openHand
+        case .move: .arrow
         case .editText: .iBeam
         case .tool(.select): .arrow
         case .tool(.text): .iBeam

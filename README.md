@@ -95,7 +95,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Crop | Drag the part to keep, then **Crop** or **Enter** |
 
 - The toolbar only shows the settings that apply: colour (a dropdown with presets and any custom colour), opacity, width slider, fill, corners, arrowhead, both ends, text size, bold / italic / underline, boxed, step size, blur mode.
-- Shape and text tools hand back to the pointer after one use, so you can adjust right away. Pen, Highlighter, Step and Blur stay on; a plain click with any tool goes back to the pointer.
+- A tool stays on until you press Esc or pick Select, so you can draw several shapes in a row. The shape you just drew stays selected, so colour and width changes apply to it. Over an existing shape the pointer takes over: drag to move it, drag a dot to resize it.
 - Full undo and redo. Annotations can also sit in the padding, for example a header above the screenshot. Zoom with ⌘+ / ⌘−, the zoom menu or a trackpad pinch.
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider.
 - **Edit** on a card grows the card into the editor. **Done** (⌘S) shrinks it back into the card, which shows the edited picture, says "Saved" and writes it into the same file; **Copy**, **Share** and **Upload** are on the card. Closing the editor goes back to the card too. **Edit** again brings back your drawings, still movable, while the card is open. The same goes for every kind of capture: area, window, full screen, scrolling and recordings.
