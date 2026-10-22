@@ -182,6 +182,14 @@ struct RecordingSettingsTab: View {
 struct ShortcutsSettingsTab: View {
     var body: some View {
         Form {
+            Section {
+                KeyboardShortcuts.Recorder("Open the capture bar", name: .captureBar)
+            } header: {
+                Text("Capture bar")
+            } footer: {
+                Text("Pick what to make and how, like the Mac's own ⇧⌘5 bar. Screenshot, Scrolling Capture and Record in the menu open it too.")
+            }
+
             Section("Screenshot") {
                 KeyboardShortcuts.Recorder("Area", name: .captureArea)
                 KeyboardShortcuts.Recorder("Window", name: .captureWindow)
@@ -214,7 +222,7 @@ struct ShortcutsSettingsTab: View {
                     Button("Set ⇧⌘3 · ⇧⌘4 · ⇧⌘5") { useSystemShortcuts() }
                 }
             } footer: {
-                Text("First turn off the built-in ones: System Settings → Keyboard → Keyboard Shortcuts → Screenshots. Then ClearShot takes over ⇧⌘3 (full screen), ⇧⌘4 (area) and ⇧⌘5 (window).")
+                Text("First turn off the built-in ones: System Settings → Keyboard → Keyboard Shortcuts → Screenshots. Then ClearShot takes over ⇧⌘3 (full screen), ⇧⌘4 (area) and ⇧⌘5 (the capture bar).")
             }
         }
         .formStyle(.grouped)
@@ -222,9 +230,12 @@ struct ShortcutsSettingsTab: View {
     }
 
     private func useSystemShortcuts() {
+        let bar = KeyboardShortcuts.Shortcut(.five, modifiers: [.shift, .command])
+        // ⇧⌘5 used to mean Window; one key must not fire two actions.
+        if KeyboardShortcuts.getShortcut(for: .captureWindow) == bar { KeyboardShortcuts.reset(.captureWindow) }
         KeyboardShortcuts.setShortcut(.init(.three, modifiers: [.shift, .command]), for: .captureFullScreen)
         KeyboardShortcuts.setShortcut(.init(.four, modifiers: [.shift, .command]), for: .captureArea)
-        KeyboardShortcuts.setShortcut(.init(.five, modifiers: [.shift, .command]), for: .captureWindow)
+        KeyboardShortcuts.setShortcut(bar, for: .captureBar)
         if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension?Shortcuts") {
             NSWorkspace.shared.open(url)
         }

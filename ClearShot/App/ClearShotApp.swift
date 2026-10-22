@@ -13,6 +13,7 @@ struct ClearShotApp: App {
                 .environment(appDelegate.recording)
                 .environment(appDelegate.scrolling)
                 .environment(appDelegate.updates)
+                .environment(appDelegate.launcher)
         } label: {
             MenuBarLabel().environment(appDelegate.recording)
         }

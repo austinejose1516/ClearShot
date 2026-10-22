@@ -59,6 +59,21 @@ final class ScrollingCoordinator {
         choose(keeping: nil)
     }
 
+    /// What the capture bar picked: straight to the toolbar, no picker.
+    func start(with target: RegionPicker.Target, kind: CaptureKind) {
+        guard PermissionService.hasScreenRecordingAccess else {
+            DiagnosticLog.write("scrolling(\(kind.rawValue)) blocked: no Screen Recording access")
+            onPermissionMissing()
+            return
+        }
+        guard state == .idle else { return }
+        self.kind = kind
+        toolbarModel.mode = .manual
+        self.target = target
+        DiagnosticLog.write("scrolling(\(kind.rawValue)) from the capture bar")
+        showToolbar(for: target.region)
+    }
+
     /// Done: keep what is captured so far.
     func finish() {
         session?.finish()

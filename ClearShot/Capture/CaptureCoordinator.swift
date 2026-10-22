@@ -79,6 +79,22 @@ final class CaptureCoordinator {
         Task { await finish(capture) }
     }
 
+    /// What the capture bar picked for a screenshot: the same card, clipboard and file as a shortcut's.
+    func deliver(_ outcome: OverlayCaptureSession.Outcome) {
+        guard !isCapturing else { return }
+        isCapturing = true
+        Task {
+            defer { isCapturing = false }
+            do {
+                guard let capture = try await makeCapture(from: outcome) else { return }
+                await finish(capture)
+            } catch {
+                DiagnosticLog.write("capture from the bar failed: \(error)")
+                ErrorPresenter.show(title: "Capture failed", message: error.localizedDescription)
+            }
+        }
+    }
+
     /// Shared tail of every capture. The card comes first: encoding a Retina screenshot takes 50–400 ms, so it
     /// runs off the main thread while the card animates in. Then the clipboard, then the file, whose type is
     /// only known once it is encoded (a photo may become a JPEG to stay under the size budget).

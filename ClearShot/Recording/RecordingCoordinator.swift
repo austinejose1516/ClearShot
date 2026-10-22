@@ -74,6 +74,20 @@ final class RecordingCoordinator {
         choose(keeping: nil)
     }
 
+    /// What the capture bar picked: straight to the toolbar, no picker.
+    func start(with region: ScreenRegion, kind: CaptureKind) {
+        guard PermissionService.hasScreenRecordingAccess else {
+            DiagnosticLog.write("record(\(kind.rawValue)) blocked: no Screen Recording access")
+            onPermissionMissing()
+            return
+        }
+        guard state == .idle else { return }
+        self.kind = kind
+        self.region = region
+        DiagnosticLog.write("record(\(kind.rawValue)) from the capture bar")
+        showToolbar(for: region)
+    }
+
     /// Closes the toolbar (or stops the countdown) without recording.
     func cancel() {
         guard state == .ready || state == .countdown else { return }

@@ -14,17 +14,21 @@ extension KeyboardShortcuts.Name {
     static let recordWindow = Self("recordWindow", initial: .init(.r, modifiers: [.control, .option, .shift]))
     static let recordFullScreen = Self("recordFullScreen", initial: .init(.r, modifiers: [.control, .shift, .command]))
     static let pauseRecording = Self("pauseRecording", initial: .init(.p, modifiers: [.control, .shift]))
+    /// The capture bar. No key until the user sets one; "Use the macOS shortcuts" gives it ⇧⌘5, like the Mac's own bar.
+    static let captureBar = Self("captureBar")
 }
 
 final class HotkeyService {
     private let coordinator: CaptureCoordinator
     private let recording: RecordingCoordinator
     private let scrolling: ScrollingCoordinator
+    private let launcher: CaptureLauncher
 
-    init(coordinator: CaptureCoordinator, recording: RecordingCoordinator, scrolling: ScrollingCoordinator) {
+    init(coordinator: CaptureCoordinator, recording: RecordingCoordinator, scrolling: ScrollingCoordinator, launcher: CaptureLauncher) {
         self.coordinator = coordinator
         self.recording = recording
         self.scrolling = scrolling
+        self.launcher = launcher
     }
 
     func register() {
@@ -39,5 +43,6 @@ final class HotkeyService {
         KeyboardShortcuts.onKeyUp(for: .recordWindow) { [recording] in recording.toggle(.window) }
         KeyboardShortcuts.onKeyUp(for: .recordFullScreen) { [recording] in recording.toggle(.fullScreen) }
         KeyboardShortcuts.onKeyUp(for: .pauseRecording) { [recording] in recording.togglePause() }
+        KeyboardShortcuts.onKeyUp(for: .captureBar) { [launcher] in launcher.open(nil) }
     }
 }

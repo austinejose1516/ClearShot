@@ -2,11 +2,11 @@ import KeyboardShortcuts
 import SwiftUI
 import ClearShotCore
 
-/// The menu bar menu: one row per kind of capture, each opening Area / Window / Full Screen with their
-/// shortcuts (they follow Settings → Shortcuts). While a recording or a scrolling capture runs, its controls
-/// come first, one click away.
+/// The menu bar menu: Screenshot, Scrolling Capture and Record each open the capture bar, where Area, Window
+/// or Full screen is picked. While a recording or a scrolling capture runs, its controls come first, one
+/// click away.
 struct MenuBarMenu: View {
-    @Environment(CaptureCoordinator.self) private var coordinator
+    @Environment(CaptureLauncher.self) private var launcher
     @Environment(RecordingCoordinator.self) private var recording
     @Environment(ScrollingCoordinator.self) private var scrolling
     @Environment(UpdateChecker.self) private var updates
@@ -25,19 +25,10 @@ struct MenuBarMenu: View {
             Divider()
         }
 
-        kind("Screenshot", "camera.viewfinder",
-             area: (.captureArea, { coordinator.capture(.area) }),
-             window: (.captureWindow, { coordinator.capture(.window) }),
-             fullScreen: (.captureFullScreen, { coordinator.capture(.fullScreen) }))
-        kind("Scrolling Capture", "arrow.up.and.down",
-             area: (.scrollingCapture, { scrolling.start(.area) }),
-             window: (.scrollingWindow, { scrolling.start(.window) }),
-             fullScreen: (.scrollingFullScreen, { scrolling.start(.fullScreen) }))
+        item("Screenshot", CaptureAction.screenshot.symbol) { launcher.open(.screenshot) }
+        item("Scrolling Capture", CaptureAction.scrolling.symbol) { launcher.open(.scrolling) }
             .disabled(scrolling.state != .idle)
-        kind("Record", "record.circle",
-             area: (.recordScreen, { recording.start(.area) }),
-             window: (.recordWindow, { recording.start(.window) }),
-             fullScreen: (.recordFullScreen, { recording.start(.fullScreen) }))
+        item("Record", CaptureAction.recording.symbol) { launcher.open(.recording) }
             .disabled(recording.state != .idle)
 
         Divider()
@@ -79,19 +70,6 @@ struct MenuBarMenu: View {
             item("Cancel Scrolling Capture", "xmark") { scrolling.cancel() }
         case .idle, .choosing:
             EmptyView()
-        }
-    }
-
-    private typealias Choice = (shortcut: KeyboardShortcuts.Name, action: () -> Void)
-
-    /// One kind of capture: a row that opens Area, Window and Full Screen.
-    private func kind(_ title: String, _ symbol: String, area: Choice, window: Choice, fullScreen: Choice) -> some View {
-        Menu {
-            item("Area", "rectangle.dashed", area.shortcut, action: area.action)
-            item("Window", "macwindow", window.shortcut, action: window.action)
-            item("Full Screen", "display", fullScreen.shortcut, action: fullScreen.action)
-        } label: {
-            Label(title, systemImage: symbol).labelStyle(.titleAndIcon)
         }
     }
 

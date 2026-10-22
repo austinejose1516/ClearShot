@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings: settings,
         onCaptured: { [weak self] in self?.captureCoordinator.deliver($0) },
         onPermissionMissing: { [weak self] in self?.showOnboarding() })
+    private(set) lazy var launcher = CaptureLauncher(settings: settings, captures: captureCoordinator, recording: recording,
+                                                     scrolling: scrolling) { [weak self] in self?.showOnboarding() }
     private var hotkeys: HotkeyService?
     private var onboarding: PermissionOnboardingWindowController?
     private(set) lazy var updates = UpdateChecker(settings: settings)
@@ -22,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         DiagnosticLog.write("launched build \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?") screenRecordingAccess=\(PermissionService.hasScreenRecordingAccess)")
         Theme.apply(settings.appearance)
-        let hotkeys = HotkeyService(coordinator: captureCoordinator, recording: recording, scrolling: scrolling)
+        let hotkeys = HotkeyService(coordinator: captureCoordinator, recording: recording, scrolling: scrolling, launcher: launcher)
         hotkeys.register()
         self.hotkeys = hotkeys
 
