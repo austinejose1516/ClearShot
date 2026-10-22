@@ -2,7 +2,8 @@ import AVKit
 import ClearShotCore
 import SwiftUI
 
-/// Done on top (like the screenshot editor), the player in the middle, the trim bar below.
+/// Done and the Blur switch on top (like the screenshot editor), the player in the middle with the blur boxes
+/// over it, the trim bar below.
 struct VideoView: View {
     static let minimumSize = NSSize(width: 760, height: 520)
     static let defaultSize = NSSize(width: 960, height: 680)
@@ -19,14 +20,20 @@ struct VideoView: View {
     let onRangeChanged: (TrimRange) -> Void
     let onSeek: (Double) -> Void
     let onCancelExport: () -> Void
+    /// A box was added, moved, resized, removed or changed mode: the player redraws.
+    let onBlursChanged: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             actions
             Divider()
-            PlayerView(player: player)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.black)
+            ZStack {
+                PlayerView(player: player)
+                VideoBlurOverlay(state: state, videoSize: CGSize(width: encoding.width, height: encoding.height),
+                                 onChanged: onBlursChanged)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.black)
             Divider()
             trim
         }
@@ -35,7 +42,7 @@ struct VideoView: View {
 
     private var busy: Bool { state.exportProgress != nil }
 
-    // MARK: - Top: Done, like the screenshot editor
+    // MARK: - Top: the Blur switch and Done, like the screenshot editor
 
     private var actions: some View {
         HStack(spacing: 8) {
@@ -44,6 +51,14 @@ struct VideoView: View {
                 .font(.body.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)
+            Divider().frame(height: 20).padding(.horizontal, 4)
+            Toggle(isOn: Binding(get: { state.blurToolOn }, set: { _ in onCommand(.toggleBlurTool) })) {
+                Label("Blur", systemImage: "eye.slash").labelStyle(.titleAndIcon)
+            }
+            .toggleStyle(.button)
+            .buttonBorderShape(.capsule)
+            .help("Drag a box over the part to hide, for the whole clip (Esc turns it off)")
+            blurOptions
             Spacer(minLength: 12)
             DoneButton { onCommand(.done) }
         }
@@ -52,6 +67,32 @@ struct VideoView: View {
         .padding(.horizontal, 12)
         .frame(height: Self.actionsHeight)
         .background(.bar)
+    }
+
+    /// With a box selected: its mode and Remove. With the switch on and nothing selected: what to do.
+    @ViewBuilder private var blurOptions: some View {
+        if let id = state.selectedBlur, let region = state.blurs[id] {
+            Picker("Mode", selection: Binding(get: { region.mode }, set: { mode in
+                state.blurs.setMode(mode, of: id)
+                state.blurMode = mode
+                onBlursChanged()
+            })) {
+                Text("Blur").tag(BlurMode.blur)
+                Text("Pixelate").tag(BlurMode.pixelate)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 150)
+            Button { onCommand(.deleteSelection) } label: {
+                Label("Remove", systemImage: "trash").labelStyle(.titleAndIcon)
+            }
+            .buttonBorderShape(.capsule)
+            .help("Remove this box (⌫)")
+        } else if state.blurToolOn {
+            Text("Drag over the part to hide")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
     }
 
     // MARK: - Bottom: the trim bar

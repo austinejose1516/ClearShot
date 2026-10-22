@@ -18,8 +18,9 @@ nonisolated enum VideoExporter {
         }
     }
 
-    static func export(from asset: AVAsset, range: TrimRange, encoding: VideoEncoding.Settings, to destination: URL,
-                       progress: @escaping @Sendable (Double) -> Void) async throws {
+    /// `blurs`, when it has boxes, are drawn into every frame on the way through.
+    static func export(from asset: AVAsset, range: TrimRange, encoding: VideoEncoding.Settings, blurs: VideoBlurs? = nil,
+                       to destination: URL, progress: @escaping @Sendable (Double) -> Void) async throws {
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else { throw Failure.noVideoTrack }
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
         let start = CMTime(seconds: range.start, preferredTimescale: 600)
@@ -27,8 +28,15 @@ nonisolated enum VideoExporter {
 
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = timeRange
-        let videoOutput = AVAssetReaderTrackOutput(
-            track: videoTrack, outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
+        let pixelFormat = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        let videoOutput: AVAssetReaderOutput
+        if let blurs, !blurs.isEmpty {
+            let composed = AVAssetReaderVideoCompositionOutput(videoTracks: [videoTrack], videoSettings: pixelFormat)
+            composed.videoComposition = try await VideoBlurComposition(blurs: blurs).composition(for: asset)
+            videoOutput = composed
+        } else {
+            videoOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: pixelFormat)
+        }
         videoOutput.alwaysCopiesSampleData = false
         reader.add(videoOutput)
         // One output over every audio track: the mix output sums them (system sound and the microphone).

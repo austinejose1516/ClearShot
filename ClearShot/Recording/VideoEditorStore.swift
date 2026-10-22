@@ -2,7 +2,7 @@ import AppKit
 import ClearShotCore
 
 /// One video editor per recording card, like `EditorSessionStore` for screenshots. Closing the window keeps an
-/// unsaved trim while the card can still reopen it; otherwise the editor is freed. See `EditorLifetime`.
+/// unsaved trim or blur boxes while the card can still reopen it; otherwise the editor is freed. See `EditorLifetime`.
 @MainActor
 final class VideoEditorStore {
     static let shared = VideoEditorStore()
@@ -61,7 +61,7 @@ final class VideoEditorStore {
     private func releaseIfDone(_ captureID: Capture.ID, windowIsOpen: Bool) {
         guard let controller = controllers[captureID],
               EditorLifetime.shouldRelease(windowIsOpen: windowIsOpen,
-                                           hasUnsavedEdits: controller.hasUnsavedTrim,
+                                           hasUnsavedEdits: controller.hasUnsavedEdits,
                                            cardIsOpen: !cardsGone.contains(captureID)) else { return }
         controllers.removeValue(forKey: captureID)
         cardsGone.remove(captureID)

@@ -20,6 +20,27 @@ struct BlurRegionView: View {
     }
 }
 
+/// The two ways to hide part of a picture, shared by the screenshot editor and the video editor.
+nonisolated enum BlurFilters {
+    /// `area` is in the input's own coordinates (origin bottom-left); the result is cropped to it.
+    static func hidden(_ input: CIImage, area: CGRect, mode: BlurMode) -> CIImage? {
+        let crop = input.cropped(to: area)
+        switch mode {
+        case .pixelate:
+            let filter = CIFilter.pixellate()
+            filter.inputImage = crop
+            filter.scale = Float(max(12, min(area.width, area.height) / 12))
+            filter.center = CGPoint(x: area.midX, y: area.midY)
+            return filter.outputImage?.cropped(to: area)
+        case .blur:
+            let filter = CIFilter.gaussianBlur()
+            filter.inputImage = crop.clampedToExtent()
+            filter.radius = Float(max(10, min(area.width, area.height) / 10))
+            return filter.outputImage?.cropped(to: area)
+        }
+    }
+}
+
 enum BlurRenderer {
     private struct Key: Hashable {
         let base: ObjectIdentifier
@@ -41,21 +62,8 @@ enum BlurRenderer {
         if let hit = cache[key] { return hit.output }
         guard let crop = base.cropping(to: area) else { return nil }
         let input = CIImage(cgImage: crop)
-        let output: CIImage?
-        switch mode {
-        case .pixelate:
-            let filter = CIFilter.pixellate()
-            filter.inputImage = input
-            filter.scale = Float(max(12, min(area.width, area.height) / 12))
-            filter.center = CGPoint(x: area.width / 2, y: area.height / 2)
-            output = filter.outputImage?.cropped(to: input.extent)
-        case .blur:
-            let filter = CIFilter.gaussianBlur()
-            filter.inputImage = input.clampedToExtent()
-            filter.radius = Float(max(10, min(area.width, area.height) / 10))
-            output = filter.outputImage?.cropped(to: input.extent)
-        }
-        guard let output, let rendered = context.createCGImage(output, from: input.extent) else { return nil }
+        guard let output = BlurFilters.hidden(input, area: input.extent, mode: mode),
+              let rendered = context.createCGImage(output, from: input.extent) else { return nil }
         if cache.count > 64 { cache.removeAll() }
         cache[key] = (base, rendered)
         return rendered
