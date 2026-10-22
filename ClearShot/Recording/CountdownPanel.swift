@@ -42,6 +42,8 @@ final class CountdownPanel: NSPanel {
     }
 }
 
+/// One glass circle that stays; only the digit rolls, and the circle gives a small bump on each number. The
+/// circle is never rebuilt, so it cannot appear again after each number.
 private struct CountdownView: View {
     let model: CountdownModel
 
@@ -50,11 +52,15 @@ private struct CountdownView: View {
             .font(.system(size: 64, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .contentTransition(.numericText(countsDown: true))
+            .animation(.snappy(duration: 0.35), value: model.count)
             .frame(width: 120, height: 120)
             .glassEffect(.regular, in: .circle)
-            .id(model.count)   // a fresh view per number, so each one pops in
-            .transition(.scale(scale: 1.3).combined(with: .opacity))
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: model.count)
+            .keyframeAnimator(initialValue: 1.0, trigger: model.count) { view, scale in
+                view.scaleEffect(scale)
+            } keyframes: { _ in
+                SpringKeyframe(1.12, duration: 0.12)
+                SpringKeyframe(1.0, duration: 0.25)
+            }
             .frame(width: CountdownPanel.size, height: CountdownPanel.size)
     }
 }

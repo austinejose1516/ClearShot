@@ -71,31 +71,41 @@ struct ClickPulseView: View {
         ZStack(alignment: .topLeading) {
             Color.clear
             ForEach(model.pulses) { pulse in
-                Ring(accent: accent).position(pulse.point)
+                Bubble(accent: accent).position(pulse.point)
             }
         }
         .ignoresSafeArea()
     }
 }
 
-/// A dot that fades and a ring that grows and fades, in the accent colour.
-private struct Ring: View {
+/// A soft bubble in the accent colour: a filled circle that grows and fades, with a thin edge and a small
+/// centre dot that goes first.
+private struct Bubble: View {
+    static let size: CGFloat = 52
+
     let accent: Color
     @State private var expanded = false
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(accent.opacity(expanded ? 0 : 0.35))
-                .frame(width: 22, height: 22)
+                .fill(accent.opacity(0.28))
+                .frame(width: Self.size, height: Self.size)
+                .scaleEffect(expanded ? 1.15 : 0.3)
+                .opacity(expanded ? 0 : 1)
             Circle()
-                .strokeBorder(accent, lineWidth: 3)
-                .frame(width: 44, height: 44)
-                .scaleEffect(expanded ? 1.25 : 0.35)
-                .opacity(expanded ? 0 : 0.95)
+                .strokeBorder(accent.opacity(0.9), lineWidth: 1.5)
+                .frame(width: Self.size, height: Self.size)
+                .scaleEffect(expanded ? 1 : 0.3)
+                .opacity(expanded ? 0 : 1)
+            Circle()
+                .fill(accent)
+                .frame(width: 10, height: 10)
+                .opacity(expanded ? 0 : 0.9)
+                .animation(.easeOut(duration: 0.3), value: expanded)
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.55)) { expanded = true }
+            withAnimation(.easeOut(duration: 0.6)) { expanded = true }
         }
     }
 }
