@@ -4,7 +4,6 @@ import SwiftUI
 /// One screen's overlay: the area-drag, window-pick or whole-screen UI, depending on the shared pick mode,
 /// and the capture bar at the bottom of the screen under the mouse.
 struct CaptureOverlayView: View {
-    let frozen: CGImage
     let screenQuartzFrame: CGRect
     let state: OverlayState
     /// This screen had the mouse when the overlay opened: the bar goes here, and Full screen starts lit.
@@ -29,12 +28,11 @@ struct CaptureOverlayView: View {
     @ViewBuilder private var picker: some View {
         switch state.pickMode {
         case .area:
-            SelectionOverlayView(frozen: frozen, onSelect: onSelectArea, onCancel: onCancel)
+            SelectionOverlayView(onSelect: onSelectArea, onCancel: onCancel)
         case .window:
-            WindowPickOverlayView(frozen: frozen, screenQuartzFrame: screenQuartzFrame,
-                                  windows: state.windows, onPick: onPickWindow)
+            WindowPickOverlayView(screenQuartzFrame: screenQuartzFrame, windows: state.windows, onPick: onPickWindow)
         case .fullScreen:
-            FullScreenPickOverlayView(frozen: frozen, startsHovered: underMouse, onPick: onPickFullScreen)
+            FullScreenPickOverlayView(startsHovered: underMouse, onPick: onPickFullScreen)
         }
     }
 }

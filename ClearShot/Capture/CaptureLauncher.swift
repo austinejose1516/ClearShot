@@ -1,7 +1,7 @@
 import AppKit
 import ClearShotCore
 
-/// Opens the capture bar (the frozen screens with the bar at the bottom) and hands what was picked to the
+/// Opens the capture bar (the dimmed screens with the bar at the bottom) and hands what was picked to the
 /// right place: a screenshot is taken at once; a scrolling capture or a recording goes on to its toolbar.
 /// The shortcuts do not come through here: each goes straight to its pick, as before.
 @Observable

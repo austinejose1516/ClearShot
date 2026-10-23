@@ -1,7 +1,6 @@
 import CoreGraphics
 
-/// Pure maths for the area-selection overlay. View coordinates are points with a top-left origin,
-/// exactly like the frozen screen image, so one scale factor maps between them.
+/// Pure maths for the area-selection overlay. View coordinates are points with a top-left origin.
 public enum SelectionGeometry {
     /// Anything smaller than this (in points) is a click, not a selection.
     public static let minimumSize: CGFloat = 3
@@ -14,13 +13,14 @@ public enum SelectionGeometry {
         rect.width >= minimumSize && rect.height >= minimumSize
     }
 
-    /// Whole-pixel rect inside `imageSize` that covers `viewRect`.
-    public static func pixelRect(viewRect: CGRect, viewSize: CGSize, imageSize: CGSize) -> CGRect {
-        guard viewSize.width > 0, viewSize.height > 0 else { return .zero }
-        let scale = imageSize.width / viewSize.width
-        let scaled = CGRect(x: viewRect.minX * scale, y: viewRect.minY * scale,
-                            width: viewRect.width * scale, height: viewRect.height * scale)
-        let bounds = CGRect(origin: .zero, size: imageSize)
-        return scaled.integral.intersection(bounds)
+    /// `rect` grown to the whole pixels that cover it (a mouse position can sit between pixels on a Retina
+    /// screen) and kept inside the screen, still in points. The pixels it names are then read straight off
+    /// the screen, with nothing resampled.
+    public static func snappedToPixels(_ rect: CGRect, scale: CGFloat, within size: CGSize) -> CGRect {
+        guard scale > 0 else { return .zero }
+        let pixels = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+            .integral
+            .intersection(CGRect(x: 0, y: 0, width: size.width * scale, height: size.height * scale))
+        return CGRect(x: pixels.minX / scale, y: pixels.minY / scale, width: pixels.width / scale, height: pixels.height / scale)
     }
 }

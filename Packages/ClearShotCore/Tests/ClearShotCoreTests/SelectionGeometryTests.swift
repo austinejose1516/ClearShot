@@ -13,24 +13,21 @@ import Testing
         #expect(SelectionGeometry.isUsable(CGRect(x: 0, y: 0, width: 3, height: 3)) == true)
     }
 
-    @Test func pixelRectScalesByImageOverView() {
-        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 10, y: 20, width: 100, height: 50),
-                                               viewSize: CGSize(width: 1800, height: 1169),
-                                               imageSize: CGSize(width: 3600, height: 2338))
-        #expect(rect == CGRect(x: 20, y: 40, width: 200, height: 100))
+    @Test func snappedRectCoversTheSelectionInWholePixels() {
+        let rect = SelectionGeometry.snappedToPixels(CGRect(x: 10.4, y: 20.6, width: 100, height: 50),
+                                                     scale: 2, within: CGSize(width: 1800, height: 1169))
+        #expect(rect == CGRect(x: 10, y: 20.5, width: 100.5, height: 50.5))
     }
 
-    @Test func pixelRectIsClampedToTheImage() {
-        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 1750, y: 1100, width: 100, height: 100),
-                                               viewSize: CGSize(width: 1800, height: 1169),
-                                               imageSize: CGSize(width: 3600, height: 2338))
-        #expect(rect == CGRect(x: 3500, y: 2200, width: 100, height: 138))
+    @Test func snappedRectStaysInsideTheScreen() {
+        let rect = SelectionGeometry.snappedToPixels(CGRect(x: 1750, y: 1100, width: 100, height: 100),
+                                                     scale: 2, within: CGSize(width: 1800, height: 1169))
+        #expect(rect == CGRect(x: 1750, y: 1100, width: 50, height: 69))
     }
 
-    @Test func pixelRectUsesWholePixelsThatCoverTheSelection() {
-        let rect = SelectionGeometry.pixelRect(viewRect: CGRect(x: 10.4, y: 20.6, width: 100, height: 50),
-                                               viewSize: CGSize(width: 1800, height: 1169),
-                                               imageSize: CGSize(width: 3600, height: 2338))
-        #expect(rect == CGRect(x: 20, y: 41, width: 201, height: 101))
+    @Test func rectOnWholePixelsIsUnchanged() {
+        let rect = SelectionGeometry.snappedToPixels(CGRect(x: 10, y: 20, width: 100, height: 50),
+                                                     scale: 2, within: CGSize(width: 1800, height: 1169))
+        #expect(rect == CGRect(x: 10, y: 20, width: 100, height: 50))
     }
 }

@@ -26,7 +26,7 @@ Goal: an open-source app people install with one command and use instead of the 
 ## 5. Speed
 
 - Measure first: log the time from hotkey to overlay shown (`DiagnosticLog`), target under 150 ms.
-- Likely wins: fetch the window list in the background after the overlay is up (window mode only needs it on hover); keep a warm `SCShareableContent` refreshed on a timer; freeze only the display under the mouse first and the others after; reuse the frozen image for the thumbnail.
+- Likely wins: fetch the window list in the background after the overlay is up (window mode only needs it on hover); keep a warm `SCShareableContent` refreshed on a timer.
 
 ## 6. Quality
 

@@ -1,9 +1,9 @@
 import ClearShotCore
 import SwiftUI
 
-/// Shows the frozen screen, dims it, and lets the user drag a rectangle. Reports the rect in view points.
+/// Dims the screen, which goes on moving underneath, and lets the user drag a rectangle that shows it undimmed.
+/// Reports the rect in view points.
 struct SelectionOverlayView: View {
-    let frozen: CGImage
     let onSelect: (CGRect) -> Void
     let onCancel: () -> Void
 
@@ -20,9 +20,6 @@ struct SelectionOverlayView: View {
         GeometryReader { proxy in
             let size = proxy.size
             ZStack(alignment: .topLeading) {
-                Image(decorative: frozen, scale: 1)
-                    .resizable()
-                    .frame(width: size.width, height: size.height)
                 DimLayer(size: size, hole: selection)
                 if let selection {
                     SelectionFrame(rect: selection, canvas: size)

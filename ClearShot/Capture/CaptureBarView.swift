@@ -1,7 +1,7 @@
 import ClearShotCore
 import SwiftUI
 
-/// The bar at the bottom of the frozen screen, like the Mac's own ⇧⌘5 bar: what to make, how to pick it,
+/// The bar at the bottom of the dimmed screen, like the Mac's own ⇧⌘5 bar: what to make, how to pick it,
 /// and what to do now.
 struct CaptureBarView: View {
     let model: CaptureBarModel

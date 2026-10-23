@@ -3,7 +3,6 @@ import SwiftUI
 
 /// Hover highlights the front-most window under the mouse; click picks it.
 struct WindowPickOverlayView: View {
-    let frozen: CGImage
     let screenQuartzFrame: CGRect
     let windows: [WindowInfo]
     let onPick: (WindowInfo) -> Void
@@ -15,9 +14,6 @@ struct WindowPickOverlayView: View {
             let size = proxy.size
             let highlight = hovered.map(localRect)
             ZStack(alignment: .topLeading) {
-                Image(decorative: frozen, scale: 1)
-                    .resizable()
-                    .frame(width: size.width, height: size.height)
                 DimLayer(size: size, hole: highlight)
                 if let hovered, let highlight {
                     WindowHighlight(rect: highlight, title: hovered.title ?? "")

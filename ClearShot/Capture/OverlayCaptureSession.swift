@@ -3,15 +3,18 @@ import ScreenCaptureKit
 import ClearShotCore
 import SwiftUI
 
-/// One capture: freeze every screen, show an overlay on each (with the capture bar on the screen under the
-/// mouse, when asked), resolve on a drag, a window click, a screen click or Esc.
+/// One capture: a see-through overlay dims every screen (with the capture bar on the screen under the mouse,
+/// when asked); it resolves on a drag, a window click, a screen click or Esc. The screens go on moving under
+/// the dim, and an area or a screen is pictured at the moment it is picked, so a playing video is shot on the
+/// frame wanted.
 @MainActor
 final class OverlayCaptureSession {
     enum Outcome {
-        /// The cropped frozen image and where it sits on screen (recording and scrolling capture need the place).
+        /// The picked area as it was at the moment of the pick, and where it sits on screen (recording and
+        /// scrolling capture need the place).
         case area(CGImage, ScreenRegion)
         case window(SCWindow)
-        /// The frozen picture of a whole screen and its place.
+        /// A whole screen as it was at the moment of the pick, and its place.
         case fullScreen(CGImage, ScreenRegion)
         case cancelled
     }
@@ -19,7 +22,10 @@ final class OverlayCaptureSession {
     private let state: OverlayState
     private var panels: [SelectionOverlayWindow] = []
     private var windowsByID: [UInt32: SCWindow] = [:]
-    private var continuation: CheckedContinuation<Outcome, Never>?
+    /// The window list taken once the overlay is on screen, so a shot can leave ClearShot's own windows out.
+    private var contentUnderOverlay: SCShareableContent?
+    private var isTakingShot = false
+    private var continuation: CheckedContinuation<Outcome, any Error>?
 
     private init(bar: CaptureBarModel, showsBar: Bool) {
         state = OverlayState(bar: bar, showsBar: showsBar)
@@ -36,10 +42,9 @@ final class OverlayCaptureSession {
     }
 
     private func start(settings: AppSettings) async throws -> Outcome {
-        let showsCursor = settings.showsCursor
         let content = try await ScreenCapturer.content()
-        let pairs = ScreenCapturer.screenDisplays(in: content)
-        guard !pairs.isEmpty else { throw ScreenCapturer.Failure.noDisplay }
+        let screens = ScreenCapturer.screenDisplays(in: content).map(\.screen)
+        guard !screens.isEmpty else { throw ScreenCapturer.Failure.noDisplay }
 
         let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
         windowsByID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { first, _ in first })
@@ -48,41 +53,34 @@ final class OverlayCaptureSession {
             excludingBundleID: Bundle.main.bundleIdentifier ?? "",
             screens: NSScreen.screens.map { ScreenCoordinates.quartzRect(fromAppKit: $0.frame, primaryHeight: primaryHeight) })
 
-        // One display at a time: ScreenCaptureKit's display objects are not marked safe to share between tasks.
-        var frozen: [(screen: NSScreen, image: CGImage)] = []
-        for pair in pairs {
-            frozen.append((pair.screen, try await ScreenCapturer.captureDisplay(pair.display, showsCursor: showsCursor)))
-        }
-
         let mouse = NSEvent.mouseLocation
-        let screenUnderMouse = frozen.first { $0.screen.frame.contains(mouse) }?.screen ?? frozen.first?.screen
-        for (screen, image) in frozen {
+        let screenUnderMouse = screens.first { $0.frame.contains(mouse) } ?? screens.first
+        for screen in screens {
             let panel = SelectionOverlayWindow(screen: screen)
-            panel.onCancel = { [weak self] in self?.resolve(.cancelled) }
+            panel.onCancel = { [weak self] in self?.resolve(.success(.cancelled)) }
             panel.onToggleMode = { [state] in state.pickMode = state.pickMode.afterSpace }
             let quartzFrame = ScreenCoordinates.quartzRect(fromAppKit: screen.frame, primaryHeight: primaryHeight)
-            let wholeScreen = ScreenRegion(displayID: screen.displayID ?? 0, quartzRect: quartzFrame, scale: screen.backingScaleFactor)
+            let screenSize = screen.frame.size
+            let scale = screen.backingScaleFactor
+            let displayID = screen.displayID ?? 0
+            let wholeScreen = ScreenRegion(displayID: displayID, quartzRect: quartzFrame, scale: scale)
             let view = CaptureOverlayView(
-                frozen: image,
                 screenQuartzFrame: quartzFrame,
                 state: state,
                 underMouse: screen == screenUnderMouse,
                 bottomInset: screen.visibleFrame.minY - screen.frame.minY + ToolbarPanel.bottomGap,
                 onSelectArea: { [weak self] rect in
-                    let pixelRect = SelectionGeometry.pixelRect(
-                        viewRect: rect,
-                        viewSize: screen.frame.size,
-                        imageSize: CGSize(width: image.width, height: image.height))
-                    let region = ScreenRegion(displayID: screen.displayID ?? 0,
-                                              quartzRect: ScreenCoordinates.quartzRect(fromView: rect, screenQuartzFrame: quartzFrame),
-                                              scale: screen.backingScaleFactor)
-                    self?.resolve(image.cropping(to: pixelRect).map { .area($0, region) } ?? .cancelled)
+                    let snapped = SelectionGeometry.snappedToPixels(rect, scale: scale, within: screenSize)
+                    let region = ScreenRegion(displayID: displayID,
+                                              quartzRect: ScreenCoordinates.quartzRect(fromView: snapped, screenQuartzFrame: quartzFrame),
+                                              scale: scale)
+                    self?.shoot(region) { .area($0, region) }
                 },
                 onPickWindow: { [weak self] info in
-                    self?.resolve(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled)
+                    self?.resolve(.success(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled))
                 },
-                onPickFullScreen: { [weak self] in self?.resolve(.fullScreen(image, wholeScreen)) },
-                onCancel: { [weak self] in self?.resolve(.cancelled) })
+                onPickFullScreen: { [weak self] in self?.shoot(wholeScreen) { .fullScreen($0, wholeScreen) } },
+                onCancel: { [weak self] in self?.resolve(.success(.cancelled)) })
             panel.contentView = FirstMouseHostingView(rootView: view.themed(settings))
             panels.append(panel)
         }
@@ -97,11 +95,29 @@ final class OverlayCaptureSession {
             context.duration = 0.14
             for panel in panels { panel.animator().alphaValue = 1 }
         }, completionHandler: nil)
+        // Fetched now, with the overlay on screen, so ClearShot is among the apps a shot leaves out.
+        Task { contentUnderOverlay = try? await ScreenCapturer.content() }
 
-        return await withCheckedContinuation { continuation = $0 }
+        return try await withCheckedThrowingContinuation { continuation = $0 }
     }
 
-    private func resolve(_ outcome: Outcome) {
+    /// Pictures `region` as it is right now, through the overlay, and resolves with `outcome` of the picture.
+    /// A second pick while one is being taken is ignored; Esc still cancels.
+    private func shoot(_ region: ScreenRegion, outcome: @escaping (CGImage) -> Outcome) {
+        guard continuation != nil, !isTakingShot else { return }
+        isTakingShot = true
+        Task {
+            do {
+                let content = if let contentUnderOverlay { contentUnderOverlay } else { try await ScreenCapturer.content() }
+                let image = try await ScreenCapturer.captureRegion(region, in: content)
+                resolve(.success(outcome(image)))
+            } catch {
+                resolve(.failure(error))
+            }
+        }
+    }
+
+    private func resolve(_ result: Result<Outcome, any Error>) {
         guard let continuation else { return }
         self.continuation = nil
         NSCursor.pop()
@@ -119,7 +135,7 @@ final class OverlayCaptureSession {
                     panel.contentView = nil
                 }
                 DiagnosticLog.write("capture overlay closed")
-                continuation.resume(returning: outcome)
+                continuation.resume(with: result)
             }
         })
     }
