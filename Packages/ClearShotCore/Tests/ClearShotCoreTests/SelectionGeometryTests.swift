@@ -30,4 +30,21 @@ import Testing
                                                      scale: 2, within: CGSize(width: 1800, height: 1169))
         #expect(rect == CGRect(x: 10, y: 20, width: 100, height: 50))
     }
+
+    @Test func tagSitsBelowAndRightOfThePoint() {
+        let origin = SelectionGeometry.tagOrigin(near: CGPoint(x: 100, y: 200), size: CGSize(width: 60, height: 20),
+                                                 in: CGSize(width: 1800, height: 1169), gap: 14)
+        #expect(origin == CGPoint(x: 114, y: 214))
+    }
+
+    @Test func tagFlipsLeftAndUpNearTheScreenEdge() {
+        let origin = SelectionGeometry.tagOrigin(near: CGPoint(x: 1780, y: 1160), size: CGSize(width: 60, height: 20),
+                                                 in: CGSize(width: 1800, height: 1169), gap: 14)
+        #expect(origin == CGPoint(x: 1706, y: 1126))
+    }
+
+    @Test func gridShowsOnlyInABoxBigEnoughForIt() {
+        #expect(SelectionGeometry.showsGrid(for: CGRect(x: 0, y: 0, width: 59, height: 200)) == false)
+        #expect(SelectionGeometry.showsGrid(for: CGRect(x: 0, y: 0, width: 60, height: 60)) == true)
+    }
 }

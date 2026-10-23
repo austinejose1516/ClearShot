@@ -23,4 +23,17 @@ public enum SelectionGeometry {
             .intersection(CGRect(x: 0, y: 0, width: size.width * scale, height: size.height * scale))
         return CGRect(x: pixels.minX / scale, y: pixels.minY / scale, width: pixels.width / scale, height: pixels.height / scale)
     }
+
+    /// Where a tag of `size` goes next to `point`: below and to the right, unless that would leave the screen,
+    /// then above or to the left instead.
+    public static func tagOrigin(near point: CGPoint, size: CGSize, in canvas: CGSize, gap: CGFloat) -> CGPoint {
+        let x = point.x + gap + size.width <= canvas.width ? point.x + gap : point.x - gap - size.width
+        let y = point.y + gap + size.height <= canvas.height ? point.y + gap : point.y - gap - size.height
+        return CGPoint(x: x, y: y)
+    }
+
+    /// The thirds grid is drawn only in a box with room for it; in a small one it is clutter.
+    public static func showsGrid(for rect: CGRect) -> Bool {
+        rect.width >= 60 && rect.height >= 60
+    }
 }

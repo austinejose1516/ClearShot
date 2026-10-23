@@ -25,6 +25,8 @@ final class OverlayCaptureSession {
     /// The window list taken once the overlay is on screen, so a shot can leave ClearShot's own windows out.
     private var contentUnderOverlay: SCShareableContent?
     private var isTakingShot = false
+    /// Sees every key press while the overlay is up, whichever panel is key.
+    private var keyMonitor: Any?
     private var continuation: CheckedContinuation<Outcome, any Error>?
 
     private init(bar: CaptureBarModel, showsBar: Bool) {
@@ -57,25 +59,28 @@ final class OverlayCaptureSession {
         let screenUnderMouse = screens.first { $0.frame.contains(mouse) } ?? screens.first
         for screen in screens {
             let panel = SelectionOverlayWindow(screen: screen)
-            panel.onCancel = { [weak self] in self?.resolve(.success(.cancelled)) }
-            panel.onToggleMode = { [state] in state.pickMode = state.pickMode.afterSpace }
             let quartzFrame = ScreenCoordinates.quartzRect(fromAppKit: screen.frame, primaryHeight: primaryHeight)
             let screenSize = screen.frame.size
             let scale = screen.backingScaleFactor
             let displayID = screen.displayID ?? 0
             let wholeScreen = ScreenRegion(displayID: displayID, quartzRect: quartzFrame, scale: scale)
+            panel.startsDrag = { [state] in state.pickMode == .area }
+            panel.onDragEnd = { [weak self] rect in
+                guard let rect else { self?.resolve(.success(.cancelled)); return }   // a click
+                let snapped = SelectionGeometry.snappedToPixels(rect, scale: scale, within: screenSize)
+                let region = ScreenRegion(displayID: displayID,
+                                          quartzRect: ScreenCoordinates.quartzRect(fromView: snapped, screenQuartzFrame: quartzFrame),
+                                          scale: scale)
+                self?.shoot(region) { .area($0, region) }
+            }
             let view = CaptureOverlayView(
                 screenQuartzFrame: quartzFrame,
+                drag: panel.drag,
                 state: state,
                 underMouse: screen == screenUnderMouse,
                 bottomInset: screen.visibleFrame.minY - screen.frame.minY + ToolbarPanel.bottomGap,
-                onSelectArea: { [weak self] rect in
-                    let snapped = SelectionGeometry.snappedToPixels(rect, scale: scale, within: screenSize)
-                    let region = ScreenRegion(displayID: displayID,
-                                              quartzRect: ScreenCoordinates.quartzRect(fromView: snapped, screenQuartzFrame: quartzFrame),
-                                              scale: scale)
-                    self?.shoot(region) { .area($0, region) }
-                },
+                topInset: screen.frame.maxY - screen.visibleFrame.maxY,
+                onBarFrame: { [weak panel] frame in panel?.barFrame = frame },
                 onPickWindow: { [weak self] info in
                     self?.resolve(.success(self?.windowsByID[info.id].map(Outcome.window) ?? .cancelled))
                 },
@@ -85,6 +90,14 @@ final class OverlayCaptureSession {
             panels.append(panel)
         }
 
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            switch event.keyCode {
+            case 53: resolve(.success(.cancelled)); return nil      // Esc, also mid-drag
+            case 49: state.pickMode = state.pickMode.afterSpace; return nil   // Space
+            default: return event
+            }
+        }
         NSCursor.crosshair.push()
         for panel in panels {
             panel.alphaValue = 0
@@ -120,6 +133,8 @@ final class OverlayCaptureSession {
     private func resolve(_ result: Result<Outcome, any Error>) {
         guard let continuation else { return }
         self.continuation = nil
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
         NSCursor.pop()
         let closing = panels
         panels.removeAll()
