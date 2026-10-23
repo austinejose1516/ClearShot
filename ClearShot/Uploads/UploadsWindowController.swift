@@ -9,7 +9,7 @@ final class UploadsWindowController: NSWindowController, NSWindowDelegate {
 
     init(settings: AppSettings) {
         model = UploadsModel(settings: settings)
-        let window = NSWindow(
+        let window = UploadsWindow(
             contentRect: NSRect(origin: .zero, size: UploadsView.defaultSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -20,6 +20,7 @@ final class UploadsWindowController: NSWindowController, NSWindowDelegate {
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         super.init(window: window)
         window.delegate = self
+        window.onCommand = { [model] in model.perform($0) }
         let host = NSHostingController(rootView: UploadsView(model: model, onOpenCloudSettings: UploadService.openCloudSettings)
             .themed(settings))
         host.sizingOptions = .minSize
@@ -39,5 +40,26 @@ final class UploadsWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         model.clear()
+    }
+}
+
+/// A menu-bar app has no Edit menu, so the window turns key presses (⌘A, ⌘C, Delete, Return, Esc, the arrows)
+/// into commands itself, before any view sees them. Keys go on as usual while a text field is being edited.
+final class UploadsWindow: NSWindow {
+    var onCommand: ((UploadsCommand) -> Void)?
+
+    override func sendEvent(_ event: NSEvent) {
+        guard event.type == .keyDown, !(firstResponder is NSTextView) else {
+            super.sendEvent(event)
+            return
+        }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.isSubset(of: [.command, .numericPad, .function]),
+              let command = UploadsCommand(key: event.charactersIgnoringModifiers ?? "", keyCode: event.keyCode,
+                                           command: flags.contains(.command)) else {
+            super.sendEvent(event)
+            return
+        }
+        onCommand?(command)
     }
 }
