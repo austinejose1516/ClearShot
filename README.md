@@ -6,7 +6,7 @@
 
 <p align="center">
   Free and open-source screenshots for your Mac.<br>
-  Capture an area, a window or the full screen, then mark it up in a fast, native editor.
+  Capture an area, a window, the full screen, a scrolling page or a screen recording, then mark it up in a fast, native editor.
 </p>
 
 ```bash
@@ -22,7 +22,41 @@ Or [download the latest DMG](https://github.com/austinejose1516/ClearShot/releas
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-green" alt="MIT licence"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/austinejose1516/ClearShot/releases/download/v0.15.0/ClearShot-launch.mp4"><img src="docs/media/launch-poster.jpg" width="720" alt="ClearShot in 20 seconds (video)"></a><br>
+  <sub><a href="https://github.com/austinejose1516/ClearShot/releases/download/v0.15.0/ClearShot-launch.mp4">▶ Watch the 20-second launch video</a></sub>
+</p>
+
 ---
+
+## Contents
+
+- [At a glance](#at-a-glance)
+- [Install](#install)
+- [Features](#features)
+  - [Capture](#capture)
+  - [Record the screen](#record-the-screen)
+  - [Quick Access card](#quick-access-card)
+  - [Editor](#editor)
+  - [Share and upload](#share-and-upload)
+  - [Themes and settings](#themes-and-settings)
+  - [Privacy](#privacy)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Build from source](#build-from-source)
+- [Contributing](#contributing)
+- [Licence](#licence)
+
+## At a glance
+
+| | |
+|---|---|
+| **Capture** | Area, window, full screen, or a scrolling page. The screen dims but keeps moving, so a playing video is caught on the frame you want. |
+| **Record** | Screen recordings with mic, system sound, pointer and click rings. Trim, blur and frame them in the video editor. |
+| **Mark up** | Arrows, lines, pen, highlighter, shapes, text, speech bubbles, step numbers, blur and crop. Full undo. A Frame panel with backgrounds, padding, corners and shadow. |
+| **Quick Access card** | Every capture lands in a card: Edit, Copy, Share, Upload, Reveal, Trash. Drag the thumbnail into any app. |
+| **Upload** | To your own Cloudflare R2 bucket, with a public link copied for you. An Uploads window with Finder-like selection and batch delete. |
+| **Private** | No account. Everything stays on your Mac unless you press Upload. |
+| **Native** | A small Swift 6 app in the menu bar. Shortcuts you can change, or the Mac's own ⇧⌘3 / ⇧⌘4 / ⇧⌘5. |
 
 ## Install
 
@@ -40,7 +74,7 @@ brew install --cask austinejose1516/tap/clearshot
 
 **Without Homebrew:** download `ClearShot-<version>.dmg` from the [latest release](https://github.com/austinejose1516/ClearShot/releases/latest), open it and drag ClearShot into Applications. **Check for Updates…** in the menu bar tells you when a newer DMG is out.
 
-**First launch.**
+**First launch**
 
 1. The app is not notarized yet, so the first time right-click ClearShot in Applications and choose **Open**.
 2. The welcome window asks for **Screen Recording** access. Click **Allow Access** and turn ClearShot on in System Settings.
@@ -48,17 +82,17 @@ brew install --cask austinejose1516/tap/clearshot
 
 Two more permissions come up later, each only when first needed: **Microphone** (the first time the record toolbar opens with Mic on) and **Accessibility** (only for **Auto** in a scrolling capture, so ClearShot can scroll the page for you; **By hand** needs nothing).
 
-Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. It only talks to the network for a once-a-day check for a newer version on GitHub (Settings → Updates turns it off; **Check for Updates…** in the menu bar asks right away), and for **Upload**, which sends to your own cloud bucket and only when you press it.
+Needs macOS 26 (Tahoe) or later.
 
 ## Features
 
 ### Capture
 
 - **The bar** — **Screenshot**, **Scrolling Capture** or **Record** in the menu dims the screen and shows a bar at the bottom, like the Mac's own ⇧⌘5 bar: pick what to make and how (**Area**, **Window** or **Full screen**), then drag, click a window or click a screen. Both choices are remembered. Space switches Area and Window, Esc cancels. Give the bar a key in Settings → Shortcuts; **Use the macOS shortcuts** makes it ⇧⌘5.
-- **Area** — the screen dims but keeps moving; a crosshair and a tag show where the pointer is, and the box shows its size as you drag. The shot is taken the moment you let go, so a playing video is caught on the frame you want. Press **Space** to switch to window mode, **Esc** to cancel (also mid-drag).
+- **Area** — the screen dims but keeps moving. A crosshair and a small tag show where the pointer is. Drag a box: it has corner brackets, a faint thirds grid and its size under it. The shot is taken the moment you let go, so a playing video is caught on the frame you want. **Space** switches to window mode, **Esc** cancels, also while you are still dragging.
 - **Window** — hover to highlight a window, click to capture it with its shadow and rounded corners.
 - **Full screen** — the display under the mouse.
-- **Scrolling** — one tall screenshot of a long page. **Scrolling Capture** in the menu (then pick on the bar), or ⌃⇧S for an area (Space switches to a window). A toolbar like the record one shows at the bottom: pick **By hand** (you scroll) or **Auto** (ClearShot scrolls; needs the Accessibility permission), **Change Area**, then **Start** or Enter. The bar counts the pages and a live preview beside the area shows the tall picture growing. Auto stops at the end of the page and waits. **Done** or Enter finishes, **Esc** cancels. A sticky header or footer is kept once. The result goes through the card, clipboard, file and editor (crop it there) like any screenshot.
+- **Scrolling** — one tall screenshot of a long page. **Scrolling Capture** in the menu (then pick on the bar), or ⌃⇧S for an area (Space switches to a window). A toolbar shows at the bottom: pick **By hand** (you scroll) or **Auto** (ClearShot scrolls; needs the Accessibility permission), **Change Area**, then **Start** or Enter. The bar counts the pages and a live preview beside the area shows the tall picture growing. Auto stops at the end of the page and waits. **Done** or Enter finishes, **Esc** cancels. A sticky header or footer is kept once. The result goes through the card, clipboard, file and editor (crop it there) like any screenshot.
 - Every capture flashes the screen, plays the shutter sound, goes to the clipboard and is saved to the Desktop as PNG or JPEG (change the folder and format in Settings).
 
 ### Record the screen
@@ -75,12 +109,6 @@ Needs macOS 26 (Tahoe) or later. ClearShot lives in the menu bar; it has no acco
 ### Quick Access card
 
 A card slides up at the bottom-left after each capture. Hover it for a glass bar with **Edit**, **Copy**, **Share**, **Upload**, **Reveal in Finder** and **Move to Trash**, plus close and the image size. Drag the thumbnail straight into Finder, Slack or any app. Cards can close themselves after a few seconds (Settings).
-
-### Share and upload
-
-- **Share** (card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
-- **Upload** (card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png` (recordings go to `videos/`), and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
-- **Uploads…** (menu bar, and **Show Uploads** in Settings → Cloud) opens a window with everything in the bucket, newest first, with a switch for **All · Images · Videos**. Select cards like in the Finder: click, ⌘-click, ⇧-click, drag a box (it scrolls on past the edge), ⌘A, the arrow keys; click empty space or press Esc to clear. The header has **Copy Link** and **Open in Browser** for one selected card (⌘C, Return) and **Delete** for all selected (⌫): it asks once, then removes the files one by one. Hover a card for the same three on that card alone; right-click acts on the selection. The pictures come from the public links each time the window opens: nothing is kept on your Mac.
 
 ### Editor
 
@@ -104,6 +132,16 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 - **Frame** panel: background (none, colour, 8 gradients, or your own image), padding, rounded corners and a shadow slider. The video editor has the same panel.
 - **Edit** on a card grows the card into the editor. **Done** (⌘S) shrinks it back into the card, which shows the edited picture, says "Saved" and writes it into the same file; **Copy**, **Share** and **Upload** are on the card. Closing the editor goes back to the card too. **Edit** again brings back your drawings, still movable, while the card is open. The same goes for every kind of capture: area, window, full screen, scrolling and recordings.
 
+### Share and upload
+
+- **Share** (card) opens the macOS Share menu: AirDrop, Messages, Mail, Slack and whatever else is installed.
+- **Upload** (card) sends the image to your own [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket under a short random name, such as `images/k3x9p2m7qa.png` (recordings go to `videos/`), and copies the public link. Set it up once in Settings → Cloud: enter the Account ID, Access Key ID, Secret Access Key (kept in your Keychain), Bucket and Public URL, then press **Connect**. Connect uploads a tiny file, opens it through the Public URL and deletes it, so you know links will work. The card shows the upload progress and keeps a **Copy link** button afterwards.
+- **Uploads…** (menu bar, and **Show Uploads** in Settings → Cloud) opens a window with everything in the bucket, newest first, with a switch for **All · Images · Videos**.
+  - Select cards like in the Finder: click, ⌘-click, ⇧-click for a range, drag a box (it scrolls on while you hold it past the edge), ⌘A for all, the arrow keys to move. Click empty space or press Esc to clear.
+  - The header has **Copy Link** and **Open in Browser** for one selected card (⌘C, Return) and **Delete** for all selected (⌫): it asks once, then removes the files one by one. The buttons are solid when they can be used and faded when not.
+  - Hover a card for the same three actions on that card alone; right-click acts on the selection.
+  - The pictures come from the public links each time the window opens: nothing is kept on your Mac.
+
 ### Themes and settings
 
 - **Appearance**: System, Light or Dark, and an accent colour: Ocean, Violet, Sunset, Forest or Graphite.
@@ -111,7 +149,12 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 - **Compress files** (on by default): much smaller files that look the same. A PNG is saved with 256 colours when that is enough, which makes a typical screenshot about a fifth of the size. If a file would still be over 1 MB, for example with a photo or the wallpaper in the picture, it is saved as a JPEG instead. The clipboard always gets the full PNG.
 - **Recording**: quality (Smaller, Better, Retina), microphone (and which one), the Mac's sound, the pointer and clicks. The same switches are on the toolbar before each recording.
 - **Cloud**: the Cloudflare R2 bucket that Upload sends to, with Connect / Disconnect and **Show Uploads**.
-- Change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (full screen, area and the capture bar; turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
+- **Shortcuts**: change any shortcut, or let ClearShot take over the macOS keys **⇧⌘3 / ⇧⌘4 / ⇧⌘5** (full screen, area and the capture bar; turn the built-in ones off first in System Settings → Keyboard → Keyboard Shortcuts → Screenshots).
+- **Updates**: a once-a-day check for a newer version on GitHub, which you can turn off. **Check for Updates…** in the menu bar asks right away.
+
+### Privacy
+
+ClearShot lives in the menu bar; it has no account and keeps your screenshots on your Mac. It only talks to the network for the update check (Settings → Updates turns it off) and for **Upload**, which sends to your own cloud bucket and only when you press it.
 
 ## Keyboard shortcuts
 
@@ -124,6 +167,7 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Anywhere | ⌃⇧R / ⌃⌥⇧R / ⌃⇧⌘R | Record an area (Space switches to window) / a window / the full screen; press again to start from the toolbar, again to stop |
 | Anywhere | ⌃⇧P | Pause or resume a recording |
 | Anywhere | none until you set one | Open the capture bar (**Use the macOS shortcuts** makes it ⇧⌘5) |
+| Picker | Space / Esc | Switch Area and Window / cancel (Esc works mid-drag too) |
 | Scrolling toolbar / bar | Enter / Esc | Start, then Done / cancel |
 | Record toolbar | Enter / Esc | Record / cancel (Esc also stops the countdown) |
 | Video editor | ⌘S | Done: back to the card |
@@ -137,6 +181,10 @@ A card slides up at the bottom-left after each capture. Hover it for a glass bar
 | Editor | Esc | Clear the selection and go back to the pointer |
 | Editor, typing text | ⌘B / ⌘I / ⌘U | Bold / italic / underline |
 | Typing text | Enter / ⌘Enter | Finish / new line |
+| Uploads window | ⌘A / Esc | Select all / clear the selection |
+| Uploads window | ← → ↑ ↓ | Move the selection |
+| Uploads window | ⌘C / Return | Copy the link / open in the browser (one selected) |
+| Uploads window | ⌫ | Delete the selected files (asks once) |
 
 ## Build from source
 
@@ -154,16 +202,19 @@ make dmg        # Release build + build/ClearShot-<version>.dmg
 
 ### Project layout
 
-- `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files. Tested with `swift test`.
-- `ClearShot/` — the app: capture with ScreenCaptureKit, overlays, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click bubbles, the video editor with its blur boxes, and the exporter), `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session) and `Uploads/` (the Uploads window: the listing, the cards and their pictures).
+- `Packages/ClearShotCore` — the logic, with no UI: settings, capture geometry, the area drag and the Uploads selection, annotations, the editor session (mouse, styling, text editing, crop), layout, undo, files, video encoding settings. Tested with `swift test`.
+- `ClearShot/` — the app: capture with ScreenCaptureKit, the see-through picker overlay, the Quick Access card, the editor views, settings; `Recording/` (the recorder, the toolbar, the bar, the countdown, the click bubbles, the video editor with its blur boxes and frame, and the exporter), `Scrolling/` (the coordinator, toolbar and bar, live preview, scroll injector and capture session) and `Uploads/` (the Uploads window: the listing, the cards, their pictures, the selection and the keys).
 - `scripts/make-icon.swift` — draws the app icon (`ClearShot/Resources/AppIcon-source.png`) and the menu bar glyph (`MenuBarIcon.png`, `@2x`); `scripts/make-icns.sh` then builds `AppIcon.icns` from the source PNG.
+- `docs/media/` — the launch video poster and screenshots used in this README.
 - `~/Library/Logs/ClearShot.log` — a small diagnostics log (Settings → Show Log in Finder).
 
 ### Releasing
 
 1. Bump `MARKETING_VERSION` in `project.yml`.
-2. Push a tag such as `v0.5.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
+2. Push a tag such as `v0.15.0`. GitHub Actions builds and signs the DMG and publishes it as a release. Homebrew downloads that file, so keep it on the release.
 3. Put the new version and DMG checksum into `Casks/clearshot.rb` in [homebrew-tap](https://github.com/austinejose1516/homebrew-tap) (a copy lives in `packaging/homebrew/`). Users then get it with `brew upgrade`.
+
+Every release has hand-written notes: see [Releases](https://github.com/austinejose1516/ClearShot/releases).
 
 ## Contributing
 

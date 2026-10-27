@@ -12,3 +12,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 ClearShot/Info.plist
+
+# Launch video work (the result lives on the GitHub release)
+brag-output*/
