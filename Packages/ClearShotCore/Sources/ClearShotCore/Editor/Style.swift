@@ -57,13 +57,13 @@ public struct StyleValues: Equatable, Sendable {
     public var arrow = true
     /// An arrowhead at the start as well as the end. Shown for the Arrow tool and for selected arrows.
     public var bothEnds = false
-    /// Screenshots are usually 2× Retina, so 24 px reads as 12 pt: a normal label. Plain weight, like any text tool.
-    public var fontSize: CGFloat = 24
+    /// Screenshots are usually 2× Retina, so 36 px reads as 18 pt: a clear label. Plain weight, like any text tool.
+    public var fontSize: CGFloat = 36
     public var bold = false
     public var italic = false
     public var underline = false
-    /// On by default: a solid box keeps text readable on any screenshot.
-    public var boxed = true
+    /// Off by default: plain text with a soft shadow. The Boxed toggle puts it in a solid box.
+    public var boxed = false
     public var blurMode: BlurMode = .pixelate
     public var stepRadius: CGFloat = 20
     public var cornerRadius: CGFloat = 0

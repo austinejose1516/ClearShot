@@ -79,7 +79,7 @@ import Testing
         drag(s, p(10, 10))
         s.editText("Hi")
         let plain = s.document.annotations[0].textContent
-        #expect(plain?.fontSize == 24 && plain?.bold == false && plain?.italic == false && plain?.underline == false)
+        #expect(plain?.fontSize == 36 && plain?.boxed == false && plain?.bold == false && plain?.italic == false && plain?.underline == false)
         s.apply(.italic(true))
         s.apply(.underline(true))
         let styled = s.document.annotations[0].textContent

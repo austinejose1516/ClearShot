@@ -22,9 +22,9 @@ import Testing
         #expect(arrow.kind == .curve(Curve(start: .zero, end: CGPoint(x: 10, y: 0), arrow: true, bothEnds: true)))
     }
 
-    @Test func newShapesAreTenPixelsWideAndTextIsTwentyFour() {
-        #expect(Annotation.Style.defaultWidth == 10)
-        #expect(StyleValues().width == 10 && StyleValues().fontSize == 24)
+    @Test func newShapesAreFourPixelsWideAndTextIsThirtySix() {
+        #expect(Annotation.Style.defaultWidth == 4)
+        #expect(StyleValues().width == 4 && StyleValues().fontSize == 36)
         #expect(StyleValues.fontSizes == [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96, 128])
         #expect(StyleValues.highlighter.width == 32)
     }
@@ -60,9 +60,9 @@ import Testing
         #expect(shown.bold && shown.italic && shown.underline && shown.boxed)
     }
 
-    @Test func newTextIsBoxedButOtherwisePlain() {
+    @Test func newTextIsPlainAndNotBoxed() {
         let values = StyleValues()
-        #expect(values.bold == false && values.italic == false && values.underline == false && values.boxed)
+        #expect(values.bold == false && values.italic == false && values.underline == false && values.boxed == false)
     }
 
     @Test func newShapesGetFillOnlyWhenTheyCanBeFilled() {
