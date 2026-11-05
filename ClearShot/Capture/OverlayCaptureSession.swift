@@ -22,7 +22,7 @@ final class OverlayCaptureSession {
     private let state: OverlayState
     private var panels: [SelectionOverlayWindow] = []
     private var windowsByID: [UInt32: SCWindow] = [:]
-    /// The window list taken once the overlay is on screen, so a shot can leave ClearShot's own windows out.
+    /// The window list (hidden windows too) taken as the overlay comes up, so a shot can leave ClearShot's own windows out.
     private var contentUnderOverlay: SCShareableContent?
     private var isTakingShot = false
     /// Sees every key press while the overlay is up, whichever panel is key.
@@ -108,8 +108,8 @@ final class OverlayCaptureSession {
             context.duration = 0.14
             for panel in panels { panel.animator().alphaValue = 1 }
         }, completionHandler: nil)
-        // Fetched now, with the overlay on screen, so ClearShot is among the apps a shot leaves out.
-        Task { contentUnderOverlay = try? await ScreenCapturer.content() }
+        // Hidden windows too, so ClearShot is among the apps a shot leaves out even before the overlay is on screen.
+        Task { contentUnderOverlay = try? await ScreenCapturer.contentWithHiddenWindows() }
 
         return try await withCheckedThrowingContinuation { continuation = $0 }
     }
@@ -121,7 +121,7 @@ final class OverlayCaptureSession {
         isTakingShot = true
         Task {
             do {
-                let content = if let contentUnderOverlay { contentUnderOverlay } else { try await ScreenCapturer.content() }
+                let content = if let contentUnderOverlay { contentUnderOverlay } else { try await ScreenCapturer.contentWithHiddenWindows() }
                 let image = try await ScreenCapturer.captureRegion(region, in: content)
                 resolve(.success(outcome(image)))
             } catch {

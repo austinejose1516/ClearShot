@@ -50,12 +50,21 @@ enum ScreenCapturer {
         return try await capture(SCContentFilter(display: display, excludingWindows: []), configuration)
     }
 
+    /// Displays and every window, hidden ones too. A shot that leaves ClearShot out needs this list: ClearShot
+    /// is listed as an app only when it has a window in the list, and it often has none on screen (its menu
+    /// bar icon is not its own window). An on-screen list taken while the overlay was still fading in left
+    /// ClearShot out, so the overlay's dim, box and size label were in the picture.
+    static func contentWithHiddenWindows() async throws -> SCShareableContent {
+        try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+    }
+
     /// The pixels of `region` right now, without the pointer and without ClearShot's own windows (the overlay,
     /// the HUD, the frame). ClearShot is left out as an app, so windows made after `content` was fetched are
-    /// left out too; `content` must have been fetched while ClearShot had a window on screen.
+    /// left out too; `content` must come from `contentWithHiddenWindows()`.
     static func captureRegion(_ region: ScreenRegion, in content: SCShareableContent) async throws -> CGImage {
         guard let display = content.displays.first(where: { $0.displayID == region.displayID }) else { throw Failure.noDisplay }
         let ours = content.applications.filter { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
+        if ours.isEmpty { DiagnosticLog.write("region shot: ClearShot is not in the app list, so its windows may be in the picture") }
         let configuration = SCScreenshotConfiguration()
         configuration.showsCursor = false
         configuration.dynamicRange = .sdr
