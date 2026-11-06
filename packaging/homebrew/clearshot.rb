@@ -1,8 +1,8 @@
 # Homebrew cask for ClearShot. Lives in the tap repo (austinejose1516/homebrew-tap) as Casks/clearshot.rb.
 # Update `version` and `sha256` (from the .dmg.sha256 file) on each release.
 cask "clearshot" do
-  version "0.15.1"
-  sha256 "61da24f739c22e468bd6361b6174932c85d1f5327f677eac9d8169fa4bd96e04"
+  version "0.16.0"
+  sha256 "14db257891345d7f4efc28a31f97fdb9b8bc857c6d147b5a6a39f81457c7bf98"
 
   url "https://github.com/austinejose1516/ClearShot/releases/download/v#{version}/ClearShot-#{version}.dmg"
   name "ClearShot"
