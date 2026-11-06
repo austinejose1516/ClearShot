@@ -3,6 +3,7 @@ import ClearShotCore
 import SwiftUI
 
 /// Owns the Quick Access cards: one panel per capture (screenshot or recording), newest on the left, per screen.
+/// A card the user drags by its grab bar leaves the row and stays where it is dropped until closed.
 @MainActor
 final class QuickAccessController {
     private struct Entry {
@@ -17,6 +18,11 @@ final class QuickAccessController {
     private var hovered: Set<Capture.ID> = []
     /// Cards that became an editor: out of the row (the others close the gap) until the editor goes back in.
     private var away: Set<Capture.ID> = []
+    /// Cards the user moved out of the row, and where each one sits (the card, not its panel). They never
+    /// close by themselves, and new cards never push them out.
+    private var moved: [Capture.ID: CGRect] = [:]
+    /// The card being moved right now, and where the mouse holds it (from the card's bottom-left corner).
+    private var grab: (id: Capture.ID, offset: CGVector)?
     /// Pictures an editor finished that still have to go into the card's file (it may not be written yet).
     private var unsavedEdits: [Capture.ID: CGImage] = [:]
     /// Cards whose file is being rewritten right now.
@@ -60,7 +66,8 @@ final class QuickAccessController {
                 self?.close(id: id)
             },
             onClose: { [weak self] in self?.close(id: id) },
-            onHoverChange: { [weak self] inside in self?.hoverChanged(id, inside: inside) })
+            onHoverChange: { [weak self] inside in self?.hoverChanged(id, inside: inside) },
+            onMove: { [weak self] done in self?.move(id, done: done) })
         panel.contentView = FirstMouseHostingView(rootView: view.themed(settings))
         entries.insert(Entry(capture: capture, panel: panel, presentation: presentation,
                              displayID: (screen ?? NSScreen.main)?.displayID), at: 0)
@@ -277,18 +284,26 @@ final class QuickAccessController {
     private func layout(animated: Bool, appearing: Capture.ID? = nil) {
         let (frames, overflow) = plan()
         for entry in entries {
-            guard let frame = frames[entry.capture.id] else { continue }
+            // The card under the mouse follows the mouse, not the layout.
+            guard let frame = frames[entry.capture.id], entry.capture.id != grab?.id else { continue }
             place(entry.panel, at: frame, animated: animated, appearing: entry.capture.id == appearing)
         }
         overflow.forEach(dismiss(id:))
     }
 
-    /// Where each card in the row goes, per screen (a card that is away takes no place), and the cards there is
-    /// no room for.
+    /// Where each card goes: a moved card stays on its spot (kept on a screen); the others line up in the row,
+    /// per screen. A card that is away takes no place. Also the row's cards there is no room for.
     private func plan() -> (frames: [Capture.ID: CGRect], overflow: [Capture.ID]) {
         var frames: [Capture.ID: CGRect] = [:]
         var overflow: [Capture.ID] = []
-        let inRow = entries.filter { !away.contains($0.capture.id) }
+        let shown = entries.filter { !away.contains($0.capture.id) }
+        let screens = NSScreen.screens.map(\.visibleFrame)
+        for entry in shown {
+            if let card = moved[entry.capture.id] {
+                frames[entry.capture.id] = QuickAccessLayout.keptOnScreen(card, screens: screens)
+            }
+        }
+        let inRow = shown.filter { moved[$0.capture.id] == nil }
         for (displayID, group) in Dictionary(grouping: inRow, by: { $0.displayID }) {
             // A card whose screen was unplugged moves to the main screen.
             let screen = NSScreen.screens.first { $0.displayID == displayID } ?? NSScreen.main
@@ -324,6 +339,8 @@ final class QuickAccessController {
         let entry = entries.remove(at: index)
         autoCloseTasks.removeValue(forKey: id)?.cancel()
         hovered.remove(id)
+        moved.removeValue(forKey: id)
+        if grab?.id == id { grab = nil }
         entry.presentation.isDismissing = true
         onDismissed?(id)
         Task {
@@ -331,6 +348,35 @@ final class QuickAccessController {
             entry.panel.orderOut(nil)
             entry.panel.contentView = nil
         }
+    }
+
+    // MARK: - Moving a card
+
+    /// The grab bar is dragged: the first time, the card leaves the row (the others close the gap). It follows
+    /// the mouse, and once let go it is pulled fully onto the screen it mostly covers.
+    private func move(_ id: Capture.ID, done: Bool) {
+        guard let entry = entries.first(where: { $0.capture.id == id }), !away.contains(id) else { return }
+        let mouse = NSEvent.mouseLocation
+        if grab?.id != id {
+            let margin = QuickAccessLayout.panelMargin
+            let card = entry.panel.frame.insetBy(dx: margin, dy: margin)
+            grab = (id, CGVector(dx: mouse.x - card.minX, dy: mouse.y - card.minY))
+            autoCloseTasks.removeValue(forKey: id)?.cancel()
+            if moved.updateValue(card, forKey: id) == nil { layout(animated: true) }
+        }
+        guard let offset = grab?.offset else { return }
+        let card = CGRect(origin: CGPoint(x: mouse.x - offset.dx, y: mouse.y - offset.dy), size: QuickAccessLayout.cardSize)
+        guard done else {
+            moved[id] = card
+            place(entry.panel, at: card, animated: false, appearing: false)
+            return
+        }
+        grab = nil
+        let kept = QuickAccessLayout.keptOnScreen(card, screens: NSScreen.screens.map(\.visibleFrame))
+        moved[id] = kept
+        // Only a card dropped past an edge slides back; an animation to where it already is would hold it
+        // there for a moment if it is grabbed again at once.
+        if kept != card { place(entry.panel, at: kept, animated: true, appearing: false) }
     }
 
     // MARK: - Auto-close
@@ -347,7 +393,7 @@ final class QuickAccessController {
 
     private func scheduleAutoClose(_ id: Capture.ID) {
         autoCloseTasks[id]?.cancel()
-        guard !away.contains(id) else { return }   // never while it is an editor
+        guard !away.contains(id), moved[id] == nil else { return }   // never while it is an editor, nor once moved
         let seconds = settings.cardAutoCloseSeconds
         guard seconds > 0 else { return }
         autoCloseTasks[id] = Task { [weak self] in

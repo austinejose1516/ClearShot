@@ -32,7 +32,8 @@ final class CardPresentation {
 }
 
 /// The card: the screenshot (or a recording's first frame) fills it; on hover a glass bar slides up with the
-/// actions, plus close and size on top. A recording shows its length at all times and plays while hovered.
+/// actions, plus close, a grab bar and size on top. A recording shows its length at all times and plays while
+/// hovered. Dragging the grab bar moves the card; dragging the picture drags the image out.
 struct QuickAccessView: View {
     let capture: Capture
     let presentation: CardPresentation
@@ -45,12 +46,15 @@ struct QuickAccessView: View {
     let onDelete: () -> Void
     let onClose: () -> Void
     let onHoverChange: (Bool) -> Void
+    /// The grab bar is being dragged (`done` false) or was let go (`done` true).
+    let onMove: (_ done: Bool) -> Void
 
     @State private var copied = false
     @State private var linkCopied = false
     @State private var appeared = false
     @State private var hovered = false
     @State private var showsSaved = false
+    @State private var moving = false
     @State private var shareAnchor = AnchorHolder()
 
     var body: some View {
@@ -87,6 +91,9 @@ struct QuickAccessView: View {
                     if hovered || capture.isVideo {
                         badge.transition(.opacity)
                     }
+                }
+                .overlay {
+                    if hovered { grabBar.transition(.opacity) }
                 }
                 Spacer(minLength: 0)
                 if hovered {
@@ -152,6 +159,30 @@ struct QuickAccessView: View {
                 presentation.fileURL.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider()
             }
             .help(presentation.fileURL?.lastPathComponent ?? "Saving…")
+    }
+
+    /// A short pill at the top middle: drag it to move the card anywhere on screen.
+    private var grabBar: some View {
+        Capsule()
+            .fill(.secondary)
+            .frame(width: 26, height: 4)
+            .padding(.horizontal, 12)
+            .frame(height: 22)
+            .glassEffect(.regular, in: .capsule)
+            .contentShape(Capsule())
+            .pointerStyle(moving ? .grabActive : .grabIdle)
+            .gesture(
+                // Not 0: a plain click on the bar does not take the card out of the row.
+                DragGesture(minimumDistance: 2)
+                    .onChanged { _ in
+                        moving = true
+                        onMove(false)
+                    }
+                    .onEnded { _ in
+                        moving = false
+                        onMove(true)
+                    })
+            .help("Drag to move")
     }
 
     private var actionBar: some View {
